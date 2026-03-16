@@ -1,0 +1,27 @@
+name: Python test
+on: push
+
+jobs:
+  test:
+    name: Run unit tests
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Check out the repo
+        uses: actions/checkout@v6
+      -
+        name: Set up Python 3.12.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.12.13
+        run: pip install ".[test]"
+      -
+        name: Unit testing
+        uses: pavelzw/pytest-action@v2
+        with:
+          verbose: true
+          emoji: true
+          job-summary: true
+          custom-arguments: -q
+          click-to-expand: true
+          report-title: 'tsoppy unit testing'
