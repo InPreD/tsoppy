@@ -1,0 +1,31 @@
+FROM mcr.microsoft.com/devcontainers/python:3.12-bookworm
+
+# Define build arguments for user configuration
+ARG USERNAME=inpred
+ARG USER_UID=1000
+ARG USER_GID=${USER_UID}
+ARG FULLNAME="Your full name"
+ARG MAIL="some@mail.address"
+
+# Install packages and set locale
+RUN apt-get update \
+    && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends \
+        silversearcher-ag=2.2.0+git20200805-1+b1 \
+        fish=3.6.0-3.1+deb12u1 \
+    && echo "LC_ALL=en_US.UTF-8" > /etc/default/locale \
+    && locale-gen en_US.UTF-8 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create the user
+RUN groupadd --gid ${USER_GID} ${USERNAME} \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME -s /usr/bin/fish\
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
+USER ${USERNAME}
+
+# Configure git
+RUN git config --global pull.rebase false && \
+    git config --global user.email "${MAIL}" && \
+    git config --global user.name "${FULLNAME}"
