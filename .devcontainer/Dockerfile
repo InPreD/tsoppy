@@ -1,3 +1,7 @@
+# Make hadolint available
+FROM hadolint/hadolint:latest-debian AS hadolint
+
+# Build on python devcontainer image
 FROM mcr.microsoft.com/devcontainers/python:3.12-bookworm
 
 # Define build arguments for user configuration
@@ -8,6 +12,7 @@ ARG FULLNAME="Your full name"
 ARG MAIL="some@mail.address"
 
 # Install packages and set locale
+COPY --from=hadolint /bin/hadolint /bin/hadolint
 RUN apt-get update \
     && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
