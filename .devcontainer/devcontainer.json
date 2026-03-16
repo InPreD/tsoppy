@@ -41,9 +41,10 @@
 			// Add the IDs of extensions you want installed when the container is created.
 			"extensions": [
 				"exiasr.hadolint",
-				"kahole.magit",
 				"gitlab.gitlab-workflow",
-				"ms-vsliveshare.vsliveshare"
+				"kahole.magit",
+				"ms-vsliveshare.vsliveshare",
+				"tamasfe.even-better-toml"
 			]
 		}
 	},
