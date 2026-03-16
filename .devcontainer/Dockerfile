@@ -2,7 +2,7 @@
 FROM hadolint/hadolint:latest-debian AS hadolint
 
 # Build on python devcontainer image
-FROM mcr.microsoft.com/devcontainers/python:3.12-bookworm
+FROM mcr.microsoft.com/devcontainers/python:3.14-trixie
 
 # Define build arguments for user configuration
 ARG USERNAME=inpred
@@ -16,8 +16,8 @@ COPY --from=hadolint /bin/hadolint /bin/hadolint
 RUN apt-get update \
     && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
-        silversearcher-ag=2.2.0+git20200805-1+b1 \
-        fish=3.6.0-3.1+deb12u1 \
+        silversearcher-ag=2.2.0+git20200805-1.2 \
+        fish=4.0.2-1 \
     && echo "LC_ALL=en_US.UTF-8" > /etc/default/locale \
     && locale-gen en_US.UTF-8 \
     && apt-get clean \
