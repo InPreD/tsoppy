@@ -14,7 +14,7 @@ tsoppy = "tsoppy.cli:app"
 [project.optional-dependencies]
 dev = ["isort==8.0.1", "ruff==0.15.6"]
 lint = ["ruff==0.15.6"]
-test = ["pytest==9.0.2", "pytest-md==0.2.0", "pytest-emoji==0.2.0"]
+test = ["pytest==9.0.2", "pytest-emoji==0.2.0", "pytest-md==0.2.0"]
 
 [tool.setuptools-git-versioning]
 enabled = true
