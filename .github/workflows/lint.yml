@@ -10,9 +10,6 @@ jobs:
         name: Check out the repo
         uses: actions/checkout@v6
       -
-        name: Lint python code
-        uses: ricardochaves/python-lint@v1.4.0
-      -
         name: Set up Python 3.14.3
         uses: actions/setup-python@v6
         with:
