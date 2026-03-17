@@ -1,0 +1,25 @@
+name: Python lint
+on: push
+
+jobs:
+  test:
+    name: Run linting
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Check out the repo
+        uses: actions/checkout@v6
+      -
+        name: Lint python code
+        uses: ricardochaves/python-lint@v1.4.0
+      -
+        name: Set up Python 3.14.3
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.14.3
+      -
+        name: Install dependencies
+        run: pip install ".[lint]"
+      -
+        name: Run ruff linting
+        run: ruff check . && ruff format --check .
