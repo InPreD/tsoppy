@@ -333,3 +333,28 @@ def add_variant_summary(
     Summarise_variant_output(
         config_yaml, inpred_nomenclature, results_directory, output_file
     )
+
+
+@app.command()
+def report_predispositions(
+        cancer_susceptibility_genes: Annotated[str, typer.Option("--cancer-susceptibility-genes", "-g")],
+        small_variant_calls: Annotated[str, typer.Option("--small-variant-calls", "-c")],
+        age: Annotated[int, typer.Option("--age", "-a")],
+        output: Annotated[str, typer.Option("--output", "-o") ],
+        verbose: Annotated[bool, typer.Option("--verbose", "-v")] = False,
+):
+    """
+    This function reports variants called by small variant caller that are present 
+    in the cancer susceptibility genes.    
+    """
+    
+    predispositions = dict()
+
+    if verbose:
+        print(f"Load data from the {cancer_susceptibility_genes} table")
+    if verbose:
+        print(f"Open the {small_variant_calls} file and iterate through the variants. 
+                Store all the variants present in the {cancer_susceptibility_genes} table 
+                together with all the info that should be reported into the {predispositions}.")
+    if verbose:
+        print(f"Print the {predispositions} content into the {output} file.")
