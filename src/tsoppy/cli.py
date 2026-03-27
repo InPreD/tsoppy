@@ -45,7 +45,8 @@ def report_predispositions(
 ):
     """
     This function reports variants called by small variant caller that are present 
-    in the cancer susceptibility genes.    
+    in the cancer susceptibility genes. Susceptibility of a gene depends on a patients age group, 
+    thus age input parameter.  
     """
     
     report_predispositions.report_predispositions(cancer_susceptibility_genes,small_variant_calls,age,output)
