@@ -3,9 +3,16 @@ This module contains the CLI commands for tsoppy.
 """
 
 import importlib.metadata
+import logging
 from typing import Annotated
 
 import typer
+
+# Set up logging for the CLI. The logging level is set to INFO, and the log messages will include the timestamp, log level, and message.
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s: %(message)s',
+                    datefmt='%Y/%m/%d %H:%M:%S')
+logger = logging.getLogger(__name__)
 
 app = typer.Typer()
 app_version = importlib.metadata.version("tsoppy")
