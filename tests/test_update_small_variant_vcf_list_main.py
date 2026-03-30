@@ -1,11 +1,12 @@
 """
 update small variant vcf list subpackage main module unit tests.
 """
-from os import path
-import os
 import filecmp
+import os
 import unittest
-from tsoppy.update_small_variant_vcf_list.main import VcfList, Vcf
+from os import path
+
+from tsoppy.update_small_variant_vcf_list.main import Vcf, VcfList
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/update_small_variant_vcf_list_main"
