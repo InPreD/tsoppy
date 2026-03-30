@@ -18,7 +18,10 @@ logging.basicConfig(level=logging.INFO,
                     datefmt='%Y/%m/%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
+# Create a Typer app for the CLI. The app will be used to define the commands and their arguments.
 app = typer.Typer()
+
+# app_version will be set from git tag.
 app_version = importlib.metadata.version("tsoppy")
 
 
