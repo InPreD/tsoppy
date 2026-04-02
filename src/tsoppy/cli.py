@@ -7,7 +7,7 @@ from typing import Annotated
 
 import typer
 
-from .report_predispositions import report_predispositions
+from tsoppy.report_predispositions.report_predispositions import report_predispositions
 
 app = typer.Typer()
 app_version = importlib.metadata.version("tsoppy")
@@ -36,18 +36,19 @@ def placeholder(
     else:
         print(f"{user_name}: {user_id}")
 
+
 @app.command()
 def report_predispositions(
     cancer_susceptibility_genes: Annotated[str, typer.Option("--cancer-susceptibility-genes", "-g")],
     small_variant_calls: Annotated[str, typer.Option("--small-variant-calls", "-c")],
     age: Annotated[int, typer.Option("--age", "-a")],
-    output: Annotated[str, typer.Option("--output", "-o") ],
+    output: Annotated[str, typer.Option("--output", "-o")],
 ):
     """
-    This function reports variants called by small variant caller that are present 
-    in the cancer susceptibility genes. Susceptibility of a gene depends on a patients age group, 
-    thus age input parameter.  
+    This function reports variants called by small variant caller that are present
+    in the cancer susceptibility genes. Susceptibility of a gene depends on a patients age group,
+    thus age input parameter.
     """
-    
-    report_predispositions.report_predispositions(cancer_susceptibility_genes,small_variant_calls,age,output)
-    
+
+    report_predispositions.report_predispositions(
+        cancer_susceptibility_genes, small_variant_calls, age, output)
