@@ -6,9 +6,9 @@ logger = logging.getLogger()
 
 def report_predispositions(cancer_susceptibility_genes, small_variant_calls, age, output):
     """
-    This function reports variants called by small variant caller that are present 
-    in the cancer susceptibility genes. Susceptibility of a gene depends on a patients age group, 
-    thus age input parameter.
+    This function reports variants called by small variant caller that are present
+    in the cancer susceptibility genes. Susceptibility of a gene depends on a patient's age,
+    thus the age input parameter.
     """
 
     predispositions = dict()
