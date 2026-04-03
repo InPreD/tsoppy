@@ -5,9 +5,6 @@ logger = logging.getLogger()
 
 
 # TODO: no functionality yet, just documentation
-# TODO: should the output file content some patient ID/sample ID to make sure that that one knows patient ID from the output file content? if so, where should the ID be obtained?
-# TODO: should output file name be (1) an input parameter or (2) should it be generated automatically, if (2) then where and how
-# TODO: will patient age be available at tsoppy run?
 
 
 def load_data_from_cancer_susceptibility_genes_table(cancer_susceptibility_genes):
@@ -21,29 +18,64 @@ def load_data_from_cancer_susceptibility_genes_table(cancer_susceptibility_genes
     return csg
 
 
-def lookup_predispositions(csg, small_variant_calls, age):
+def lookup_predispositions(csg, small_variant_calls):
     """
     Look up predispositions and store all the relevant info.
     """
     predispositions = dict()
     # open small_variant_calls file
-    # iterate through all the variants, store variants in the genes present from csg in predispositions, pending on the age
+    # iterate through all the variants, store variants in the genes present from csg in predispositions
     return predispositions
 
 
-def print_predispositions_to_output_file(output, predispositions):
+def print_predispositions_to_output_file(predispositions):
     """
     Print predispositions into the output file.
     """
+    # generate output path and file name (DNAsampleID/DNAsampleID_predisposition_gene_variant_table_tumor_RNA.tsv)
     # open output file for writing
+    # print out header of the file (including DNAsampleID and version string)
+    #
+    # from TSOPPI (user_scripts/libs/05_PCGR_to_variant)interpretation_table.py)
+    #
+    #   pot_file.write("# [" + SAMPLE_ID + "] Version string: "
+    #               + arg_dict["pipeline_version"] + "\n")
+    #   pot_file.write("# [" + SAMPLE_ID + "] Variants included in this table"
+    #               " are located within one of the cancer predisposition"
+    #               " genes listed in ESMO paper doi:10.1093/annonc/mdz136\n")
+    #   pot_file.write("# [" + SAMPLE_ID + "] Size of the target coding region"
+    #               " (in millions ot bases): " + arg_dict["target_size"]
+    #               + "\n")
+    #   pot_file.write("# [" + SAMPLE_ID + "] Specified tumor purity"
+    #               " (as a fraction between 0 and 1): " + str(TUMOR_PURITY)
+    #               + "\n")
+    #   for info_line in copy_number_header_lines:
+    #        pot_file.write(info_line.replace("# ", "# [" + SAMPLE_ID + "] ")
+    #                       + "\n")
+    #   for info_line in predisposition_gene_header_lines:
+    #       pot_file.write(info_line.replace("### ", "# ").replace("# ", "# ["
+    #                       + SAMPLE_ID + "] ") + "\n")
+    #
+    #   pot_file.write("\t".join(["Sample_ID", "Gene_symbol",
+    #                             "Ensembl_transcript_ID", "RefSeq_mRNA",
+    #                             "Genomic_location", "DNA_change", "cDNA_change",
+    #                             "Protein_change",
+    #                             "Depth_tumor_DNA", "AF_tumor_DNA",
+    #                             "Depth_normal_DNA", "AF_normal_DNA",
+    #                             "Depth_tumor_RNA", "AF_tumor_RNA",
+    #                             "TCGA_frequency",
+    #                             "ICGC_PCAWG_occurrence", "Gene_predisposition",
+    #                             "Gene_CN", "CPSR_ACMG_class",
+    #                             "CPSR_ClinVar_class", "CPSR_classification_doc"])
+    #                  + "\n")
+    #
     # iterate through the predispositions, write out
 
 
-def report_predispositions(cancer_susceptibility_genes, small_variant_calls, age, output):
+def report_predispositions(cancer_susceptibility_genes, small_variant_calls):
     """
     This function reports variants called by small variant caller that are present
-    in the cancer susceptibility genes. Susceptibility of a gene depends on a patient's age,
-    thus the age input parameter.
+    in the cancer susceptibility genes.
     """
 
     predispositions = dict()
@@ -54,7 +86,7 @@ def report_predispositions(cancer_susceptibility_genes, small_variant_calls, age
         cancer_susceptibility_genes)
 
     logger.info(f"Open the {small_variant_calls} file and iterate through the variants. Store all the variants present in the {cancer_susceptibility_genes} table together with all the info that should be reported into the {predispositions}.")
-    predispositions = lookup_predispositions(csg, small_variant_calls, age)
+    predispositions = lookup_predispositions(csg, small_variant_calls)
 
-    logger.info(f"Print the {predispositions} content into the {output} file.")
-    print_predispositions_to_output_file(output, predispositions)
+    logger.info(f"Print the {predispositions} content into an output file.")
+    print_predispositions_to_output_file(predispositions)
