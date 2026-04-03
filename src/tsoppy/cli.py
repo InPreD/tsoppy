@@ -338,7 +338,7 @@ def add_variant_summary(
 
 
 @app.command()
-def report_predispositions(
+def report_predisposition_variants(
     cancer_susceptibility_genes: Annotated[str, typer.Option("--cancer-susceptibility-genes", "-g")],
     small_variant_calls: Annotated[str, typer.Option("--small-variant-calls", "-c")],
 ):
@@ -347,5 +347,5 @@ def report_predispositions(
     in the cancer susceptibility genes.
     """
 
-    report_predispositions.report_predispositions(
+    report_predispositions(
         cancer_susceptibility_genes, small_variant_calls)
