@@ -109,10 +109,10 @@ def report_predispositions(cancer_susceptibility_genes, small_variant_calls):
     csg = load_data_from_cancer_susceptibility_genes_table(
         cancer_susceptibility_genes)
 
-    logger.info(f"Open the {small_variant_calls} file and iterate through the variants. Store all the variants present in the {cancer_susceptibility_genes} table together with all the info that should be reported into the {predispositions}.")
+    logger.info(f"Open the {small_variant_calls} file and iterate through the variants. Store all the variants present in the {cancer_susceptibility_genes} table together with all the info that should be reported into the {predisposition_variants}.")
     predisposition_variants = lookup_predisposition_variants(
         csg, small_variant_calls)
 
     logger.info(
-        f"Print the {predispositions_variants} content into an output file.")
+        f"Print the {predisposition_variants} content into an output file.")
     print_predisposition_variants_to_output_file(predisposition_variants)
