@@ -7,7 +7,7 @@ logger = logging.getLogger()
 
 # TODO: lookup_predisposition_variants
 # TODO: print_predisposition_variants_to_output_file
-
+# TODO: tests
 
 def load_data_from_cancer_susceptibility_genes_table(cancer_susceptibility_genes):
     """
