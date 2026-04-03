@@ -22,6 +22,10 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Make /data directory
+RUN mkdir /data \
+    && chmod 777 /data
+
 # Create the user
 RUN groupadd --gid $USER_UID $USERNAME \
     && useradd --uid $USER_UID --gid $USER_UID -m $USERNAME -s /usr/bin/fish\
