@@ -41,14 +41,11 @@ def placeholder(
 def report_predispositions(
     cancer_susceptibility_genes: Annotated[str, typer.Option("--cancer-susceptibility-genes", "-g")],
     small_variant_calls: Annotated[str, typer.Option("--small-variant-calls", "-c")],
-    age: Annotated[int, typer.Option("--age", "-a")],
-    output: Annotated[str, typer.Option("--output", "-o")],
 ):
     """
     This function reports variants called by small variant caller that are present
-    in the cancer susceptibility genes. Susceptibility of a gene depends on a patient's age,
-    thus the age input parameter.
+    in the cancer susceptibility genes.
     """
 
     report_predispositions.report_predispositions(
-        cancer_susceptibility_genes, small_variant_calls, age, output)
+        cancer_susceptibility_genes, small_variant_calls)
