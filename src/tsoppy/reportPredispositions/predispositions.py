@@ -5,7 +5,8 @@ import csv
 logger = logging.getLogger()
 
 
-# TODO: no functionality yet, just documentation
+# TODO: lookup_predisposition_variants
+# TODO: print_predisposition_variants_to_output_file
 
 
 def load_data_from_cancer_susceptibility_genes_table(cancer_susceptibility_genes):
@@ -16,18 +17,17 @@ def load_data_from_cancer_susceptibility_genes_table(cancer_susceptibility_genes
 
     # open the input file
     with open(cancer_susceptibility_genes, mode='r', newline='') as file:
-        reader = csv.DictReader(file)
+        reader = csv.DictReader(file, delimiter='\t')
 
+        # store all the info in csg dictionary
         for row in reader:
-            print(row['Gene'])
             csg[row['Gene']] = dict()
             csg[row['Gene']]['Actionability'] = row['Actionability']
             csg[row['Gene']]['Age'] = row['Age']
-    print(csg)
     return csg
 
 
-def lookup_predispositions(csg, small_variant_calls):
+def lookup_predisposition_variants(csg, small_variant_calls):
     """
     Look up predispositions and store all the relevant info.
     """
@@ -37,7 +37,7 @@ def lookup_predispositions(csg, small_variant_calls):
     return predispositions
 
 
-def print_predispositions_to_output_file(predispositions):
+def print_predisposition_variants_to_output_file(predispositions):
     """
     Print predispositions into the output file.
     """
@@ -102,7 +102,7 @@ def report_predispositions(cancer_susceptibility_genes, small_variant_calls):
     in the cancer susceptibility genes.
     """
 
-    predispositions = dict()
+    predisposition_variants = dict()
     csg = dict()
 
     logger.info(f"Load data from the {cancer_susceptibility_genes} table")
@@ -110,7 +110,9 @@ def report_predispositions(cancer_susceptibility_genes, small_variant_calls):
         cancer_susceptibility_genes)
 
     logger.info(f"Open the {small_variant_calls} file and iterate through the variants. Store all the variants present in the {cancer_susceptibility_genes} table together with all the info that should be reported into the {predispositions}.")
-    predispositions = lookup_predispositions(csg, small_variant_calls)
+    predisposition_variants = lookup_predisposition_variants(
+        csg, small_variant_calls)
 
-    logger.info(f"Print the {predispositions} content into an output file.")
-    print_predispositions_to_output_file(predispositions)
+    logger.info(
+        f"Print the {predispositions_variants} content into an output file.")
+    print_predisposition_variants_to_output_file(predisposition_variants)
