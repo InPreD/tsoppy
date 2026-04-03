@@ -1,5 +1,6 @@
 
 import logging
+import csv
 
 logger = logging.getLogger()
 
@@ -12,9 +13,17 @@ def load_data_from_cancer_susceptibility_genes_table(cancer_susceptibility_genes
     Load data from the input table.
     """
     csg = dict()
-    # open input file
-    # parse the collumns
-    # store the values
+
+    # open the input file
+    with open(cancer_susceptibility_genes, mode='r', newline='') as file:
+        reader = csv.DictReader(file)
+
+        for row in reader:
+            print(row['Gene'])
+            csg[row['Gene']] = dict()
+            csg[row['Gene']]['Actionability'] = row['Actionability']
+            csg[row['Gene']]['Age'] = row['Age']
+    print(csg)
     return csg
 
 
@@ -37,6 +46,7 @@ def print_predispositions_to_output_file(predispositions):
     # print out header of the file (including DNAsampleID and version string)
     #
     # from TSOPPI (user_scripts/libs/05_PCGR_to_variant)interpretation_table.py)
+    #
     #
     #   pot_file.write("# [" + SAMPLE_ID + "] Version string: "
     #               + arg_dict["pipeline_version"] + "\n")
@@ -68,6 +78,20 @@ def print_predispositions_to_output_file(predispositions):
     #                             "Gene_CN", "CPSR_ACMG_class",
     #                             "CPSR_ClinVar_class", "CPSR_classification_doc"])
     #                  + "\n")
+    #
+    #
+    #   # is the variant located in one of the predisposition genes?
+    #   if (SYMBOL in predisposition_gene_values):
+    #       with open(
+    #           arg_dict["predisposition_output_tsv"], "a") as pot_file:
+    #               pot_file.write("\t".join([
+    #                   SAMPLE_ID, SYMBOL, ENSEMBL_TRANSCRIPT_ID, REFSEQ_MRNA,
+    #                   CHROM + ":" + POS, REF + ">" + ALT, cDNA_change,
+    #                   PROTEIN_CHANGE, DP_TUMOR, AF_TUMOR, DP_CONTROL,
+    #                   AF_CONTROL, DP_RNA, AF_RNA,
+    #                   TCGA_FREQUENCY, ICGC_PCAWG_OCCURRENCE,
+    #                   Gene_predisposition, Gene_CN, CPSR_ACMG_class,
+    #                   CPSR_ClinVar_class, CPSR_CLASSIFICATION_DOC]) + "\n")
     #
     # iterate through the predispositions, write out
 
