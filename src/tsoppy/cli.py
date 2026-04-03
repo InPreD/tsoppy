@@ -7,7 +7,7 @@ from typing import Annotated
 
 import typer
 
-from tsoppy.report_predispositions.report_predispositions import report_predispositions
+from tsoppy.reportPredispositions.predispositions import report_predispositions
 
 app = typer.Typer()
 app_version = importlib.metadata.version("tsoppy")
@@ -38,7 +38,7 @@ def placeholder(
 
 
 @app.command()
-def report_predispositions(
+def report_predisposition_variants(
     cancer_susceptibility_genes: Annotated[str, typer.Option("--cancer-susceptibility-genes", "-g")],
     small_variant_calls: Annotated[str, typer.Option("--small-variant-calls", "-c")],
 ):
@@ -47,5 +47,5 @@ def report_predispositions(
     in the cancer susceptibility genes.
     """
 
-    report_predispositions.report_predispositions(
+    report_predispositions(
         cancer_susceptibility_genes, small_variant_calls)
