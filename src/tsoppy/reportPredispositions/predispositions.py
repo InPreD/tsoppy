@@ -84,10 +84,10 @@ def print_predisposition_variants_to_output_file(sample_id, version_string, refe
 
         # print out body of the output file:
         # iterate through the {predispositions} and for each record write down info for all the columns
-        for genomic_location in predisposition_variants.keys():
+        for variant_id in predisposition_variants.keys():
             output_body_line = sample_id + "\t"
-            output_body_line += predisposition_variants[genomic_location]['gene_symbol'] + "\t"
-            output_body_line += genomic_location
+            output_body_line += predisposition_variants[variant_id]['gene_symbol'] + "\t"
+            output_body_line += variant_id
             output_body_line += "\n"
             # TODO: add all the other columns for each predisposition variant
 
@@ -132,8 +132,8 @@ def report_predispositions(cancer_susceptibility_genes, small_variant_calls):
     target_size_coding = "1.27"
     tumor_purity = "0.8"
     output_file = "/data/test_predisposition_variant_output.csv"
-    predisposition_variants["17:7580123"] = dict()
-    predisposition_variants["17:7580123"]['gene_symbol'] = 'TP53'
+    predisposition_variants["17:7580123:REF>ALT"] = dict()
+    predisposition_variants["17:7580123:REF>ALT"]['gene_symbol'] = 'TP53'
 
     logger.info(
         f"Print the {predisposition_variants} content into an output file.")
