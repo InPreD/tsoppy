@@ -37,63 +37,76 @@ def lookup_predisposition_variants(csg, small_variant_calls):
     return predispositions
 
 
-def print_predisposition_variants_to_output_file(predispositions):
+def print_predisposition_variants_to_output_file(sample_id, version_string, reference, target_size_coding, tumor_purity, predisposition_variants, output_file):
     """
     Print predispositions into the output file.
     """
-    # generate output path and file name (DNAsampleID/DNAsampleID_predisposition_gene_variant_table_tumor_RNA.tsv)
+
+    # define names of columns of the output file
+    column_names = [
+        "Sample_ID",
+        "Gene_symbol",
+        "Ensembl_transcript_ID",
+        "RefSeq_mRNA",
+        "Genomic_location",
+        "DNA_change",
+        "cDNA_change",
+        "Protein_change",
+        "Depth_tumor_DNA",
+        "AF_tumor_DNA",
+        "Depth_normal_DNA",
+        "AF_normal_DNA",
+        "Depth_tumor_RNA",
+        "AF_tumor_RNA",
+        "TCGA_frequency",
+        "ICGC_PCAWG_occurrence",
+        "Gene_predisposition",
+        "Gene_CN",
+        "CPSR_ACMG_class",
+        "CPSR_ClinVar_class",
+        "CPSR_classification_doc"]
+
     # open output file for writing
-    # print out header of the file (including DNAsampleID and version string)
-    #
-    # from TSOPPI (user_scripts/libs/05_PCGR_to_variant)interpretation_table.py)
-    #
-    #
-    #   pot_file.write("# [" + SAMPLE_ID + "] Version string: "
-    #               + arg_dict["pipeline_version"] + "\n")
-    #   pot_file.write("# [" + SAMPLE_ID + "] Variants included in this table"
-    #               " are located within one of the cancer predisposition"
-    #               " genes listed in ESMO paper doi:10.1093/annonc/mdz136\n")
-    #   pot_file.write("# [" + SAMPLE_ID + "] Size of the target coding region"
-    #               " (in millions ot bases): " + arg_dict["target_size"]
-    #               + "\n")
-    #   pot_file.write("# [" + SAMPLE_ID + "] Specified tumor purity"
-    #               " (as a fraction between 0 and 1): " + str(TUMOR_PURITY)
-    #               + "\n")
-    #   for info_line in copy_number_header_lines:
-    #        pot_file.write(info_line.replace("# ", "# [" + SAMPLE_ID + "] ")
-    #                       + "\n")
-    #   for info_line in predisposition_gene_header_lines:
-    #       pot_file.write(info_line.replace("### ", "# ").replace("# ", "# ["
-    #                       + SAMPLE_ID + "] ") + "\n")
-    #
-    #   pot_file.write("\t".join(["Sample_ID", "Gene_symbol",
-    #                             "Ensembl_transcript_ID", "RefSeq_mRNA",
-    #                             "Genomic_location", "DNA_change", "cDNA_change",
-    #                             "Protein_change",
-    #                             "Depth_tumor_DNA", "AF_tumor_DNA",
-    #                             "Depth_normal_DNA", "AF_normal_DNA",
-    #                             "Depth_tumor_RNA", "AF_tumor_RNA",
-    #                             "TCGA_frequency",
-    #                             "ICGC_PCAWG_occurrence", "Gene_predisposition",
-    #                             "Gene_CN", "CPSR_ACMG_class",
-    #                             "CPSR_ClinVar_class", "CPSR_classification_doc"])
-    #                  + "\n")
-    #
-    #
-    #   # is the variant located in one of the predisposition genes?
-    #   if (SYMBOL in predisposition_gene_values):
-    #       with open(
-    #           arg_dict["predisposition_output_tsv"], "a") as pot_file:
-    #               pot_file.write("\t".join([
-    #                   SAMPLE_ID, SYMBOL, ENSEMBL_TRANSCRIPT_ID, REFSEQ_MRNA,
-    #                   CHROM + ":" + POS, REF + ">" + ALT, cDNA_change,
-    #                   PROTEIN_CHANGE, DP_TUMOR, AF_TUMOR, DP_CONTROL,
-    #                   AF_CONTROL, DP_RNA, AF_RNA,
-    #                   TCGA_FREQUENCY, ICGC_PCAWG_OCCURRENCE,
-    #                   Gene_predisposition, Gene_CN, CPSR_ACMG_class,
-    #                   CPSR_ClinVar_class, CPSR_CLASSIFICATION_DOC]) + "\n")
-    #
-    # iterate through the predispositions, write out
+    with open(output_file, 'w') as output:
+        # print out header of the output file
+        output.write(
+            f"# [{sample_id}] Version string: {version_string}\n")
+        output.write(
+            f"# [{sample_id}] Variants included in this table are located within one of the cancer predisposition genes listed in {reference}\n")
+        output.write(
+            f"# [{sample_id}] Size of the target coding region (in millions of bases): {target_size_coding}\n")
+        output.write(
+            f"# [{sample_id}] Specified tumor purity (as a fraction between 0 and 1): {tumor_purity}\n")
+        output.write(
+            f"# [{sample_id}] \"Gene_CN\" column format: [High_confidence/non-High_confidence]_[Tumor_CN]/[Adjusted_Tumor_CN]_[Normal_CN]\n")
+        output.write(
+            "\t".join(column_names)+"\n")
+
+        # print out body of the output file:
+        # iterate through the {predispositions} and for each record write down info for all the columns
+        for genomic_location in predisposition_variants.keys():
+            output_body_line = sample_id + "\t"
+            output_body_line += predisposition_variants[genomic_location]['gene_symbol'] + "\t"
+            output_body_line += genomic_location
+            output_body_line += "\n"
+            # TODO: add all the other columns for each predisposition variant
+
+            output.write(f"{output_body_line}")
+
+        # from TSOPPI (user_scripts/libs/05_PCGR_to_variant)interpretation_table.py)
+        #
+        #   # is the variant located in one of the predisposition genes?
+        #   if (SYMBOL in predisposition_gene_values):
+        #       with open(
+        #           arg_dict["predisposition_output_tsv"], "a") as pot_file:
+        #               pot_file.write("\t".join([
+        #                   SAMPLE_ID, SYMBOL, ENSEMBL_TRANSCRIPT_ID, REFSEQ_MRNA,
+        #                   CHROM + ":" + POS, REF + ">" + ALT, cDNA_change,
+        #                   PROTEIN_CHANGE, DP_TUMOR, AF_TUMOR, DP_CONTROL,
+        #                   AF_CONTROL, DP_RNA, AF_RNA,
+        #                   TCGA_FREQUENCY, ICGC_PCAWG_OCCURRENCE,
+        #                   Gene_predisposition, Gene_CN, CPSR_ACMG_class,
+        #                   CPSR_ClinVar_class, CPSR_CLASSIFICATION_DOC]) + "\n")
 
 
 def report_predispositions(cancer_susceptibility_genes, small_variant_calls):
@@ -113,6 +126,16 @@ def report_predispositions(cancer_susceptibility_genes, small_variant_calls):
     predisposition_variants = lookup_predisposition_variants(
         csg, small_variant_calls)
 
+    sample_id = "IPA0000-X00-Y00-Z00"
+    version_string = "VERSION_STRING"
+    reference = "doi_url_esmo_paper_2023"
+    target_size_coding = "1.27"
+    tumor_purity = "0.8"
+    output_file = "/data/test_predisposition_variant_output.csv"
+    predisposition_variants["17:7580123"] = dict()
+    predisposition_variants["17:7580123"]['gene_symbol'] = 'TP53'
+
     logger.info(
         f"Print the {predisposition_variants} content into an output file.")
-    print_predisposition_variants_to_output_file(predisposition_variants)
+    print_predisposition_variants_to_output_file(
+        sample_id, version_string, reference, target_size_coding, tumor_purity, predisposition_variants, output_file)
