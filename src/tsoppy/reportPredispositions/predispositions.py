@@ -2,7 +2,7 @@
 import logging
 import csv
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 # TODO: lookup_predisposition_variants
