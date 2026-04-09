@@ -1,6 +1,10 @@
 """
-This module contains the code for the `update_small_variant_vcf_list` command.
-The command takes two arguments, `results_dir`, which is a string that specifies the directory where the results of the latest TSO500 run are stored.
+This module defines the classes 'VcfList' and 'Vcf'.
+'VcfList' takes a directory holding TSO500 results, a glob to identify small variant vcf files, the currect small variant vcf list,
+a regular expression matching InPreD IDs, a set of tumor sample types and the path to the new small variant vcf list.
+'VcfList' has a method to update the current small variant vcf list with vcfs found in the TSO500 results directory.
+'Vcf' is defined by a path to a small variant vcf and a set of tumor sample types.
+'Vcf' provides a method to create a new row for a pandas dataframe.
 """
 
 import glob
