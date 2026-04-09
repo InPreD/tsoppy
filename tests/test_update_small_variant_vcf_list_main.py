@@ -5,9 +5,13 @@ update small variant vcf list subpackage main module unit tests.
 import filecmp
 import os
 import unittest
+from contextlib import nullcontext
 from os import path
 
-from tsoppy.update_small_variant_vcf_list.main import Vcf, VcfList
+import pytest
+
+from tsoppy.update_small_variant_vcf_list.main import (InvalidSampleType, Vcf,
+                                                       VcfList)
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/update_small_variant_vcf_list_main"
@@ -100,19 +104,19 @@ class TestVcfList(unittest.TestCase):
                 ),
             },
             {
-                "name": "inpred id not parsable",
-                "results_dir": path.join(test_data_dir, "inpred_id_not_parsable"),
+                "name": "sample is control",
+                "results_dir": path.join(test_data_dir, "sample_is_control"),
                 "glob_pattern": glob_pattern,
                 "vcf_list": path.join(
-                    test_data_dir, "inpred_id_not_parsable/TSO500_vcf_list.tsv"
+                    test_data_dir, "sample_is_control/TSO500_vcf_list.tsv"
                 ),
                 "inpred_id_regex": inpred_id_regex,
                 "tumor_sample_types": tumor_sample_types,
                 "output": path.join(
-                    test_data_dir, "inpred_id_not_parsable/TSO500_vcf_list_updated.tsv"
+                    test_data_dir, "sample_is_control/TSO500_vcf_list_updated.tsv"
                 ),
                 "expected": path.join(
-                    test_data_dir, "inpred_id_not_parsable/TSO500_vcf_list_expected.tsv"
+                    test_data_dir, "sample_is_control/TSO500_vcf_list_expected.tsv"
                 ),
             },
         ]
@@ -137,49 +141,54 @@ class TestVcf(unittest.TestCase):
         test_cases = [
             {
                 "name": "include sample",
-                "vcf": "IPH0001-01-T01-01_MergedSmallVariants.genome.vcf",
+                "vcf": "IPH0001-D01-T01-A01_MergedSmallVariants.genome.vcf",
+                "inpred_id_regex": inpred_id_regex,
+                "tumor_sample_types": tumor_sample_types,
+                "exception": nullcontext(),
                 "patient_id": "IPH0001",
                 "sample_type": "T",
-                "tumor_sample_types": tumor_sample_types,
-                "expected": True,
             },
             {
-                "name": "sample is control",
-                "vcf": "IPC0001-01-T01-01_MergedSmallVariants.genome.vcf",
-                "patient_id": "IPC0001",
-                "sample_type": "T",
+                "name": "inpred id is not parsable",
+                "vcf": "IPH0001D01-T01-A01_MergedSmallVariants.genome.vcf",
+                "inpred_id_regex": inpred_id_regex,
                 "tumor_sample_types": tumor_sample_types,
-                "expected": False,
+                "exception": pytest.raises(AttributeError),
+                "patient_id": None,
+                "sample_type": None,
             },
             {
                 "name": "sample is neither tumor nor normal",
-                "vcf": "IPH0001-01-A01-01_MergedSmallVariants.genome.vcf",
+                "vcf": "IPH0001-D01-A01-A01_MergedSmallVariants.genome.vcf",
+                "inpred_id_regex": inpred_id_regex,
+                "tumor_sample_types": tumor_sample_types,
+                "exception": pytest.raises(InvalidSampleType),
                 "patient_id": "IPH0001",
                 "sample_type": "A",
-                "tumor_sample_types": tumor_sample_types,
-                "expected": False,
             },
         ]
 
         for test_case in test_cases:
             with self.subTest(msg=test_case["name"]):
-                got = Vcf(
-                    test_case["vcf"],
-                    test_case["patient_id"],
-                    test_case["sample_type"],
-                    test_case["tumor_sample_types"],
-                )
-                assert got.include == test_case["expected"]
+                with test_case["exception"]:
+                    got = Vcf(
+                        test_case["vcf"],
+                        test_case["inpred_id_regex"],
+                        test_case["tumor_sample_types"],
+                    )
+                    assert got.patient_id == test_case["patient_id"]
+                    assert got.sample_type == test_case["sample_type"]
 
     def test_row(self):
         test_cases = [
             {
                 "name": "successfully return row",
-                "vcf": "IPH0001-01-T01-01_MergedSmallVariants.genome.vcf",
+                "vcf": "IPH0001-D01-T01-A01_MergedSmallVariants.genome.vcf",
+                "inpred_id_regex": inpred_id_regex,
                 "patient_id": "IPH0001",
                 "sample_type": "T",
                 "tumor_sample_types": tumor_sample_types,
-                "expected": ["IPH0001-01-T01-01_MergedSmallVariants.genome.vcf", "T"],
+                "expected": ["IPH0001-D01-T01-A01_MergedSmallVariants.genome.vcf", "T"],
             },
         ]
 
@@ -187,8 +196,7 @@ class TestVcf(unittest.TestCase):
             with self.subTest(msg=test_case["name"]):
                 vcf = Vcf(
                     test_case["vcf"],
-                    test_case["patient_id"],
-                    test_case["sample_type"],
+                    test_case["inpred_id_regex"],
                     test_case["tumor_sample_types"],
                 )
                 got = vcf.row()
