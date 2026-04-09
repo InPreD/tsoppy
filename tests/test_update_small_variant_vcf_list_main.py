@@ -10,8 +10,7 @@ from os import path
 
 import pytest
 
-from tsoppy.update_small_variant_vcf_list.main import (InvalidSampleType, Vcf,
-                                                       VcfList)
+from tsoppy.update_small_variant_vcf_list.main import InvalidSampleType, Vcf, VcfList
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/update_small_variant_vcf_list_main"
