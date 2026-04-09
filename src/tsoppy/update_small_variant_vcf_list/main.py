@@ -15,6 +15,19 @@ import pandas
 logger = logging.getLogger(__name__)
 
 
+class InvalidSampleType(Exception):
+    """
+    Exception if sample type is not valid.
+    """
+
+    def __init__(self, msg="sample type is not valid"):
+        self.msg = msg
+        super().__init__(self.msg)
+
+    def __str__(self):
+        return self.msg
+
+
 class VcfList:
     """
     Represents small variant VCF list.
@@ -90,34 +103,44 @@ class VcfList:
 
         # Loop over all small variant VCFs
         for vcf in self.vcfs:
+            # Try to create vcf class instance
+            try:
+                small_variant_vcf = Vcf(
+                    vcf, self.inpred_id_regex, self.tumor_sample_types
+                )
+            except AttributeError:
+                logger.warning(
+                    f"could not parse InPreD ID from {small_variant_vcf.vcf}, skipping."
+                )
+                continue
+            except InvalidSampleType:
+                logger.warning(
+                    f"{small_variant_vcf.vcf} has sample type {small_variant_vcf.sample_type} which is not {self.tumor_sample_types} or N(ormal), skipping."
+                )
+                continue
+
             # Avoid duplication
-            if vcf in self.dataframe["vcf"].values:
+            if small_variant_vcf.vcf in self.dataframe["vcf"].values:
                 logger.warning(f"{vcf} is already in small variant VCF list, skipping.")
                 continue
 
-            # Parse InPreD ID to get patient ID and sample type
-            match = re.search(self.inpred_id_regex, vcf)
-            try:
-                patient_id = match.group("patient_id")
-                sample_type = match.group("sample_type")
-            except AttributeError:
-                logger.warning(f"could not parse InPreD ID from {vcf}, skipping.")
+            # Exclude control samples
+            if small_variant_vcf.patient_id.startswith("IPC"):
+                logger.warning(
+                    f"{small_variant_vcf.patient_id} is a control sample, skipping."
+                )
                 continue
 
-            # Check if VCF is eligible for small variant VCF list and add if yes
-            small_variant_vcf = Vcf(
-                vcf, patient_id, sample_type, self.tumor_sample_types
-            )
-            if not small_variant_vcf.include:
-                continue
-            else:
-                self.dataframe.loc[len(self.dataframe)] = small_variant_vcf.row()
+            # Add vcf to list
+            self.dataframe.loc[len(self.dataframe)] = small_variant_vcf.row()
 
             # Check if new patient ID is represented multiple times
-            patient_sample_count = self.dataframe["vcf"].str.contains(patient_id).sum()
+            patient_sample_count = (
+                self.dataframe["vcf"].str.contains(small_variant_vcf.patient_id).sum()
+            )
             if patient_sample_count > 1:
                 logger.warning(
-                    f"patient {patient_id} has {patient_sample_count} vcf(s) in the small variant VCF list."
+                    f"patient {small_variant_vcf.patient_id} has {patient_sample_count} vcf(s) in the small variant VCF list."
                 )
 
         # Write updated small variant VCF list to file
@@ -131,45 +154,35 @@ class Vcf:
     Represents small variant VCF.
 
     Attributes:
-        include (bool): Whether to add the vcf to the small variant VCF file or not.
         patient_id (str): ID of patient that the VCF belongs to.
         sample_type (str): Single letter code representing type of sample, e.g. T = tumor.
         vcf (str): Path to VCF file.
     """
 
-    include = True
-
-    def __init__(
-        self, vcf: str, patient_id: str, sample_type: str, tumor_sample_types: set
-    ):
+    def __init__(self, vcf: str, inpred_id_regex: str, tumor_sample_types: set):
         """
         Create new instance of SmallVariantVcf.
         """
         self.vcf = vcf
-        self.patient_id = patient_id
 
-        # Exclude control sample starting with IPC
-        if patient_id.startswith("IPC"):
-            logger.warning(f"{self.patient_id} is a control sample, skipping.")
-            self.include = False
-            return
+        # Parse InPreD ID to get patient ID and sample type
+        match = re.search(inpred_id_regex, self.vcf)
+        try:
+            self.patient_id = match.group("patient_id")
+            self.sample_type = match.group("sample_type")
+        except AttributeError:
+            raise AttributeError
 
-        # Ensure sample type is N(ormal) or included in tumor_sample_types
-        if sample_type != "T" and sample_type != "N":
-            if sample_type not in tumor_sample_types:
-                logger.warning(
-                    f"{self.vcf} has sample type {sample_type} which is not {tumor_sample_types} or N(ormal), skipping."
-                )
-                self.include = False
-                return
+        # Validate sample type is N(ormal) or included in tumor_sample_types
+        if self.sample_type != "N":
+            if self.sample_type not in tumor_sample_types:
+                raise InvalidSampleType
             else:
                 # Reset any sample type in tumor_sample_types with T
                 logger.warning(
-                    f"sample type code {sample_type} for {vcf} will be replaced with T"
+                    f"sample type code {self.sample_type} for {self.vcf} will be replaced with T"
                 )
                 self.sample_type = "T"
-        else:
-            self.sample_type = sample_type
 
     def __eq__(self, other):
         """
@@ -177,8 +190,6 @@ class Vcf:
         """
         if not isinstance(other, Vcf):
             return NotImplemented
-        if self.include != other.include:
-            return False
         if self.patient_id != other.patient_id:
             return False
         if self.sample_type != other.sample_type:
