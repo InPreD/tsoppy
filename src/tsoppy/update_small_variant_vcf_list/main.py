@@ -154,11 +154,11 @@ class Vcf:
             self.include = False
             return
 
-        # Ensure sample type is N or included in tumor_sample_types
+        # Ensure sample type is N(ormal) or included in tumor_sample_types
         if sample_type != "T" and sample_type != "N":
             if sample_type not in tumor_sample_types:
                 logger.warning(
-                    f"{self.vcf} has sample type {sample_type} which is not {tumor_sample_types} or N, skipping."
+                    f"{self.vcf} has sample type {sample_type} which is not {tumor_sample_types} or N(ormal), skipping."
                 )
                 self.include = False
                 return
