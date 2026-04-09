@@ -13,7 +13,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-import pandas
+import polars
 
 # Use logger that was set up in CLI
 logger = logging.getLogger(__name__)
@@ -42,10 +42,10 @@ class VcfList:
         output (str): Path to updated version of small variant VCF list.
         tumor_sample_types (set[str]): Single letter codes representing a tumor sample.
         vcf_list_columns (list[str]): List of dataframe column names.
-        vcfs (list[str]): Small variant VCF(s) located in TSO500 results directory.
+        vcfs (dict): Small variant VCF(s) located in TSO500 results directory.
     """
 
-    vcf_list_columns = ["vcf", "sample_type"]
+    vcf_list_columns = {"vcf": polars.String, "sample_type": polars.String}
 
     def __init__(
         self,
@@ -62,13 +62,18 @@ class VcfList:
         self.vcfs = glob.glob(f"{results_dir}/{glob_pattern}")
         self.inpred_id_regex = rf"{inpred_id_regex}"
         self.tumor_sample_types = set(tumor_sample_types.split(","))
-        self.dataframe = pandas.DataFrame(columns=self.vcf_list_columns)
+        self.dataframe = polars.DataFrame(schema=self.vcf_list_columns)
 
         # Try reading small variant VCF list or start from scratch
         if vcf_list:
             try:
-                self.dataframe = pandas.read_csv(
-                    vcf_list, sep="\t", names=self.vcf_list_columns, on_bad_lines="warn"
+                self.dataframe = polars.read_csv(
+                    source=vcf_list,
+                    separator="\t",
+                    schema=self.vcf_list_columns,
+                    ignore_errors=True,
+                    has_header=False,
+                    raise_if_empty=False,
                 )
             except FileNotFoundError:
                 logger.warning(
@@ -124,7 +129,7 @@ class VcfList:
                 continue
 
             # Avoid duplication
-            if small_variant_vcf.vcf in self.dataframe["vcf"].values:
+            if small_variant_vcf.vcf in self.dataframe["vcf"].to_list():
                 logger.warning(f"{vcf} is already in small variant VCF list, skipping.")
                 continue
 
@@ -136,20 +141,20 @@ class VcfList:
                 continue
 
             # Add vcf to list
-            self.dataframe.loc[len(self.dataframe)] = small_variant_vcf.row()
+            self.dataframe = polars.concat([self.dataframe, small_variant_vcf.row()])
 
             # Check if new patient ID is represented multiple times
             patient_sample_count = (
-                self.dataframe["vcf"].str.contains(small_variant_vcf.patient_id).sum()
-            )
+                self.dataframe["vcf"] == small_variant_vcf.patient_id
+            ).sum()
             if patient_sample_count > 1:
                 logger.warning(
                     f"patient {small_variant_vcf.patient_id} has {patient_sample_count} vcf(s) in the small variant VCF list."
                 )
 
         # Write updated small variant VCF list to file
-        self.dataframe.drop_duplicates().to_csv(
-            self.output, sep="\t", header=False, index=False
+        self.dataframe.unique().write_csv(
+            file=self.output, separator="\t", include_header=False
         )
 
 
@@ -204,4 +209,4 @@ class Vcf:
         """
         Return small variant VCF list row.
         """
-        return [self.vcf, self.sample_type]
+        return polars.DataFrame({"vcf": [self.vcf], "sample_type": [self.sample_type]})
