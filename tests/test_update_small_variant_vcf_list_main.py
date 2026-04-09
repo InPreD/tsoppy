@@ -8,6 +8,7 @@ import unittest
 from contextlib import nullcontext
 from os import path
 
+import polars
 import pytest
 
 from tsoppy.update_small_variant_vcf_list.main import InvalidSampleType, Vcf, VcfList
@@ -187,7 +188,12 @@ class TestVcf(unittest.TestCase):
                 "patient_id": "IPH0001",
                 "sample_type": "T",
                 "tumor_sample_types": tumor_sample_types,
-                "expected": ["IPH0001-D01-T01-A01_MergedSmallVariants.genome.vcf", "T"],
+                "expected": polars.DataFrame(
+                    {
+                        "vcf": ["IPH0001-D01-T01-A01_MergedSmallVariants.genome.vcf"],
+                        "sample_type": ["T"],
+                    }
+                ),
             },
         ]
 
@@ -199,4 +205,4 @@ class TestVcf(unittest.TestCase):
                     test_case["tumor_sample_types"],
                 )
                 got = vcf.row()
-                assert got == test_case["expected"]
+                assert got.equals(test_case["expected"])
