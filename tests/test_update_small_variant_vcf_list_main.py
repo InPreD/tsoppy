@@ -20,7 +20,7 @@ test_data_dir = "tests/test_data/update_small_variant_vcf_list_main"
 glob_pattern = "**/Results/**/*_MergedSmallVariants.genome.vcf"
 tumor_sample_types = "C,D,d,L,M,P,p,R,r,T,X"
 inpred_id_regex = (
-    "(?P<patient_id>\\D{3}\\d{4})-\\D\\d{2}-(?P<sample_type>\\D)\\d{2}-\\D\\d{2}.*.vcf$"
+    r"(?P<patient_id>\D{3}\d{4})-\D\d{2}-(?P<sample_type>\D)\d{2}-\D\d{2}.*.vcf$"
 )
 
 

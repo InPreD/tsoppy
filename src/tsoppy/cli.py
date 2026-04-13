@@ -91,7 +91,7 @@ def update_small_variant_vcf_list(
             help="Regular expression to extract the inpred_id from the VCF file name.",
             callback=inpred_id_regex_callback,
         ),
-    ] = "(?P<patient_id>\D{3}\d{4})-\D\d{2}-(?P<sample_type>\D)\d{2}-\D\d{2}.*.vcf$",
+    ] = r"(?P<patient_id>\D{3}\d{4})-\D\d{2}-(?P<sample_type>\D)\d{2}-\D\d{2}.*.vcf$",
     output: Annotated[
         str, typer.Option(help="Name of new small variant VCF list.")
     ] = "small_variant_vcf_list_<YYYYMMDD>.tsv",
