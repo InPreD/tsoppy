@@ -95,7 +95,7 @@ class VcfList:
         """
         if not isinstance(other, VcfList):
             return NotImplemented
-        if self.dataframe != other.dataframe:
+        if not self.dataframe.equals(other.dataframe):
             return False
         if self.inpred_id_regex != other.inpred_id_regex:
             return False
