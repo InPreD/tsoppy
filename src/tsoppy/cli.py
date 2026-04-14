@@ -73,7 +73,7 @@ def tumor_sample_types_callback(value: str) -> str:
 @app.command()
 def update_small_variant_vcf_list(
     results_dir: Annotated[
-        Path | None,
+        Path,
         typer.Option(
             help="Directory where the results of the latest TSO500 run are stored."
         ),
