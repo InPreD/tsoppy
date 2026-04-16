@@ -1,6 +1,10 @@
+"""
+This module generates predispositions.
+"""
 
+
+import polars as pl
 import logging
-import csv
 
 logger = logging.getLogger(__name__)
 
@@ -10,31 +14,54 @@ logger = logging.getLogger(__name__)
 
 def load_data_from_cancer_susceptibility_genes_table(cancer_susceptibility_genes):
     """
-    Load data from the input table.
+    Load data from the input table of cancer susceptibility genes.
     """
-    csg = dict()
 
-    # open the input file
-    with open(cancer_susceptibility_genes, mode='r', newline='') as file:
-        reader = csv.DictReader(file, delimiter='\t')
+    # load input data
+    df = pl.read_csv(cancer_susceptibility_genes, columns=[
+                     "Gene", "Actionability", "Age"], separator="\t")
 
-        # store all the info in csg dictionary
-        for row in reader:
-            csg[row['Gene']] = dict()
-            csg[row['Gene']]['Actionability'] = row['Actionability']
-            csg[row['Gene']]['Age'] = row['Age']
-    return csg
+    # dictionary of dictionaries to store the input data
+    # gene names being the primary keys
+    # and for each gene, there is a dictionary
+    # with actionability and age data
+    genes = {
+        row.pop("Gene"): row
+        for row in df.to_dicts()
+    }
 
-# TODO
+    return genes
 
 
-def lookup_predisposition_variants(csg, small_variant_calls):
+def lookup_predisposition_variants(genes, small_variant_calls):
     """
     Look up predispositions and store all the relevant info.
     """
     predispositions = dict()
+
+#    # define names of columns of the output file
+#    column_names = [
+#        "Sample_ID",
+#        "Gene_symbol",
+#        "Ensembl_transcript_ID",
+#        "RefSeq_mRNA",
+#        "Genomic_location",
+#        "DNA_change",
+#        "cDNA_change",
+#        "Protein_change",
+#        "Depth_tumor_DNA",
+#        "AF_tumor_DNA",
+#        "Depth_normal_DNA",
+#        "AF_normal_DNA",
+#        "Depth_tumor_RNA",
+#        "AF_tumor_RNA",
+#        "TCGA_frequency",
+#        "ICGC_PCAWG_occurrence",
+#        "Gene_predisposition"]
+
     # open small_variant_calls file
-    # iterate through all the variants, store variants in the genes present from csg in predispositions
+    # iterate through all the variants, store the variants located in the genes in the genes dict in predispositions
+
     return predispositions
 
 
@@ -51,12 +78,6 @@ def print_header_lines_cancer_susceptibility_data_source(sample_id, cancer_susce
         f"# [{sample_id}] \tfile {cancer_susceptibility_genes}\n")
     output_file_handle.write(
         f"# [{sample_id}] \tarticle {doi_reference}\n")
-    return
-
-
-def print_header_lines_copy_number_data_source(sample_id, cnv_summary, output_file_handle):
-    output_file_handle.write(
-        f"# [{sample_id}] Copy number variants are defined in: {cnv_summary}\n")
     return
 
 
@@ -80,21 +101,6 @@ def print_header_lines_tumor_purity(sample_id, tumor_purity, output_file_handle)
         f"# [{sample_id}] Tumor purity (as a fraction between 0 and 1): {tumor_purity}\n")
     output_file_handle.write(
         f"# [{sample_id}] \tThe tumor purity is provided as an input parameter for tsoppy.\n")
-    return
-
-
-def print_header_lines_copy_number(sample_id, output_file_handle):
-    # all the info in the Gene_CN column come from the copy number input file
-    output_file_handle.write(
-        f"# [{sample_id}] Gene_CN column format:\n")
-    output_file_handle.write(
-        f"# [{sample_id}] \t[Confidence]_[Tumor_CN]/[Adjusted_Tumor_CN]_[Normal_CN]\n")
-    output_file_handle.write(
-        f"# [{sample_id}] \twhere:\n")
-    output_file_handle.write(
-        f"# [{sample_id}] \t\tCN stands for copy number,\n")
-    output_file_handle.write(
-        f"# [{sample_id}] \t\tConfidence: [HC|non-HC], where HC stands for high confidence.\n")
     return
 
 
@@ -132,7 +138,6 @@ def print_predisposition_variants_to_output_file(
         version_string,
         cancer_susceptibility_genes,
         doi_reference,
-        cnv_summary,
         small_variant_calls,
         length_of_targeted_coding_regions,
         tumor_purity,
@@ -142,84 +147,35 @@ def print_predisposition_variants_to_output_file(
     Print predispositions into the output file.
     """
 
-    # define names of columns of the output file
-    column_names = [
-        "Sample_ID",
-        "Gene_symbol",
-        "Ensembl_transcript_ID",
-        "RefSeq_mRNA",
-        "Genomic_location",
-        "DNA_change",
-        "cDNA_change",
-        "Protein_change",
-        "Depth_tumor_DNA",
-        "AF_tumor_DNA",
-        "Depth_normal_DNA",
-        "AF_normal_DNA",
-        "Depth_tumor_RNA",
-        "AF_tumor_RNA",
-        "TCGA_frequency",
-        "ICGC_PCAWG_occurrence",
-        "Gene_predisposition",
-        "Gene_CN",
-        "CPSR_ACMG_class",
-        "CPSR_ClinVar_class",
-        "CPSR_classification_doc"]
-
     # open output file for writing
     with open(output_file, 'w') as output:
 
-        # print header of the output file
+        # print metadata comments to the output file
         print_header_lines_versions(sample_id, version_string, output)
         print_header_lines_cancer_susceptibility_data_source(
             sample_id, cancer_susceptibility_genes, doi_reference, output)
-
-        print_header_lines_copy_number_data_source(
-            sample_id, cnv_summary, output)
-
         print_header_lines_remaining_variant_info_data_source(
             sample_id, small_variant_calls, output)
-
         print_header_lines_length_of_targeted_coding_regions(
             sample_id, length_of_targeted_coding_regions, output)
         print_header_lines_tumor_purity(
             sample_id, tumor_purity, output)
-        print_header_lines_copy_number(
-            sample_id, output)
         print_header_lines_gene_predisposition(
             sample_id, output)
 
-        # print column header
-        output.write(
-            "\t".join(column_names)+"\n")
+    # transform the nested dict into a list of dicts
+    # using **fields to unpack the rest of the dictionary values
+    rows = [
+        {"variant_id": variant_id, **fields}
+        for variant_id, fields in predisposition_variants.items()
+    ]
 
-        # print body of the output file:
-        # iterate through the {predispositions} and for each record write down info for all the columns
-        for variant_id in predisposition_variants.keys():
-            output_body_line = sample_id + "\t"
-            output_body_line += predisposition_variants[variant_id]['gene_symbol'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['ensembl_transcript_id'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['refseq_mrna'] + "\t"
-            output_body_line += get_genomic_location(variant_id) + "\t"
-            output_body_line += get_dna_change(variant_id) + "\t"
-            output_body_line += predisposition_variants[variant_id]['cdna_change'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['protein_change'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['depth_tumor_dna'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['af_tumor_dna'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['depth_normal_dna'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['af_normal_dna'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['depth_tumor_rna'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['af_tumor_rna'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['tcga_frequency'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['icgc_pcawg_occurrence'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['gene_predisposition'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['gene_cn'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['cpsr_acmg_class'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['cpsr_clinvar_class'] + "\t"
-            output_body_line += predisposition_variants[variant_id]['cpsr_classification_doc']
-            output_body_line += "\n"
+    df = pl.DataFrame(rows)
 
-            output.write(output_body_line)
+    with open(output_file, mode="ab") as output:
+        df.write_csv(output, include_header=True)
+
+    return
 
 
 def report_predispositions(sample_id, version_string, reference, target_size_coding, tumor_purity, cancer_susceptibility_genes, small_variant_calls, output_file):
