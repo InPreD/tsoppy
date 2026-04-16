@@ -4,7 +4,7 @@ Report predispositions subpackage unit test.
 
 import os
 
-from tsoppy.reportPredispositions.predispositions import load_data_from_cancer_susceptibility_genes_table, report_predispositions
+from tsoppy.reportPredispositions.main import load_data_from_cancer_susceptibility_genes_table, report_predispositions
 
 
 def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
@@ -16,7 +16,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
 
     # write content to the temp file
     cancer_susceptibility_genes_table_content = "Gene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\n"
-    test_file.write_text(csg_table_content)
+    test_file.write_text(cancer_susceptibility_genes_table_content)
 
     # create result
     result = dict()
