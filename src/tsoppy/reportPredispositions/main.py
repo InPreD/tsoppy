@@ -2,7 +2,6 @@
 This module generates predispositions.
 """
 
-
 import polars as pl
 import logging
 
@@ -12,21 +11,48 @@ logger = logging.getLogger(__name__)
 # TODO: tests
 
 
-def load_data_from_cancer_susceptibility_genes_table(cancer_susceptibility_genes):
+def validate_uniqueness(df: pl.DataFrame, column: str):
+    """
+    Test that all the values in column 'column' of dataframe 'df' are unique.
+    """
+    try:
+        if not df[column].is_unique().all():
+            # find the duplicates to make the error message helpful
+            duplicates = df[column].filter(
+                df[column].is_duplicated()).unique().to_list()
+            raise ValueError(
+                f"Duplicate IDs found in '{column}': {duplicates}")
+
+    except ValueError as e:
+        # this captures the full traceback automatically
+        logger.exception("Data Integrity Validation Failed.")
+        # re-raise the current exception so the caller can handle it
+        raise
+
+
+def load_data_from_cancer_susceptibility_genes_table(cancer_susceptibility_genes, column_list: list[str]):
     """
     Load data from the input table of cancer susceptibility genes.
     """
 
+    # column_list[0] is primary key of the cancer_susceptibility_genes file
+    # contains gene name
+    gene_column_name = column_list[0]
+
     # load input data
-    df = pl.read_csv(cancer_susceptibility_genes, columns=[
-                     "Gene", "Actionability", "Age"], separator="\t")
+    df = pl.read_csv(cancer_susceptibility_genes,
+                     columns=column_list, separator="\t")
+
+    # check that none of the genes is present multiple times,
+    # exit if there is such a gene, report all duplicates
+    validate_uniqueness(df, gene_column_name)
 
     # dictionary of dictionaries to store the input data
     # gene names being the primary keys
     # and for each gene, there is a dictionary
-    # with actionability and age data
+    # with actionability and age
     genes = {
-        row.pop("Gene"): row
+        row.pop(gene_column_name): row
         for row in df.to_dicts()
     }
 
@@ -178,7 +204,7 @@ def print_predisposition_variants_to_output_file(
     return
 
 
-def report_predispositions(sample_id, version_string, reference, target_size_coding, tumor_purity, cancer_susceptibility_genes, small_variant_calls, output_file):
+def report_predispositions(sample_id, version_string, reference, target_size_coding, tumor_purity, cancer_susceptibility_genes, csg_column_list, small_variant_calls, output_file):
     """
     This function reports variants called by small variant caller that are present
     in the cancer susceptibility genes.
@@ -189,7 +215,7 @@ def report_predispositions(sample_id, version_string, reference, target_size_cod
 
     logger.info(f"Load data from the {cancer_susceptibility_genes} table")
     csg = load_data_from_cancer_susceptibility_genes_table(
-        cancer_susceptibility_genes)
+        cancer_susceptibility_genes, csg_column_list)
 
     logger.info(f"Open the {small_variant_calls} file and iterate through the variants. Store all the variants present in the {cancer_susceptibility_genes} table together with all the info that should be reported into the {predisposition_variants}.")
     predisposition_variants = lookup_predisposition_variants(
