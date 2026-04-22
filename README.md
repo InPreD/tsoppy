@@ -33,17 +33,31 @@ vcf | [CyVCF](https://github.com/arq5x/cyvcf/blob/master/README.rst)
 
 ### Repository structure
 
-- `.devcontainer` - contains instructions to build and start a [development container](https://containers.dev/)
-- `.github` - github action scripts to perform CI related tasks such as testing, linting and building
-- `src/tsoppy` - main package for tsoppy containing code for cli
-- `src/tsoppy/<subpackage>` - package containing a subfunctionality performing a specific task, typically linked to a subcommand
-- `tests` - unit tests and test data
-- `.gitignore` - list of files to be excluded from git
-- `CODEOWNERS` - specifying who is responsible
-- `Dockerfile` - build recipe for docker
-- `LICENSE` - license that we agreed on in InPreD bioinfo group
-- `pyproject.toml` - project configuration, dependencies etc.
-- `README.md` - documentation
+```txt
+.
+├── .devcontainer/ -> contains instructions to build and start a development container (https://containers.dev/)
+│   ├── .devontainer.json
+│   └── Dockerfile
+├── .github -> github action scripts to perform CI related tasks such as testing, linting and building
+├── .gitignore -> list of files to be excluded from git
+├── src/
+│   └── tsoppy/ -> main package for tsoppy containing code for cli
+│       ├── __init__.py
+│       ├── cli.py
+│       └── <subpackage>/ -> package containing a subfunctionality performing a specific task, typically linked to a subcommand
+│           ├── __init__.py
+│           └── main.py
+├── tests/ -> unit tests and test data
+│   ├── test_data/
+│   │   └── <subpackage>_module/
+│   │       └── <test case name>.py
+│   └── test_<subpackage>_<module>.py
+├── CODEOWNERS -> specifying who is responsible
+├── Dockerfile -> build recipe for docker
+├── LICENSE -> license that we agreed on in InPreD bioinfo group
+├── pyproject.toml -> project configuration, dependencies etc.
+└── README.md -> documentation
+```
 
 ### Designing a subcommand
 
@@ -62,5 +76,5 @@ vcf | [CyVCF](https://github.com/arq5x/cyvcf/blob/master/README.rst)
     def <subpackage name>():
     ```
 
-1. Provide unit tests in `tests/test_<subpackag>_<module>.py`. If test data is necessary add it under `tests/test_data/<subpackage>_<module>/<test case name>`. Cover all edge cases as well as use cases from the different nodes.
+1. Provide unit tests in `tests/test_<subpackage>_<module>.py`. If test data is necessary add it under `tests/test_data/<subpackage>_<module>/<test case name>`. Cover all edge cases as well as use cases from the different nodes.
 1. In general, make things configurable and avoid hard-coding paths and variables that might be subjected to changes.
