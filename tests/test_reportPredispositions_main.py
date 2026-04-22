@@ -23,20 +23,24 @@ from tsoppy.reportPredispositions.main import (
 def test_validate_uniqueness():
 
     # unique keys
-    unique_df = pl.DataFrame({
-        "Gene": ["TP53", "BRCA1"],
-        "Actionability": ["MA-CSG", "HA-CSG"],
-        "Age": ["Age<30", "Allages"],
-    })
+    unique_df = pl.DataFrame(
+        {
+            "Gene": ["TP53", "BRCA1"],
+            "Actionability": ["MA-CSG", "HA-CSG"],
+            "Age": ["Age<30", "Allages"],
+        }
+    )
 
     assert validate_uniqueness(unique_df, "Gene") is None
 
     # non_unique keys
-    non_unique_df = pl.DataFrame({
-        "Gene": ["TP53", "BRCA1", "TP53"],
-        "Actionability": ["MA-CSG", "HA-CSG", "SA-CSG"],
-        "Age": ["Age<30", "Allages", "Allages"],
-    })
+    non_unique_df = pl.DataFrame(
+        {
+            "Gene": ["TP53", "BRCA1", "TP53"],
+            "Actionability": ["MA-CSG", "HA-CSG", "SA-CSG"],
+            "Age": ["Age<30", "Allages", "Allages"],
+        }
+    )
 
     with pytest.raises(ValueError):
         validate_uniqueness(non_unique_df, "Gene")
@@ -81,8 +85,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
     cancer_susceptibility_genes_table_content_expected = (
         "Gene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages"
     )
-    test_file_expected.write_text(
-        cancer_susceptibility_genes_table_content_expected)
+    test_file_expected.write_text(cancer_susceptibility_genes_table_content_expected)
 
     # expected result
     result = dict()
@@ -286,5 +289,4 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
         output_file,
     )
 
-    assert Path(expected_output_file).read_text() == Path(
-        output_file).read_text()
+    assert Path(expected_output_file).read_text() == Path(output_file).read_text()
