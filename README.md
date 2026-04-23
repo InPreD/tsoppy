@@ -8,7 +8,7 @@ If you are contributing to the codebase of tsoppy, we would like for you to read
 
 ### Recommended workflow
 
-1. Create an [issue](https://github.com/InPreD/tsoppy/issues/new) which is assigned to yourself, labeled as `enhancement` and of type `feature`. Include a adequate description and link to any relevant old TSOPPI code or other documents.
+1. Create an [issue](https://github.com/InPreD/tsoppy/issues/new) which is assigned to yourself, labeled as `enhancement` and of type `feature`. Include an adequate description and link to any relevant old TSOPPI code or other documents.
 1. In the issue, use the `Create a branch` shortcut to create a new feature branch which should **always** branch off `develop`.
 1. Check out your new branch locally and follow this guide for designing a subpackage.
 1. Commit your changes often and as logically structured parts. Use [commit message conventions](https://inpred.github.io/24-03_bioinfo_ws/#19).
