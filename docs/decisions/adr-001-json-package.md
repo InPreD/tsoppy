@@ -65,18 +65,24 @@ end_time = time.perf_counter()
 print(f"ujson: {end_time - start_time}")
 ```
 
-Both `msgspec` and `orjson` perform the fastest.
+Both `msgspec` and `orjson` perform the fastest which is in accordance with [benchmarking python json librarier](https://dev.to/kanakos01/benchmarking-python-json-libraries-33bb). `msgspec` also provides schema validation, memory efficiency and supports other formats like `toml` and `yaml`.
 
 ## Decision
 
+We will start using `msgspec` as it is among the best performing libraries, offers schema validation and supports additional types.
+
 ## Consequences
+
+- install `msgspec` in repository
+- use `msgspec` for `json`, `yaml` and `toml` reading and writing
 
 ### Positive
 
--
+- faster performance than standard `json` library
+- support for additional data formats
 
 ### Negative
 
--
+- learning curve
 
 ### Neutral
