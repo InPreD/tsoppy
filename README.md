@@ -29,7 +29,7 @@ logging | [logging](https://docs.python.org/3/library/logging.html)
 plotting | [plotnine](https://plotnine.org/)
 read csv/tsv tables | [polars](https://docs.pola.rs/)
 testing | [pytest](https://docs.pytest.org/en/stable/)
-vcf | [CyVCF](https://github.com/arq5x/cyvcf/blob/master/README.rst)
+vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 
 ### Repository structure
 
