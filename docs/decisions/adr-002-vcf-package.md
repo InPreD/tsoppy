@@ -9,7 +9,7 @@ Considering:
  - ease of use, 
  - active maintenance/development, 
  - proper version tagging/releasing, 
- - numeric issues so that we really do what we aim to...
+ - numeric issue caused by binary vs decimal representation of floats - risk of incorrect number comparisons.
 
 Three packages listed below were selected based on active development/maintenance and proper version tagging/releasing.
 
