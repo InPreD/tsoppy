@@ -22,7 +22,7 @@ vcfpy  | [github](https://github.com/bihealth/vcfpy) | [readthedocs](https://vcf
 The packages were further tested for performance and usability, the numeric issue came up after the `pysam` package 
 returned after reading in the test vcf slightly different values than what the input vcf file contained. The difference is caused
 by binary representation of floating points in `pysam` while `CyVCF2` and `vcfpy` use decimal representation meaning that the two
-packages read and store exactly the value that is written in the input vcf. There is a concern that using any threashold value
+packages read and store exactly the value that is written in the input vcf. There is a concern that using any threshold value
 to filter variants may by accident cause values above/below the threshold to pass even though they should not. We have no way to
 correct this behaviour so at the moment, the two other packages are favoured.
 
