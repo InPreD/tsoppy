@@ -7,7 +7,7 @@ There are several vcf reading/writing packages available, we want to select one 
 Considering:
  - performance, 
  - ease of use, 
- - active maintanence/development, 
+ - active maintenance/development, 
  - proper version tagging/releasing, 
  - numeric issues so that we really do what we aim to...
 
