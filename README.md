@@ -56,7 +56,9 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 ├── Dockerfile -> build recipe for docker
 ├── LICENSE -> license that we agreed on in InPreD bioinfo group
 ├── pyproject.toml -> project configuration, dependencies etc.
-└── README.md -> documentation
+├── README.md -> documentation
+└── references.md -> references to the already published work used in tsoppy
+
 ```
 
 ### Designing a subcommand
