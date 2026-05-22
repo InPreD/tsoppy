@@ -40,6 +40,11 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 │   └── Dockerfile
 ├── .github -> github action scripts to perform CI related tasks such as testing, linting and building
 ├── .gitignore -> list of files to be excluded from git
+├── docs/
+│   ├── decisions/
+│   │    <adr document name>.md -> architectual decision record
+│   └── references/
+│       └── publications.md -> references to publications of used bioinfo packages, data sources, etc.
 ├── src/
 │   └── tsoppy/ -> main package for tsoppy containing code for cli
 │       ├── __init__.py
@@ -56,8 +61,7 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 ├── Dockerfile -> build recipe for docker
 ├── LICENSE -> license that we agreed on in InPreD bioinfo group
 ├── pyproject.toml -> project configuration, dependencies etc.
-├── README.md -> documentation
-└── references.md -> references to the already published work used in tsoppy
+└── README.md -> documentation
 
 ```
 
