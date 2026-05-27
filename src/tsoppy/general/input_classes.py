@@ -25,7 +25,12 @@ class BaseInput:
     type: Optional[str] = None
     path: Optional[Path] = None
 
-    def __init__(self, sample: str, root_path: str | Path, subpath_formats: Optional[Dict[str, str]] = None):
+    def __init__(
+        self,
+        sample: str,
+        root_path: str | Path,
+        subpath_formats: Optional[Dict[str, str]] = None,
+    ):
         """Initialize the BaseInput."""
         self.sample = sample
         self.root = Path(root_path)
@@ -39,8 +44,9 @@ class BaseInput:
         """Resolve the paths for each workflow type based on the provided subpath formats."""
         out: Dict[str, Path] = {}
         for name, fmt in self.subpath_formats.items():
-            out[name] = Path(os.path.join(
-                self.root, fmt.format(self.sample, self.sample)))
+            out[name] = Path(
+                os.path.join(self.root, fmt.format(self.sample, self.sample))
+            )
         self.paths = out
 
     def _detect_type(self):
@@ -48,10 +54,12 @@ class BaseInput:
         found = [name for name, path in self.paths.items() if path.is_file()]
         if len(found) > 1:
             raise ValueError(
-                f"Multiple workflow files found for sample {self.sample}: {found}")
+                f"Multiple workflow files found for sample {self.sample}: {found}"
+            )
         if not found:
             raise FileNotFoundError(
-                f"No workflow file found for sample {self.sample}. Searched: {self.paths}")
+                f"No workflow file found for sample {self.sample}. Searched: {self.paths}"
+            )
         self.type = found[0]
         self.path = self.paths[self.type]
 
@@ -69,7 +77,12 @@ class Vcf(BaseInput):
         "localapp": "Logs_Intermediates/VariantMatching/{}/{}_MergedSmallVariants.genome.vcf",
     }
 
-    def __init__(self, sample: str, root_path: str | Path, subpath_formats: Optional[Dict[str, str]] = None):
+    def __init__(
+        self,
+        sample: str,
+        root_path: str | Path,
+        subpath_formats: Optional[Dict[str, str]] = None,
+    ):
         if subpath_formats:
             super().__init__(sample, root_path, subpath_formats)
         else:
@@ -93,7 +106,12 @@ class TmbTrace(BaseInput):
         "localapp": "Logs_Intermediates/Tmb/{}/{}_TMB_Trace.tsv",
     }
 
-    def __init__(self, sample: str, root_path: str | Path, subpath_formats: Optional[Dict[str, str]] = None):
+    def __init__(
+        self,
+        sample: str,
+        root_path: str | Path,
+        subpath_formats: Optional[Dict[str, str]] = None,
+    ):
         if subpath_formats:
             super().__init__(sample, root_path, subpath_formats)
         else:
@@ -101,8 +119,7 @@ class TmbTrace(BaseInput):
 
     def parse(self):
         """Parse the TMB trace file"""
-        self.table = polars.read_csv(
-            self.path, separator="\t")
+        self.table = polars.read_csv(self.path, separator="\t")
         return self.table
 
 
@@ -118,7 +135,12 @@ class AnnotatedJson(BaseInput):
         "localapp": "Logs_Intermediates/Annotation/{}/{}_SmallVariants_Annotated.json.gz",
     }
 
-    def __init__(self, sample: str, root_path: str | Path, subpath_formats: Optional[Dict[str, str]] = None):
+    def __init__(
+        self,
+        sample: str,
+        root_path: str | Path,
+        subpath_formats: Optional[Dict[str, str]] = None,
+    ):
         if subpath_formats:
             super().__init__(sample, root_path, subpath_formats)
         else:
@@ -126,6 +148,6 @@ class AnnotatedJson(BaseInput):
 
     def parse(self):
         """Parse the annotated JSON file"""
-        with open(self.path, 'r') as file:
+        with open(self.path, "r") as file:
             self.data = msgspec.json.decode(file.read())
         return self.data
