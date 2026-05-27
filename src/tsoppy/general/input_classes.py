@@ -1,6 +1,7 @@
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import cyvcf2
 import msgspec
@@ -14,14 +15,14 @@ class BaseInput:
     subpath format strings that accept `(sample, sample)` for formatting.
 
     Attributes:
-        paths: Mapping of workflow names to resolved Path objects (Dict[str, Path])
+        paths: Mapping of workflow names to resolved Path objects (Mapping[str, Path])
         root: Root path (Path)
         sample: Sample name (str)
-        subpath_formats: Mapping of workflow names to subpath format strings (Dict[str, str])
+        subpath_formats: Mapping of workflow names to subpath format strings (Mapping[str, str])
         type: Detected workflow type (str)
     """
 
-    subpath_formats: Dict[str, str] = {}
+    subpath_formats: Mapping[str, str] = {}
     type: Optional[str] = None
     path: Optional[Path] = None
 
@@ -29,7 +30,7 @@ class BaseInput:
         self,
         sample: str,
         root_path: str | Path,
-        subpath_formats: Optional[Dict[str, str]] = None,
+        subpath_formats: Optional[Mapping[str, str]] = None,
     ):
         """Initialize the BaseInput."""
         self.sample = sample
@@ -42,7 +43,7 @@ class BaseInput:
 
     def _resolve_paths(self):
         """Resolve the paths for each workflow type based on the provided subpath formats."""
-        out: Dict[str, Path] = {}
+        out: Mapping[str, Path] = {}
         for name, fmt in self.subpath_formats.items():
             out[name] = Path(
                 os.path.join(self.root, fmt.format(self.sample, self.sample))
@@ -68,7 +69,7 @@ class Vcf(BaseInput):
     """Input class for VCF files produced by different workflows.
 
     Attributes:
-        default_subpath_formats: Mapping of workflow names to subpath format strings (Dict[str, str])
+        default_subpath_formats: Mapping of workflow names to subpath format strings (Mapping[str, str])
         vcf: Parsed VCF object (cyvcf2.VCF)
     """
 
@@ -81,7 +82,7 @@ class Vcf(BaseInput):
         self,
         sample: str,
         root_path: str | Path,
-        subpath_formats: Optional[Dict[str, str]] = None,
+        subpath_formats: Optional[Mapping[str, str]] = None,
     ):
         if subpath_formats:
             super().__init__(sample, root_path, subpath_formats)
@@ -110,7 +111,7 @@ class TmbTrace(BaseInput):
         self,
         sample: str,
         root_path: str | Path,
-        subpath_formats: Optional[Dict[str, str]] = None,
+        subpath_formats: Optional[Mapping[str, str]] = None,
     ):
         if subpath_formats:
             super().__init__(sample, root_path, subpath_formats)
@@ -139,7 +140,7 @@ class AnnotatedJson(BaseInput):
         self,
         sample: str,
         root_path: str | Path,
-        subpath_formats: Optional[Dict[str, str]] = None,
+        subpath_formats: Optional[Mapping[str, str]] = None,
     ):
         if subpath_formats:
             super().__init__(sample, root_path, subpath_formats)
