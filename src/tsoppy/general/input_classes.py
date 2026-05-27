@@ -1,8 +1,9 @@
+import os
 from pathlib import Path
 from typing import Dict, Optional
+
 import cyvcf2
 import msgspec
-import os
 import polars
 
 
