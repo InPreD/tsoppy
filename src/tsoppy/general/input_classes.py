@@ -12,12 +12,12 @@ class BaseInput:
     """Base class for inputs produced by different workflows (e.g. dragen/localapp).
 
     Subclasses should define `default_subpath_formats` mapping workflow names to
-    subpath format strings that accept `(sample, sample)` for formatting.
+    subpath format strings that accept `(sample_id, sample_id)` for formatting.
 
     Attributes:
         paths: Mapping of workflow names to resolved Path objects (Mapping[str, Path])
         root: Root path (Path)
-        sample: Sample name (str)
+        sample_id: Sample ID (str)
         subpath_formats: Mapping of workflow names to subpath format strings (Mapping[str, str])
         type: Detected workflow type (str)
     """
@@ -28,12 +28,12 @@ class BaseInput:
 
     def __init__(
         self,
-        sample: str,
+        sample_id: str,
         root_path: str | Path,
         subpath_formats: Optional[Mapping[str, str]] = None,
     ):
         """Initialize the BaseInput."""
-        self.sample = sample
+        self.sample_id = sample_id
         self.root = Path(root_path)
         if subpath_formats:
             self.subpath_formats.update(subpath_formats)
@@ -46,7 +46,8 @@ class BaseInput:
         out: Mapping[str, Path] = {}
         for name, fmt in self.subpath_formats.items():
             out[name] = Path(
-                os.path.join(self.root, fmt.format(self.sample, self.sample))
+                os.path.join(self.root, fmt.format(
+                    self.sample_id, self.sample_id))
             )
         self.paths = out
 
@@ -55,11 +56,11 @@ class BaseInput:
         found = [name for name, path in self.paths.items() if path.is_file()]
         if len(found) > 1:
             raise ValueError(
-                f"Multiple workflow files found for sample {self.sample}: {found}"
+                f"Multiple workflow files found for sample {self.sample_id}: {found}"
             )
         if not found:
             raise FileNotFoundError(
-                f"No workflow file found for sample {self.sample}. Searched: {self.paths}"
+                f"No workflow file found for sample {self.sample_id}. Searched: {self.paths}"
             )
         self.type = found[0]
         self.path = self.paths[self.type]
@@ -80,14 +81,14 @@ class Vcf(BaseInput):
 
     def __init__(
         self,
-        sample: str,
+        sample_id: str,
         root_path: str | Path,
         subpath_formats: Optional[Mapping[str, str]] = None,
     ):
         if subpath_formats:
-            super().__init__(sample, root_path, subpath_formats)
+            super().__init__(sample_id, root_path, subpath_formats)
         else:
-            super().__init__(sample, root_path, self.default_subpath_formats)
+            super().__init__(sample_id, root_path, self.default_subpath_formats)
 
     def parse(self):
         """Parse the VCF file"""
@@ -109,14 +110,14 @@ class TmbTrace(BaseInput):
 
     def __init__(
         self,
-        sample: str,
+        sample_id: str,
         root_path: str | Path,
         subpath_formats: Optional[Mapping[str, str]] = None,
     ):
         if subpath_formats:
-            super().__init__(sample, root_path, subpath_formats)
+            super().__init__(sample_id, root_path, subpath_formats)
         else:
-            super().__init__(sample, root_path, self.default_subpath_formats)
+            super().__init__(sample_id, root_path, self.default_subpath_formats)
 
     def parse(self):
         """Parse the TMB trace file"""
@@ -138,14 +139,14 @@ class AnnotatedJson(BaseInput):
 
     def __init__(
         self,
-        sample: str,
+        sample_id: str,
         root_path: str | Path,
         subpath_formats: Optional[Mapping[str, str]] = None,
     ):
         if subpath_formats:
-            super().__init__(sample, root_path, subpath_formats)
+            super().__init__(sample_id, root_path, subpath_formats)
         else:
-            super().__init__(sample, root_path, self.default_subpath_formats)
+            super().__init__(sample_id, root_path, self.default_subpath_formats)
 
     def parse(self):
         """Parse the annotated JSON file"""
