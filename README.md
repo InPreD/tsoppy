@@ -28,6 +28,7 @@ linting | [isort](https://pycqa.github.io/isort/), [ruff](https://docs.astral.sh
 logging | [logging](https://docs.python.org/3/library/logging.html)
 plotting | [plotnine](https://plotnine.org/)
 read csv/tsv tables | [polars](https://docs.pola.rs/)
+read json/toml/yaml | [msgspec](https://jcristharif.com/msgspec/index.html)
 testing | [pytest](https://docs.pytest.org/en/stable/)
 vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 
