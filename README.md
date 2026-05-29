@@ -30,7 +30,7 @@ plotting | [plotnine](https://plotnine.org/)
 read csv/tsv tables | [polars](https://docs.pola.rs/)
 read json/toml/yaml | [msgspec](https://jcristharif.com/msgspec/index.html)
 testing | [pytest](https://docs.pytest.org/en/stable/)
-vcf | [CyVCF](https://github.com/arq5x/cyvcf/blob/master/README.rst)
+vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 
 ### Repository structure
 
@@ -41,6 +41,11 @@ vcf | [CyVCF](https://github.com/arq5x/cyvcf/blob/master/README.rst)
 │   └── Dockerfile
 ├── .github -> github action scripts to perform CI related tasks such as testing, linting and building
 ├── .gitignore -> list of files to be excluded from git
+├── docs/
+│   ├── decisions/
+│   │    <adr document name>.md -> architectual decision record
+│   └── references/
+│       └── publications.md -> references to publications of used bioinfo packages, data sources, etc.
 ├── src/
 │   └── tsoppy/ -> main package for tsoppy containing code for cli
 │       ├── __init__.py
@@ -58,6 +63,7 @@ vcf | [CyVCF](https://github.com/arq5x/cyvcf/blob/master/README.rst)
 ├── LICENSE -> license that we agreed on in InPreD bioinfo group
 ├── pyproject.toml -> project configuration, dependencies etc.
 └── README.md -> documentation
+
 ```
 
 ### Designing a subcommand
