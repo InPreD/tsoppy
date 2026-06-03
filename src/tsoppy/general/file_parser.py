@@ -83,8 +83,7 @@ def _handle_row_with_nulls(df: polars.DataFrame) -> polars.DataFrame:
 
     # remove any columns that are completely null
     df = df.select(
-        [polars.col(col)
-         for col in df.columns if not df[col].null_count() == df.height]
+        [polars.col(col) for col in df.columns if not df[col].null_count() == df.height]
     )
 
     # avoid null values by filling with "-"
