@@ -1,8 +1,15 @@
+import logging
 import re
+
 import polars
 
+# Use logger that was set up in CLI
+logger = logging.getLogger(__name__)
 
-def Parse_section_tsv(path: str) -> tuple[list[str], dict[str, polars.DataFrame]]:
+
+def Parse_section_tsv(
+    path: str, key_value_sections: list[str]
+) -> tuple[list[str], dict[str, polars.DataFrame]]:
     """Parse a sectioned TSV file into headers and a mapping of section names to DataFrames."""
     df = polars.read_csv(path, separator="\t", has_header=False)
     section_idx = _get_section_idx(df)
@@ -10,27 +17,34 @@ def Parse_section_tsv(path: str) -> tuple[list[str], dict[str, polars.DataFrame]
     if section_idx[0][1] != 1:
         headers = _parse_headers(df, section_idx[0][1] - 1)
     section_dfs = {}
-    for i in section_idx:
-        # first first column and row in each section contain the table name
-        df_slice = df.slice(i[1], i[2])
+    for section in section_idx:
+        # create slice of dataframe for the section
+        df_slice = df.slice(section[1], section[2])
 
         # check if row contains null values
         if any(item is None for item in df_slice.row(0)):
             df_slice = _handle_row_with_nulls(df_slice)
 
-            # assume that two columns containing values are key value pairs and transpose
+        # check if section is a key value section
+        if section[0] in key_value_sections:
+            # check that the section only contains two columns and transpose else log a warning
             if df_slice.width == 2:
                 df_slice = df_slice.transpose()
+            else:
+                logger.warning(
+                    f"Section {section[0]} is supposed to be a key value section but contains more than two columns."
+                )
 
-        # assume first row contains column names and rename
+        # assume first row contains column names
         df_header = df_slice.head(1).to_dicts().pop()
 
-        # remove first row and rename columns and link it to the table name
-        section_dfs[i[0]] = df_slice.rename(df_header).slice(1)
+        # remove first row and rename columns and link it to the section name
+        section_dfs[section[0]] = df_slice.rename(df_header).slice(1)
     return headers, section_dfs
 
 
 def _get_section_idx(df: polars.DataFrame) -> list[tuple[int, int]]:
+    """Get the the name, start index and length of each section in the DataFrame."""
     section = ""
     section_start = 0
     section_length = 0
@@ -55,7 +69,7 @@ def _get_section_idx(df: polars.DataFrame) -> list[tuple[int, int]]:
 
 
 def _parse_headers(df: polars.DataFrame, header_rows: int) -> list[str]:
-    """Parse headers from the top of the DataFrame until the first empty row."""
+    """Parse the first rows from the top of the DataFrame as headers."""
     headers = []
     for row in df.head(header_rows).rows():
         for el in row:
