@@ -260,7 +260,7 @@ def test_parse_headers(inputs, want):
         ),
     ],
 )
-def test_parse_headers(input, want):
+def test_handle_row_with_nulls(input, want):
     got = _handle_row_with_nulls(input)
     print(got)
     assert got.equals(want)
