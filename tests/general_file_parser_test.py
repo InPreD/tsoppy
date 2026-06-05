@@ -1,10 +1,15 @@
-import polars
-from os import path
-from pytest import mark, raises
 from contextlib import nullcontext
+from os import path
 
+import polars
+from pytest import mark, raises
 
-from tsoppy.general.file_parser import Parse_section_tsv, _get_section_idx, _parse_headers, _handle_row_with_nulls
+from tsoppy.general.file_parser import (
+    Parse_section_tsv,
+    _get_section_idx,
+    _handle_row_with_nulls,
+    _parse_headers,
+)
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/general"
@@ -14,182 +19,108 @@ test_data_dir = "tests/test_data/general"
     "inputs, exception, want",
     [
         (
-            (
-                path.join(test_data_dir, "parse_section_tsv/standard.tsv"),
-                []
-            ),
+            (path.join(test_data_dir, "parse_section_tsv/standard.tsv"), []),
             nullcontext(),
             (
-                [
-                    "header1"
-                ],
+                ["header1"],
                 {
                     "section1": polars.DataFrame(
-                        {
-                            "col1": ["value1", "value2"],
-                            "col2": ["value3", "value4"]
-                        }
+                        {"col1": ["value1", "value2"], "col2": ["value3", "value4"]}
                     )
-                }
-            )
+                },
+            ),
         ),
         (
-            (
-                path.join(test_data_dir,
-                          "parse_section_tsv/multiple_sections.tsv"),
-                []
-            ),
+            (path.join(test_data_dir, "parse_section_tsv/multiple_sections.tsv"), []),
             nullcontext(),
             (
-                [
-                    "header1"
-                ],
+                ["header1"],
                 {
                     "section1": polars.DataFrame(
-                        {
-                            "col1": ["value1", "value2"],
-                            "col2": ["value3", "value4"]
-                        }
+                        {"col1": ["value1", "value2"], "col2": ["value3", "value4"]}
                     ),
                     "section2": polars.DataFrame(
-                        {
-                            "col1": ["value1", "value2"],
-                            "col2": ["value3", "value4"]
-                        }
-                    )
-                }
-            )
+                        {"col1": ["value1", "value2"], "col2": ["value3", "value4"]}
+                    ),
+                },
+            ),
         ),
         (
-            (
-                path.join(test_data_dir,
-                          "parse_section_tsv/no_headers.tsv"),
-                []
-            ),
+            (path.join(test_data_dir, "parse_section_tsv/no_headers.tsv"), []),
             nullcontext(),
             (
                 [],
                 {
                     "section1": polars.DataFrame(
-                        {
-                            "col1": ["value1", "value2"],
-                            "col2": ["value3", "value4"]
-                        }
+                        {"col1": ["value1", "value2"], "col2": ["value3", "value4"]}
                     )
-                }
-            )
+                },
+            ),
+        ),
+        (
+            (path.join(test_data_dir, "parse_section_tsv/extra_empty_lines.tsv"), []),
+            nullcontext(),
+            (
+                ["header1"],
+                {
+                    "section1": polars.DataFrame(
+                        {"col1": ["value1", "value2"], "col2": ["value3", "value4"]}
+                    )
+                },
+            ),
+        ),
+        (
+            (path.join(test_data_dir, "parse_section_tsv/null_columns.tsv"), []),
+            nullcontext(),
+            (
+                ["header1"],
+                {
+                    "section1": polars.DataFrame(
+                        {"col1": ["value1", "value2"], "col2": ["value3", "value4"]}
+                    )
+                },
+            ),
         ),
         (
             (
-                path.join(test_data_dir,
-                          "parse_section_tsv/extra_empty_lines.tsv"),
-                []
+                path.join(
+                    test_data_dir, "parse_section_tsv/empty_first_column_name.tsv"
+                ),
+                [],
             ),
             nullcontext(),
             (
-                [
-                    "header1"
-                ],
+                ["header1"],
                 {
                     "section1": polars.DataFrame(
-                        {
-                            "col1": ["value1", "value2"],
-                            "col2": ["value3", "value4"]
-                        }
+                        {"-": ["value1", "value2"], "col2": ["value3", "value4"]}
                     )
-                }
-            )
+                },
+            ),
         ),
         (
-            (
-                path.join(test_data_dir,
-                          "parse_section_tsv/null_columns.tsv"),
-                []
-            ),
+            (path.join(test_data_dir, "parse_section_tsv/key_value.tsv"), ["section1"]),
             nullcontext(),
             (
-                [
-                    "header1"
-                ],
+                ["header1"],
                 {
                     "section1": polars.DataFrame(
-                        {
-                            "col1": ["value1", "value2"],
-                            "col2": ["value3", "value4"]
-                        }
+                        {"key1": ["value1"], "key2": ["value2"]}
                     )
-                }
-            )
+                },
+            ),
         ),
         (
-            (
-                path.join(test_data_dir,
-                          "parse_section_tsv/empty_first_column_name.tsv"),
-                []
-            ),
-            nullcontext(),
-            (
-                [
-                    "header1"
-                ],
-                {
-                    "section1": polars.DataFrame(
-                        {
-                            "-": ["value1", "value2"],
-                            "col2": ["value3", "value4"]
-                        }
-                    )
-                }
-            )
-        ),
-        (
-            (
-                path.join(test_data_dir,
-                          "parse_section_tsv/key_value.tsv"),
-                [
-                    "section1"
-                ]
-            ),
-            nullcontext(),
-            (
-                [
-                    "header1"
-                ],
-                {
-                    "section1": polars.DataFrame(
-                        {
-                            "key1": ["value1"],
-                            "key2": ["value2"]
-                        }
-                    )
-                }
-            )
-        ),
-        (
-            (
-                path.join(test_data_dir,
-                          "parse_section_tsv/non-existent.tsv"),
-                []
-            ),
+            (path.join(test_data_dir, "parse_section_tsv/non-existent.tsv"), []),
             raises(FileNotFoundError),
-            (
-                [],
-                {}
-            )
+            ([], {}),
         ),
         (
-            (
-                path.join(test_data_dir,
-                          "parse_section_tsv/empty.tsv"),
-                []
-            ),
+            (path.join(test_data_dir, "parse_section_tsv/empty.tsv"), []),
             raises(polars.exceptions.NoDataError),
-            (
-                [],
-                {}
-            )
-        )
-    ]
+            ([], {}),
+        ),
+    ],
 )
 def test_parse_section_tsv(inputs, exception, want):
     with exception:
@@ -207,12 +138,10 @@ def test_parse_section_tsv(inputs, exception, want):
             polars.DataFrame(
                 {
                     "col1": ["[section1]", "col1", "value1"],
-                    "col2": [None, "col2", "value2"]
+                    "col2": [None, "col2", "value2"],
                 }
             ),
-            [
-                ("section1", 1, 2)
-            ]
+            [("section1", 1, 2)],
         ),
         (
             polars.DataFrame(
@@ -221,9 +150,7 @@ def test_parse_section_tsv(inputs, exception, want):
                     "col2": [None, None, None, "col2", "value2"],
                 }
             ),
-            [
-                ("section1", 3, 2)
-            ]
+            [("section1", 3, 2)],
         ),
         (
             polars.DataFrame(
@@ -232,9 +159,7 @@ def test_parse_section_tsv(inputs, exception, want):
                     "col2": [None, None, None, "col2", "value2"],
                 }
             ),
-            [
-                ("section1", 3, 2)
-            ]
+            [("section1", 3, 2)],
         ),
         (
             polars.DataFrame(
@@ -243,35 +168,48 @@ def test_parse_section_tsv(inputs, exception, want):
                     "col2": [None, None, None, "col2", "value2"],
                 }
             ),
-            [
-                ("section1", 3, 2)
-            ]
+            [("section1", 3, 2)],
         ),
         (
             polars.DataFrame(
                 {
-                    "col1": [None, None, "[section1]", "col1", "value1", None, "[section2]", "col1", "value1"],
-                    "col2": [None, None, None, "col2", "value2", None, None, "col2", "value2"],
+                    "col1": [
+                        None,
+                        None,
+                        "[section1]",
+                        "col1",
+                        "value1",
+                        None,
+                        "[section2]",
+                        "col1",
+                        "value1",
+                    ],
+                    "col2": [
+                        None,
+                        None,
+                        None,
+                        "col2",
+                        "value2",
+                        None,
+                        None,
+                        "col2",
+                        "value2",
+                    ],
                 }
             ),
-            [
-                ("section1", 3, 2),
-                ("section2", 7, 2)
-            ]
+            [("section1", 3, 2), ("section2", 7, 2)],
         ),
         (
             polars.DataFrame(
                 {
                     "col1": ["[section1]", "col1", "value1"],
                     "col2": [None, "col2", "value2"],
-                    "col3": [None, None, None]
+                    "col3": [None, None, None],
                 }
             ),
-            [
-                ("section1", 1, 2)
-            ]
-        )
-    ]
+            [("section1", 1, 2)],
+        ),
+    ],
 )
 def test_get_section_idx(input, want):
     got = _get_section_idx(input)
@@ -284,19 +222,13 @@ def test_get_section_idx(input, want):
         (
             (
                 polars.DataFrame(
-                    {
-                        "col1": [None, "header2"],
-                        "col2": ["header1", None]
-                    }
+                    {"col1": [None, "header2"], "col2": ["header1", None]}
                 ),
-                2
+                2,
             ),
-            [
-                "header1",
-                "header2"
-            ]
+            ["header1", "header2"],
         )
-    ]
+    ],
 )
 def test_parse_headers(inputs, want):
     got = _parse_headers(inputs[0], inputs[1])
@@ -311,32 +243,22 @@ def test_parse_headers(inputs, want):
                 {
                     "col1": ["col1", "value1"],
                     "col2": ["col2", "value2"],
-                    "col3": [None, None]
+                    "col3": [None, None],
                 }
             ),
-            polars.DataFrame(
-                {
-                    "col1": ["col1", "value1"],
-                    "col2": ["col2", "value2"]
-                }
-            )
+            polars.DataFrame({"col1": ["col1", "value1"], "col2": ["col2", "value2"]}),
         ),
         (
             polars.DataFrame(
                 {
                     "col1": [None, "value1"],
                     "col2": ["col2", "value2"],
-                    "col3": [None, None]
+                    "col3": [None, None],
                 }
             ),
-            polars.DataFrame(
-                {
-                    "col1": ["-", "value1"],
-                    "col2": ["col2", "value2"]
-                }
-            )
+            polars.DataFrame({"col1": ["-", "value1"], "col2": ["col2", "value2"]}),
         ),
-    ]
+    ],
 )
 def test_parse_headers(input, want):
     got = _handle_row_with_nulls(input)
