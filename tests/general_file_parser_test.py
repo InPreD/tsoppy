@@ -4,7 +4,7 @@ from pytest import mark, raises
 from contextlib import nullcontext
 
 
-from tsoppy.general.file_parser import Parse_section_tsv, _get_section_idx
+from tsoppy.general.file_parser import Parse_section_tsv, _get_section_idx, _parse_headers, _handle_row_with_nulls
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/general"
@@ -276,3 +276,69 @@ def test_parse_section_tsv(inputs, exception, want):
 def test_get_section_idx(input, want):
     got = _get_section_idx(input)
     assert got == want
+
+
+@mark.parametrize(
+    "inputs, want",
+    [
+        (
+            (
+                polars.DataFrame(
+                    {
+                        "col1": [None, "header2"],
+                        "col2": ["header1", None]
+                    }
+                ),
+                2
+            ),
+            [
+                "header1",
+                "header2"
+            ]
+        )
+    ]
+)
+def test_parse_headers(inputs, want):
+    got = _parse_headers(inputs[0], inputs[1])
+    assert got == want
+
+
+@mark.parametrize(
+    "input, want",
+    [
+        (
+            polars.DataFrame(
+                {
+                    "col1": ["col1", "value1"],
+                    "col2": ["col2", "value2"],
+                    "col3": [None, None]
+                }
+            ),
+            polars.DataFrame(
+                {
+                    "col1": ["col1", "value1"],
+                    "col2": ["col2", "value2"]
+                }
+            )
+        ),
+        (
+            polars.DataFrame(
+                {
+                    "col1": [None, "value1"],
+                    "col2": ["col2", "value2"],
+                    "col3": [None, None]
+                }
+            ),
+            polars.DataFrame(
+                {
+                    "col1": ["-", "value1"],
+                    "col2": ["col2", "value2"]
+                }
+            )
+        ),
+    ]
+)
+def test_parse_headers(input, want):
+    got = _handle_row_with_nulls(input)
+    print(got)
+    assert got.equals(want)
