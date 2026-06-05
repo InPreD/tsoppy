@@ -11,7 +11,14 @@ def Parse_section_tsv(
     path: str, key_value_sections: list[str]
 ) -> tuple[list[str], dict[str, polars.DataFrame]]:
     """Parse a sectioned TSV file into headers and a mapping of section names to DataFrames."""
-    df = polars.read_csv(path, separator="\t", has_header=False)
+    try:
+        df = polars.read_csv(path, separator="\t", has_header=False)
+    except FileNotFoundError:
+        logger.error(f"File {path} not found.")
+        raise
+    except polars.exceptions.NoDataError:
+        logger.error(f"File {path} is empty.")
+        raise
     section_idx = _get_section_idx(df)
     headers = []
     if section_idx[0][1] != 1:
@@ -83,7 +90,8 @@ def _handle_row_with_nulls(df: polars.DataFrame) -> polars.DataFrame:
 
     # remove any columns that are completely null (no column header nor values)
     df = df.select(
-        [polars.col(col) for col in df.columns if not df[col].null_count() == df.height]
+        [polars.col(col)
+         for col in df.columns if not df[col].null_count() == df.height]
     )
 
     # avoid null values by filling with "-"
