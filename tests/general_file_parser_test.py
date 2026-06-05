@@ -4,7 +4,7 @@ from pytest import mark, raises
 from contextlib import nullcontext
 
 
-from tsoppy.general.file_parser import Parse_section_tsv
+from tsoppy.general.file_parser import Parse_section_tsv, _get_section_idx
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/general"
@@ -198,3 +198,81 @@ def test_parse_section_tsv(inputs, exception, want):
         for key in want[1].keys():
             assert key in got[1]
             assert got[1][key].equals(want[1][key])
+
+
+@mark.parametrize(
+    "input, want",
+    [
+        (
+            polars.DataFrame(
+                {
+                    "col1": ["[section1]", "col1", "value1"],
+                    "col2": [None, "col2", "value2"]
+                }
+            ),
+            [
+                ("section1", 1, 2)
+            ]
+        ),
+        (
+            polars.DataFrame(
+                {
+                    "col1": ["header1", None, "[section1]", "col1", "value1"],
+                    "col2": [None, None, None, "col2", "value2"],
+                }
+            ),
+            [
+                ("section1", 3, 2)
+            ]
+        ),
+        (
+            polars.DataFrame(
+                {
+                    "col1": [None, None, "[section1]", "col1", "value1"],
+                    "col2": [None, None, None, "col2", "value2"],
+                }
+            ),
+            [
+                ("section1", 3, 2)
+            ]
+        ),
+        (
+            polars.DataFrame(
+                {
+                    "col1": [None, None, "[section1]", None, "value1"],
+                    "col2": [None, None, None, "col2", "value2"],
+                }
+            ),
+            [
+                ("section1", 3, 2)
+            ]
+        ),
+        (
+            polars.DataFrame(
+                {
+                    "col1": [None, None, "[section1]", "col1", "value1", None, "[section2]", "col1", "value1"],
+                    "col2": [None, None, None, "col2", "value2", None, None, "col2", "value2"],
+                }
+            ),
+            [
+                ("section1", 3, 2),
+                ("section2", 7, 2)
+            ]
+        ),
+        (
+            polars.DataFrame(
+                {
+                    "col1": ["[section1]", "col1", "value1"],
+                    "col2": [None, "col2", "value2"],
+                    "col3": [None, None, None]
+                }
+            ),
+            [
+                ("section1", 1, 2)
+            ]
+        )
+    ]
+)
+def test_get_section_idx(input, want):
+    got = _get_section_idx(input)
+    assert got == want
