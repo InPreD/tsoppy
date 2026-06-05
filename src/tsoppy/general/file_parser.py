@@ -50,7 +50,7 @@ def Parse_section_tsv(
     return headers, section_dfs
 
 
-def _get_section_idx(df: polars.DataFrame) -> list[tuple[int, int]]:
+def _get_section_idx(df: polars.DataFrame) -> list[tuple[str, int, int]]:
     """Get the the name, start index and length of each section in the DataFrame."""
     section = ""
     section_start = 0
