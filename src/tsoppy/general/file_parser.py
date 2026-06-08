@@ -86,7 +86,7 @@ def _parse_headers(df: polars.DataFrame, header_rows: int) -> list[str]:
 
 
 def _handle_row_with_nulls(df: polars.DataFrame) -> polars.DataFrame:
-    """Handle rows with null values removing empty columns and by filling with "-"."""
+    """Handle rows with null values by removing empty columns and replacing remaining missing values with "-"."""
 
     # remove any columns that are completely null (no column header nor values)
     df = df.select(
