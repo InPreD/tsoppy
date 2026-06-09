@@ -164,7 +164,7 @@ def test_parse_section_tsv(inputs, exception, want):
             [("section1", 3, 2)],
         ),
         (
-            # Extra empty lines between on top of section
+            # Extra empty lines prior the top section, no headers
             polars.DataFrame(
                 {
                     "col1": [None, None, "[section1]", "col1", "value1"],
