@@ -1,0 +1,12 @@
+metrics_output_tsv:
+  dragen_2.6.2.4: Logs_Intermediates/MetricsOutput/MetricsOutput.tsv
+  localapp_ruo-2.2.0.12: Logs_Intermediates/MetricsOutput/MetricsOutput.tsv
+small_variant_genome_vcf:
+  dragen_2.6.2.4: Logs_Intermediates/DnaDragenCaller/{}/{}.hard-filtered.gvcf.gz
+  localapp_ruo-2.2.0.12: Logs_Intermediates/VariantMatching/{}/{}_MergedSmallVariants.genome.vcf
+tmb_trace_tsv:
+  dragen_2.6.2.4: Logs_Intermediates/Tmb/{}/{}.tmb.trace.tsv
+  localapp_ruo-2.2.0.12: Logs_Intermediates/Tmb/{}/{}_TMB_Trace.tsv
+variants_annotated_json:
+  dragen_2.6.2.4: Logs_Intermediates/Annotation/{}/{}_DNAVariants_Annotated.json
+  localapp_ruo-2.2.0.12: Logs_Intermediates/Annotation/{}/{}_SmallVariants_Annotated.json.gz
