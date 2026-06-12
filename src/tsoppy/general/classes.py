@@ -108,7 +108,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         self.vcf = cyvcf2.VCF(self.path)
 
 
-class TmbTrace(WorkflowOutput):
+class TmbTraceTsv(WorkflowOutput):
     """Input class for TMB trace files produced by different workflows.
 
     Attributes:
