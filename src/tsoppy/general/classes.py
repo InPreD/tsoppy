@@ -41,24 +41,32 @@ class WorkflowOutput:
 
     def _detect_type_and_version(self):
         """Detect which workflow type and version is present based on information in MetricsOutput.tsv."""
+
+        # Get all values for MetricsOutput.tsv paths and check if they are the same
         info_src = list(self.config.metrics_output_tsv.values())
         if len(set(info_src)) != 1:
             raise ValueError(
                 f"Got {info_src} but need exactly one file to detect workflow id"
             )
+
+        # Parse MetricsOutput.tsv
         headers, sections = Parse_section_tsv(
             os.path.join(self.root, info_src[0]), ["Header"]
         )
+
+        # Check if DRAGEN is part of the header and assume the data is localapp if not
         if "DRAGEN" in headers[0]:
             self.workflow_type = "dragen"
         else:
             self.workflow_type = "localapp"
+
+        # Set workflow version from Header section
         self.workflow_version = sections["Header"].item(
             row=0, column="Workflow Version"
         )
 
     def workflow_id(self):
-        """Return combined workflow typ and version."""
+        """Return combined string for workflow type and version."""
         return f"{self.workflow_type}_{self.workflow_version}"
 
 
@@ -72,11 +80,13 @@ class SmallVariantGenomeVcf(WorkflowOutput):
     """
 
     def __init__(self, config_yaml: str | Path, root_path: str | Path, sample_id: str):
+        """Initialize SmallVariantGenomeVcf"""
         super().__init__(config_yaml, root_path)
         self.sample_id = sample_id
 
     @classmethod
     def create(cls, workflow_output: WorkflowOutput, sample_id: str):
+        """Create SmallVariantGenomeVcf from existing WorkflowOutput"""
         obj = cls.__new__(cls)
         obj.__dict__.update(workflow_output.__dict__)
         obj.sample_id = sample_id
@@ -107,11 +117,13 @@ class TmbTrace(WorkflowOutput):
     """
 
     def __init__(self, config_yaml: str | Path, root_path: str | Path, sample_id: str):
+        """Initialize TmTraceTsv."""
         super().__init__(config_yaml, root_path)
         self.sample_id = sample_id
 
     @classmethod
     def create(cls, workflow_output: WorkflowOutput, sample_id: str):
+        """Create TmbTraceTsv from existing WorkflowOutput."""
         obj = cls.__new__(cls)
         obj.__dict__.update(workflow_output.__dict__)
         obj.sample_id = sample_id
@@ -142,11 +154,13 @@ class VariantsAnnotatedJson(WorkflowOutput):
     """
 
     def __init__(self, config_yaml: str | Path, root_path: str | Path, sample_id: str):
+        """Initialize VariantsAnnotatedJson."""
         super().__init__(config_yaml, root_path)
         self.sample_id = sample_id
 
     @classmethod
     def create(cls, workflow_output: WorkflowOutput, sample_id: str):
+        """Create VariantsAnnotatedJson from existing WorkflowOutput."""
         obj = cls.__new__(cls)
         obj.__dict__.update(workflow_output.__dict__)
         obj.sample_id = sample_id
