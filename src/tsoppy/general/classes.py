@@ -83,6 +83,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         """Initialize SmallVariantGenomeVcf"""
         super().__init__(config_yaml, root_path)
         self.sample_id = sample_id
+        self._parse()
 
     @classmethod
     def create(cls, workflow_output: WorkflowOutput, sample_id: str):
@@ -90,10 +91,11 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         obj = cls.__new__(cls)
         obj.__dict__.update(workflow_output.__dict__)
         obj.sample_id = sample_id
+        obj._parse()
         return obj
 
-    def parse(self):
-        """Parse the VCF file"""
+    def _parse(self):
+        """Parse the small variant genome VCF file"""
         fmt = self.config.small_variant_genome_vcf[self.workflow_id()]
         self.path = Path(
             os.path.join(self.root, fmt.format(self.sample_id, self.sample_id))
@@ -104,7 +106,6 @@ class SmallVariantGenomeVcf(WorkflowOutput):
             )
             raise FileNotFoundError
         self.vcf = cyvcf2.VCF(self.path)
-        return self.vcf
 
 
 class TmbTrace(WorkflowOutput):
@@ -120,6 +121,7 @@ class TmbTrace(WorkflowOutput):
         """Initialize TmTraceTsv."""
         super().__init__(config_yaml, root_path)
         self.sample_id = sample_id
+        self._parse()
 
     @classmethod
     def create(cls, workflow_output: WorkflowOutput, sample_id: str):
@@ -127,10 +129,11 @@ class TmbTrace(WorkflowOutput):
         obj = cls.__new__(cls)
         obj.__dict__.update(workflow_output.__dict__)
         obj.sample_id = sample_id
+        obj._parse()
         return obj
 
-    def parse(self):
-        """Parse the TMB trace file"""
+    def _parse(self):
+        """Parse the TMB trace tsv."""
         fmt = self.config.tmb_trace_tsv[self.workflow_id()]
         self.path = Path(
             os.path.join(self.root, fmt.format(self.sample_id, self.sample_id))
@@ -141,7 +144,6 @@ class TmbTrace(WorkflowOutput):
             )
             raise FileNotFoundError
         self.table = polars.read_csv(self.path, separator="\t")
-        return self.table
 
 
 class VariantsAnnotatedJson(WorkflowOutput):
@@ -157,6 +159,7 @@ class VariantsAnnotatedJson(WorkflowOutput):
         """Initialize VariantsAnnotatedJson."""
         super().__init__(config_yaml, root_path)
         self.sample_id = sample_id
+        self._parse()
 
     @classmethod
     def create(cls, workflow_output: WorkflowOutput, sample_id: str):
@@ -164,9 +167,10 @@ class VariantsAnnotatedJson(WorkflowOutput):
         obj = cls.__new__(cls)
         obj.__dict__.update(workflow_output.__dict__)
         obj.sample_id = sample_id
+        obj._parse()
         return obj
 
-    def parse(self):
+    def _parse(self):
         """Parse the variants annotated JSON file"""
         fmt = self.config.variants_annotated_json[self.workflow_id()]
         self.path = Path(
@@ -179,4 +183,3 @@ class VariantsAnnotatedJson(WorkflowOutput):
             raise FileNotFoundError
         with open(self.path, "r") as file:
             self.data = msgspec.json.decode(file.read())
-        return self.data
