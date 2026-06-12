@@ -4,7 +4,7 @@ This module defines the classes 'VcfList' and 'Vcf'.
 a regular expression matching InPreD IDs, a set of tumor sample types and the path to the new small variant vcf list.
 'VcfList' has a method to update the current small variant vcf list with vcfs found in the TSO500 results directory.
 'Vcf' is defined by a path to a small variant vcf and a set of tumor sample types.
-'Vcf' provides a method to create a new row for a pandas dataframe.
+'Vcf' provides a method to create a new row for a polars dataframe.
 """
 
 import glob
