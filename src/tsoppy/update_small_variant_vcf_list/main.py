@@ -103,7 +103,7 @@ class VcfList:
             return False
         if self.tumor_sample_types != other.tumor_sample_types:
             return False
-        return self.vcfs != other.vcfs
+        return self.vcfs == other.vcfs
 
     def update(self):
         """
@@ -203,7 +203,7 @@ class Vcf:
             return False
         if self.sample_type != other.sample_type:
             return False
-        return self.vcf != other.vcf
+        return self.vcf == other.vcf
 
     def row(self):
         """
