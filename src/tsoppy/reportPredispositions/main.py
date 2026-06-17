@@ -21,11 +21,9 @@ def validate_uniqueness(df: pl.DataFrame, column: str):
         if not df[column].is_unique().all():
             # find the duplicates to make the error message helpful
             duplicates = (
-                df[column].filter(df[column].is_duplicated()
-                                  ).unique().to_list()
+                df[column].filter(df[column].is_duplicated()).unique().to_list()
             )
-            raise ValueError(
-                f"Duplicate IDs found in '{column}': {duplicates}")
+            raise ValueError(f"Duplicate IDs found in '{column}': {duplicates}")
 
     except ValueError:
         # this captures the full traceback automatically
@@ -37,8 +35,7 @@ def validate_uniqueness(df: pl.DataFrame, column: str):
 def tumor_purity_range_validation(tumor_purity: float):
     try:
         if not 0 <= tumor_purity <= 1:
-            raise ValueError(
-                f"Tumor purity value {tumor_purity} is out of range.")
+            raise ValueError(f"Tumor purity value {tumor_purity} is out of range.")
     except ValueError:
         # this captures the full traceback automatically
         logger.exception("Data Integrity Validation Failed.")
@@ -58,8 +55,7 @@ def load_data_from_cancer_susceptibility_genes_table(
     gene_column_name = column_list[0]
 
     # load input data
-    df = pl.read_csv(cancer_susceptibility_genes,
-                     columns=column_list, separator="\t")
+    df = pl.read_csv(cancer_susceptibility_genes, columns=column_list, separator="\t")
 
     # check that none of the genes is present multiple times,
     # exit if there is such a gene, report all duplicates
@@ -116,8 +112,7 @@ def lookup_predisposition_variants(
 def print_header_lines_versions(
     sample_id: str, version_string: str, output_file_handle: io.TextIOBase
 ):
-    output_file_handle.write(
-        f"# [{sample_id}] Version string: {version_string}\n")
+    output_file_handle.write(f"# [{sample_id}] Version string: {version_string}\n")
     return
 
 
@@ -130,8 +125,7 @@ def print_header_lines_cancer_susceptibility_data_source(
     output_file_handle.write(
         f"# [{sample_id}] Cancer susceptibility genes are defined in:\n"
     )
-    output_file_handle.write(
-        f"# [{sample_id}] \tfile {cancer_susceptibility_genes}\n")
+    output_file_handle.write(f"# [{sample_id}] \tfile {cancer_susceptibility_genes}\n")
     output_file_handle.write(f"# [{sample_id}] \tarticle {doi_reference}\n")
     return
 
@@ -174,8 +168,7 @@ def print_header_lines_gene_predisposition(
     sample_id: str, output_file_handle: io.TextIOBase
 ):
     # all the info in the Gene_predisposition column come from the cancer susceptibility genes input file
-    output_file_handle.write(
-        f"# [{sample_id}] Gene_predisposition column format:\n")
+    output_file_handle.write(f"# [{sample_id}] Gene_predisposition column format:\n")
     output_file_handle.write(f"# [{sample_id}] \t[Actionability]_[Age]\n")
     output_file_handle.write(f"# [{sample_id}] \twhere:\n")
     output_file_handle.write(
@@ -184,8 +177,7 @@ def print_header_lines_gene_predisposition(
     output_file_handle.write(
         f"# [{sample_id}] \t\t\t - MA-CSG = most actionable cancer susceptibility gene, HA-CSG = highly actionable csg, SA-CSG = standardly actionable csg\n"
     )
-    output_file_handle.write(
-        f"# [{sample_id}] \t\tAge: [ Allages | Age<30 ]\n")
+    output_file_handle.write(f"# [{sample_id}] \t\tAge: [ Allages | Age<30 ]\n")
     return
 
 
@@ -273,8 +265,7 @@ def report_predispositions(
 
     tumor_purity_range_validation(tumor_purity)
 
-    logger.info(
-        f"Load data from the {cancer_susceptibility_genes} input file.")
+    logger.info(f"Load data from the {cancer_susceptibility_genes} input file.")
     cancer_susceptibility_genes_dict = load_data_from_cancer_susceptibility_genes_table(
         cancer_susceptibility_genes, csg_column_list
     )
