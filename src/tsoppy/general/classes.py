@@ -20,6 +20,17 @@ class WorkflowConfig(msgspec.Struct):
     tmb_trace_tsv: dict[str, str]
     variants_annotated_json: dict[str, str]
 
+    def __eq__(self, other):
+        if not isinstance(other, WorkflowConfig):
+            return False
+        if self.metrics_output_tsv != other.metrics_output_tsv:
+            return False
+        if self.small_variant_genome_vcf != other.small_variant_genome_vcf:
+            return False
+        if self.tmb_trace_tsv != other.tmb_trace_tsv:
+            return False
+        return self.variants_annotated_json == other.variants_annotated_json
+
 
 class WorkflowOutput:
     """Base class for outputs produced by different workflows (e.g. dragen/localapp).
@@ -64,6 +75,17 @@ class WorkflowOutput:
         self.workflow_version = sections["Header"].item(
             row=0, column="Workflow Version"
         )
+
+    def __eq__(self, other):
+        if not isinstance(other, WorkflowOutput):
+            return False
+        if self.config != other.config:
+            return False
+        if self.root != other.root:
+            return False
+        if self.workflow_type != other.workflow_type:
+            return False
+        return self.workflow_version == other.workflow_version
 
     def workflow_id(self):
         """Return combined string for workflow type and version."""
