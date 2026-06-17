@@ -12,7 +12,7 @@ from tsoppy.general.file_parser import (
 )
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
-test_data_dir = "tests/test_data/general"
+test_data_dir = "tests/test_data/general_file_parser"
 
 
 @mark.parametrize(
