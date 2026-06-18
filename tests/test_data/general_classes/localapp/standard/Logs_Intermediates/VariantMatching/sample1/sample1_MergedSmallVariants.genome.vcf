@@ -1,0 +1,17 @@
+##fileformat=VCFv4.1
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allele Depth">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Total Depth Used For Variant Calling">
+##FORMAT=<ID=VF,Number=.,Type=Float,Description="Variant Frequency">
+##FORMAT=<ID=NL,Number=1,Type=Integer,Description="Applied BaseCall Noise Level">
+##FORMAT=<ID=SB,Number=1,Type=Float,Description="StrandBias Score">
+##FORMAT=<ID=NC,Number=1,Type=Float,Description="Fraction of bases which were uncalled or with basecall quality below the minimum threshold">
+##FORMAT=<ID=US,Number=.,Type=Integer,Description="Supporting read type counts">
+##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allele Depth">
+##FORMAT=<ID=VF,Number=.,Type=Float,Description="Variant Frequency">
+##FORMAT=<ID=SB,Number=1,Type=Float,Description="StrandBias Score">
+##contig=<ID=chr1,length=249250621>
+##reference=/opt/illumina/resources/genomes/hg19_hardPAR
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample1.bam
+chr1	1000000	.	A	.	100	PASS	DP=700	GT:GQ:AD:DP:VF:NL:SB:NC:US	0/0:0:700:700:0.00000:10:-100.0000:0.0700:0,0,0,0,0,0,0,0,0,0,0,0
