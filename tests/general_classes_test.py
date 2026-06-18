@@ -2,9 +2,10 @@ from contextlib import nullcontext
 from os import path
 
 from numpy import False_, float32, int32, str_
+from polars import DataFrame
 from pytest import mark, raises
 
-from tsoppy.general.classes import SmallVariantGenomeVcf, WorkflowOutput
+from tsoppy.general.classes import SmallVariantGenomeVcf, TmbTraceTsv, WorkflowOutput
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/general_classes"
@@ -102,3 +103,48 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
         assert got_variant.gt_phases[0] == want[6]
         assert got_variant.gt_quals[0] == want[7]
         assert got_variant.gt_bases[0] == want[8]
+
+
+@mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            ("config.yaml", path.join(test_data_dir, "dragen/standard"), "sample1"),
+            nullcontext(),
+            DataFrame({
+                'Chromosome': ["chr1"],
+                'Position': [1000000],
+                'RefCall': ["A"],
+                'AltCall': ["T"],
+                'VAF': [0.5],
+                'Depth': [550],
+                'CytoBand': ["1p1.1"],
+                'GeneName': ["GEN1"],
+                'VariantType': ["SNV"],
+                'CosmicIDs': ["COSM0001;COSM0002"],
+                'MaxCosmicCount': [2],
+                'ClinVarIDs': ["RCV0001.1"],
+                'ClinVarSignificance': ["not provided"],
+                'AlleleCountsGnomadExome': [100],
+                'AlleleCountsGnomadGenome': [100],
+                'AlleleCounts1000Genomes': [30],
+                'MaxDatabaseAlleleCounts': [100],
+                'GermlineFilterDatabase': [True],
+                'GermlineFilterProxi': [False],
+                'Nonsynonymous': [True],
+                'withinValidTmbRegion': [True],
+                'IncludedInTMBNumerator': [False],
+                'Status': ["Germline_DB"],
+                'ProteinChange': ["NP_001.2:p.(Ala1Ile)"],
+                'CDSChange': ["NM_000001.1:c.100A>T"],
+                'Exons': ["1/2"],
+                'Consequence': ["missense_variant"]
+            })
+        ),
+    ],
+)
+def test_tmbtracetsv_create(inputs, exception, want):
+    with exception:
+        workflow_output = WorkflowOutput(inputs[0], inputs[1])
+        got = TmbTraceTsv.create(workflow_output, inputs[2])
+        assert got.table.equals(want)
