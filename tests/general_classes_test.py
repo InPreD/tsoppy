@@ -5,7 +5,7 @@ from numpy import False_, float32, int32, str_
 from polars import DataFrame
 from pytest import mark, raises
 
-from tsoppy.general.classes import SmallVariantGenomeVcf, TmbTraceTsv, WorkflowOutput
+from tsoppy.general.classes import SmallVariantGenomeVcf, TmbTraceTsv, VariantsAnnotatedJson, WorkflowOutput
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/general_classes"
@@ -150,3 +150,30 @@ def test_tmbtracetsv_create(inputs, exception, want):
         workflow_output = WorkflowOutput(inputs[0], inputs[1])
         got = TmbTraceTsv.create(workflow_output, inputs[2])
         assert got.table.equals(want)
+
+
+@mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            ("config.yaml", path.join(test_data_dir, "dragen/standard"), "sample1"),
+            nullcontext(),
+            {"id": "sample1"}
+        ),
+        (
+            ("config.yaml", path.join(test_data_dir, "localapp/standard"), "sample1"),
+            nullcontext(),
+            {"id": "sample1"}
+        ),
+        (
+            ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
+            raises(FileNotFoundError),
+            None
+        ),
+    ],
+)
+def test_variantsannotatedjson_create(inputs, exception, want):
+    with exception:
+        workflow_output = WorkflowOutput(inputs[0], inputs[1])
+        got = VariantsAnnotatedJson.create(workflow_output, inputs[2])
+        assert got.data == want
