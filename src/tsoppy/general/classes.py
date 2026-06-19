@@ -135,7 +135,7 @@ class TmbTraceTsv(WorkflowOutput):
 
     Attributes:
         path: Path to vcf (Path)
-        rows: Parsed rows of the TMB trace file (polars.DataFrame)
+        table: Parsed rows of the TMB trace file (polars.DataFrame)
         sample_id: Sample identifier (str)
     """
 
