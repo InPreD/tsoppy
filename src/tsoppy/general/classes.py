@@ -1,3 +1,4 @@
+import gzip
 import logging
 import os
 from pathlib import Path
@@ -203,5 +204,9 @@ class VariantsAnnotatedJson(WorkflowOutput):
                 f"Small variant genome VCF missing: File {self.path} does not exist."
             )
             raise FileNotFoundError
-        with open(self.path, "r") as file:
-            self.data = msgspec.json.decode(file.read())
+        if self.path.suffix == ".gz":
+            with gzip.open(self.path, "rt") as file:
+                self.data = msgspec.json.decode(file.read())
+        else:
+            with open(self.path, "r") as file:
+                self.data = msgspec.json.decode(file.read())
