@@ -5,7 +5,12 @@ from numpy import False_, float32, int32, str_
 from polars import DataFrame
 from pytest import mark, raises
 
-from tsoppy.general.classes import SmallVariantGenomeVcf, TmbTraceTsv, VariantsAnnotatedJson, WorkflowOutput
+from tsoppy.general.classes import (
+    SmallVariantGenomeVcf,
+    TmbTraceTsv,
+    VariantsAnnotatedJson,
+    WorkflowOutput,
+)
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/general_classes"
@@ -146,8 +151,8 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
         (
             ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
             raises(FileNotFoundError),
-            None
-        )
+            None,
+        ),
     ],
 )
 def test_tmbtracetsv_create(inputs, exception, want):
@@ -163,17 +168,17 @@ def test_tmbtracetsv_create(inputs, exception, want):
         (
             ("config.yaml", path.join(test_data_dir, "dragen/standard"), "sample1"),
             nullcontext(),
-            {"id": "sample1"}
+            {"id": "sample1"},
         ),
         (
             ("config.yaml", path.join(test_data_dir, "localapp/standard"), "sample1"),
             nullcontext(),
-            {"id": "sample1"}
+            {"id": "sample1"},
         ),
         (
             ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
             raises(FileNotFoundError),
-            None
+            None,
         ),
     ],
 )
