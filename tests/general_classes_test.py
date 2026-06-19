@@ -74,15 +74,15 @@ def test_workflowoutput_init(inputs, exception, want):
             ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
             raises(FileNotFoundError),
             (
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             ),
         ),
     ],
@@ -143,6 +143,11 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
                 }
             ),
         ),
+        (
+            ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
+            raises(FileNotFoundError),
+            None
+        )
     ],
 )
 def test_tmbtracetsv_create(inputs, exception, want):
