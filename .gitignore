@@ -7,3 +7,27 @@ dist
 venv
 .project
 .pydevproject
+# macOS
+.DS_Store
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code
+.vscode/
+
+# Generated outputs
+out/
+*.pdf
+*.zip
+
+# Temporary files
+*.swp
+*.tmp

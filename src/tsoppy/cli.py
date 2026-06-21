@@ -44,6 +44,8 @@ def placeholder(
         print(f"{user_name} has the following id: {user_id}")
     else:
         print(f"{user_name}: {user_id}")
+
+
 @app.command()
 def metric_plots(
     input_directory: Annotated[

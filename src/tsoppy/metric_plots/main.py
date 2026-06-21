@@ -38,13 +38,14 @@ class MetricPlots:
         self.run_id_file = Path(run_id_file)
         self.output_directory = Path(output_directory)
         self.create_plots = create_plots
-        self.intermediate_directory = self.output_directory / "intermediate_metrics_files"
+        self.intermediate_directory = (
+            self.output_directory / "intermediate_metrics_files"
+        )
 
     def run(self):
         run_ids = self._read_run_ids()
         metrics_files = self._find_metrics_files(run_ids)
-        parsed_frames = [self._parse_metrics_file(
-            path) for path in metrics_files]
+        parsed_frames = [self._parse_metrics_file(path) for path in metrics_files]
         master = self._concat_frames(parsed_frames)
 
         self.intermediate_directory.mkdir(parents=True, exist_ok=True)
@@ -54,16 +55,15 @@ class MetricPlots:
 
         self._write_master(master, master_path)
         self._write_joint_sequencing_qc_file(
-            parsed_frames, metrics_files, joint_qc_path)
+            parsed_frames, metrics_files, joint_qc_path
+        )
 
         if self.create_plots:
-            self._run_plotting_script(
-                master_path, joint_qc_path, metrics_files)
+            self._run_plotting_script(master_path, joint_qc_path, metrics_files)
 
     def _read_run_ids(self) -> list[str]:
         if not self.run_id_file.is_file():
-            raise FileNotFoundError(
-                f"RUN ID file not found: {self.run_id_file}")
+            raise FileNotFoundError(f"RUN ID file not found: {self.run_id_file}")
 
         run_ids = []
         with self.run_id_file.open() as handle:
@@ -86,12 +86,14 @@ class MetricPlots:
                 directory = self.input_directory / subdir
                 print(directory)
                 if directory.is_dir():
-                    matches.extend(sorted(directory.glob(
-                        f"{run_id}*MetricsOutput*.tsv")))
+                    matches.extend(
+                        sorted(directory.glob(f"{run_id}*MetricsOutput*.tsv"))
+                    )
 
             if not matches:
                 raise FileNotFoundError(
-                    f"No MetricsOutput.tsv found for RUN ID: {run_id}")
+                    f"No MetricsOutput.tsv found for RUN ID: {run_id}"
+                )
 
             files.extend(matches)
 
@@ -99,8 +101,7 @@ class MetricPlots:
 
     def _parse_metrics_file(self, path: Path) -> pl.DataFrame:
         headers, sections = Parse_section_tsv(str(path), ["Header"])
-        workflow_type, workflow_version = self._detect_workflow(
-            headers, sections, path)
+        workflow_type, workflow_version = self._detect_workflow(headers, sections, path)
         run_id = self._run_id_from_filename(path)
 
         sample_records: OrderedDict[str, OrderedDict[str, str]] = OrderedDict()
@@ -118,25 +119,24 @@ class MetricPlots:
             if VALUE_COL in df.columns and not samples:
                 for row in df.iter_rows(named=True):
                     metric = self._metric_name_for_section(
-                        row.get(metric_col, ""), section_name)
+                        row.get(metric_col, ""), section_name
+                    )
                     if metric:
-                        self._merge_value(run_metrics, metric,
-                                          row.get(VALUE_COL, ""))
+                        self._merge_value(run_metrics, metric, row.get(VALUE_COL, ""))
                 continue
 
             for row in df.iter_rows(named=True):
                 metric = self._metric_name_for_section(
-                    row.get(metric_col, ""), section_name)
+                    row.get(metric_col, ""), section_name
+                )
                 if not metric:
                     continue
 
                 if LSL_COL in df.columns:
-                    self._merge_value(lsl_metrics, metric,
-                                      row.get(LSL_COL, "NA"))
+                    self._merge_value(lsl_metrics, metric, row.get(LSL_COL, "NA"))
 
                 if USL_COL in df.columns:
-                    self._merge_value(usl_metrics, metric,
-                                      row.get(USL_COL, "NA"))
+                    self._merge_value(usl_metrics, metric, row.get(USL_COL, "NA"))
 
                 for sample_id in samples:
                     sample_id = self._clean(sample_id)
@@ -145,7 +145,8 @@ class MetricPlots:
 
                     sample_records.setdefault(sample_id, OrderedDict())
                     self._merge_value(
-                        sample_records[sample_id], metric, row.get(sample_id, ""))
+                        sample_records[sample_id], metric, row.get(sample_id, "")
+                    )
 
         records = []
 
@@ -188,7 +189,8 @@ class MetricPlots:
 
     def _write_master(self, master: pl.DataFrame, output_path: Path) -> None:
         master.select(self._order_columns(master)).write_csv(
-            output_path, separator="\t")
+            output_path, separator="\t"
+        )
 
     def _write_joint_sequencing_qc_file(
         self,
@@ -198,7 +200,9 @@ class MetricPlots:
     ) -> None:
         records = []
 
-        for run_number, (frame, path) in enumerate(zip(parsed_frames, metrics_files), start=1):
+        for run_number, (frame, path) in enumerate(
+            zip(parsed_frames, metrics_files), start=1
+        ):
             records.append(
                 {
                     "RUN_ID": self._run_id_from_filename(path),
@@ -269,13 +273,11 @@ class MetricPlots:
         return metric
 
     def _sample_columns(self, df: pl.DataFrame) -> list[str]:
-        return [
-            col
-            for col in df.columns
-            if self._clean(col) not in NON_SAMPLE_COLUMNS
-        ]
+        return [col for col in df.columns if self._clean(col) not in NON_SAMPLE_COLUMNS]
 
-    def _merge_value(self, record: OrderedDict[str, str], key: str, value: object) -> None:
+    def _merge_value(
+        self, record: OrderedDict[str, str], key: str, value: object
+    ) -> None:
         value = self._clean(value)
 
         if key not in record:
@@ -288,18 +290,30 @@ class MetricPlots:
     def _infer_record_type(self, sample_id: str, record: OrderedDict[str, str]) -> str:
         sample = sample_id.upper()
 
-        if "_D" in sample or "-D" in sample or sample.startswith("TVD") or sample.startswith("DNA"):
+        if (
+            "_D" in sample
+            or "-D" in sample
+            or sample.startswith("TVD")
+            or sample.startswith("DNA")
+        ):
             return "DNA_SAMPLE"
 
-        if "_R" in sample or "-R" in sample or sample.startswith("TVR") or sample.startswith("RNA"):
+        if (
+            "_R" in sample
+            or "-R" in sample
+            or sample.startswith("TVR")
+            or sample.startswith("RNA")
+        ):
             return "RNA_SAMPLE"
 
         dna_count = sum(
-            1 for key, value in record.items()
+            1
+            for key, value in record.items()
             if key.startswith("DNA_") and not self._is_missing(value)
         )
         rna_count = sum(
-            1 for key, value in record.items()
+            1
+            for key, value in record.items()
             if key.startswith("RNA_") and not self._is_missing(value)
         )
 
@@ -318,7 +332,11 @@ class MetricPlots:
         path: Path,
     ) -> tuple[str, str]:
         header_text = " ".join(headers).lower()
-        workflow_type = "dragen" if "dragen" in header_text or "dragen" in path.name.lower() else "localapp"
+        workflow_type = (
+            "dragen"
+            if "dragen" in header_text or "dragen" in path.name.lower()
+            else "localapp"
+        )
         workflow_version = "Unknown"
 
         header_df = sections.get("Header")
@@ -341,7 +359,8 @@ class MetricPlots:
     def _run_id_from_filename(path: Path) -> str:
         name = path.name
         name = re.sub(
-            r"_MetricsOutput_(Localapp|LocalApp|Dragen|DRAGEN)\.tsv$", "", name)
+            r"_MetricsOutput_(Localapp|LocalApp|Dragen|DRAGEN)\.tsv$", "", name
+        )
         name = re.sub(r"_MetricsOutput\.tsv$", "", name)
         return name
 
@@ -355,23 +374,24 @@ class MetricPlots:
     @staticmethod
     def _cast_all_string(df: pl.DataFrame) -> pl.DataFrame:
         string_type = pl.String if hasattr(pl, "String") else pl.Utf8
-        return df.select([pl.col(col).cast(string_type).alias(col) for col in df.columns])
+        return df.select(
+            [pl.col(col).cast(string_type).alias(col) for col in df.columns]
+        )
 
     @staticmethod
     def _order_columns(df: pl.DataFrame) -> list[str]:
         metadata = [col for col in METADATA_COLUMNS if col in df.columns]
 
         run_metrics = sorted(
-            col for col in df.columns
+            col
+            for col in df.columns
             if col not in metadata
             and not col.startswith("DNA_")
             and not col.startswith("RNA_")
         )
 
-        dna_metrics = sorted(
-            col for col in df.columns if col.startswith("DNA_"))
-        rna_metrics = sorted(
-            col for col in df.columns if col.startswith("RNA_"))
+        dna_metrics = sorted(col for col in df.columns if col.startswith("DNA_"))
+        rna_metrics = sorted(col for col in df.columns if col.startswith("RNA_"))
 
         return metadata + run_metrics + dna_metrics + rna_metrics
 
@@ -380,8 +400,7 @@ class MetricPlots:
             return "0"
 
         sample_rows = frame.filter(
-            ~pl.col("RECORD_TYPE").is_in(
-                ["LOWER_THRESHOLD", "UPPER_THRESHOLD"])
+            ~pl.col("RECORD_TYPE").is_in(["LOWER_THRESHOLD", "UPPER_THRESHOLD"])
         )
 
         for value in sample_rows[column].to_list():
