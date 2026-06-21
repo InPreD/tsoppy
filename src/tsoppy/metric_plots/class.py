@@ -75,7 +75,7 @@ class MetricsOutputTsv(WorkflowOutput):
 
 workflow = WorkflowOutput(
     config_yaml="workflow_config.yaml",
-    root_path="/path/to/workflow/output"
+    root_path="/path/to/workflow/output" 
 )
 
 metrics = MetricsOutputTsv.create(workflow)

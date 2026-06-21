@@ -24,8 +24,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Create the user
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME -s /usr/bin/fish\
+RUN groupadd --gid 1000 $USERNAME 2>/dev/null || true \
+    && useradd --uid $USER_UID --gid 1000 -m $USERNAME -s /usr/bin/fish \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 ENV PATH=$PATH:/home/$USERNAME/.local/bin

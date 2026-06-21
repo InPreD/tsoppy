@@ -20,7 +20,6 @@ except ImportError as error:
         "as this script, or run this script from that directory."
     ) from error
 
-"""
 RUN_IDS = [
     "240809_A02134_0013_BHCGJYDRX5",
     "240906_A02134_0019_BHHGKGDRX5",
@@ -38,11 +37,16 @@ RUN_IDS = [
 ]
 
 """
-
 RUN_IDS = [
     "240809_A02134_0013_BHCGJYDRX5",
     "250822_A02134_0101_BHYFHLDRX5",
-]
+]"""
+
+#how to take RUN_IDs 
+# in a .txt file
+# from the command line
+# plot metrics in cli.py
+
 
 METRIC_COL = "Metric (UOM)"
 LSL_COL = "LSL Guideline"
@@ -51,6 +55,66 @@ VALUE_COL = "Value"
 NON_SAMPLE_COLUMNS = {METRIC_COL, LSL_COL, USL_COL, VALUE_COL, "-", ""}
 MISSING_VALUES = {"", "-", "NA", "N/A", "nan", "None", None}
 METADATA_COLUMNS = ["SAMPLE_ID", "RUN", "WORKFLOW_TYPE", "WORKFLOW_VERSION", "RECORD_TYPE"]
+
+def first_sample_value(frame: pl.DataFrame, column: str) -> str:
+    if column not in frame.columns:
+        return "0"
+
+    sample_rows = frame.filter(
+        ~pl.col("RECORD_TYPE").is_in(["LOWER_THRESHOLD", "UPPER_THRESHOLD"])
+    )
+
+    if sample_rows.height == 0:
+        return "0"
+
+    for value in sample_rows[column].to_list():
+        value = clean(value)
+        if value and value != "NA":
+            return value
+
+    return "0"
+
+
+def write_joint_sequencing_qc_file(
+    parsed_frames: list[pl.DataFrame],
+    run_ids: list[str],
+    output_path: Path,
+) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    records = []
+
+    for run_number, (frame, run_id) in enumerate(
+        zip(parsed_frames, run_ids),
+        start=1,
+    ):
+        records.append(
+            {
+                "RUN_ID": run_id,
+                "PCT_PF_READS": first_sample_value(frame, "PCT_PF_READS"),
+                "PCT_Q30_R1": first_sample_value(frame, "PCT_Q30_R1"),
+                "PCT_Q30_R2": first_sample_value(frame, "PCT_Q30_R2"),
+                "CLUSTER_DENSITY": "0",
+                "ESTIMATED_YIELD": "0",
+                "CLUSTERS_PASSING_FILTER": "0",
+                "RUN_NUMBER": str(run_number),
+            }
+        )
+
+    joint_qc = pl.DataFrame(records)
+
+    joint_qc.select(
+        [
+            "RUN_ID",
+            "PCT_PF_READS",
+            "PCT_Q30_R1",
+            "PCT_Q30_R2",
+            "CLUSTER_DENSITY",
+            "ESTIMATED_YIELD",
+            "CLUSTERS_PASSING_FILTER",
+            "RUN_NUMBER",
+        ]
+    ).write_csv(output_path, separator="\t")
 
 def read_run_ids(run_id_file: Path) -> list[str]:
     if not run_id_file.is_file():
@@ -139,78 +203,8 @@ def make_unique_headers(headers: Iterable[object]) -> list[str]:
             out.append(f"{header}_{seen[header]}")
     return out
 
-
-def parse_section_tsv_safe(path: str, key_value_sections: list[str]) -> tuple[list[str], dict[str, pl.DataFrame]]:
-    df = pl.read_csv(path, separator="\t", has_header=False)
-    section_idx = get_section_idx_safe(df)
-    headers: list[str] = []
-
-    if section_idx and section_idx[0][1] != 1:
-        for row in df.head(section_idx[0][1] - 1).rows():
-            for value in row:
-                if value is not None:
-                    headers.append(clean(value))
-
-    sections: dict[str, pl.DataFrame] = {}
-    for section_name, start, length in section_idx:
-        df_slice = df.slice(start, length)
-
-        df_slice = df_slice.select(
-            [pl.col(col) for col in df_slice.columns if df_slice[col].null_count() != df_slice.height]
-        )
-
-        string_type = pl.String if hasattr(pl, "String") else pl.Utf8
-        df_slice = df_slice.with_columns(pl.all().cast(string_type).fill_null("-"))
-
-        if section_name in key_value_sections and df_slice.width == 2:
-            df_slice = df_slice.transpose()
-
-        raw_header = list(df_slice.row(0))
-        unique_header = make_unique_headers(raw_header)
-        rename_map = {old: new for old, new in zip(df_slice.columns, unique_header)}
-        sections[section_name] = df_slice.rename(rename_map).slice(1)
-
-    return headers, sections
-
-
-def get_section_idx_safe(df: pl.DataFrame) -> list[tuple[str, int, int]]:
-    section = ""
-    section_start = 0
-    section_idx: list[tuple[str, int, int]] = []
-    rows = df.with_row_index().iter_rows() if hasattr(df, "with_row_index") else df.with_row_count().iter_rows()
-
-    for row in rows:
-        row_index = row[0]
-        first_col = row[1] if len(row) > 1 else None
-
-        if first_col:
-            match = re.search(r"^\[(?P<section>.*)\]$", str(first_col))
-            if match:
-                section_start = row_index + 1
-                section = match.group("section")
-
-        if all(item is None for item in row[1:]):
-            section_length = row_index - section_start
-            if section_start > 0 and section_length > 0:
-                section_idx.append((section, section_start, section_length))
-                section_start = 0
-
-        if row_index == len(df) - 1:
-            section_length = row_index - section_start + 1
-            if section_start > 0 and section_length > 0:
-                section_idx.append((section, section_start, section_length))
-
-    return section_idx
-
-
 def parse_sections(path: Path) -> tuple[list[str], dict[str, pl.DataFrame]]:
     return Parse_section_tsv(str(path), ["Header"])
-"""
-    try:
-        return Parse_section_tsv(str(path), ["Header"])
-    except Exception:
-        return parse_section_tsv_safe(str(path), ["Header"])
-"""
 
 def detect_workflow(headers: list[str], sections: dict[str, pl.DataFrame], path: Path) -> tuple[str, str]:
     header_text = " ".join(headers).lower()
@@ -349,8 +343,8 @@ def parse_metrics_file(path: Path) -> pl.DataFrame:
 def find_metrics_files(input_dir: Path, run_ids: list[str]) -> list[Path]:
     candidates: list[Path] = []
     for run_id in run_ids:
-        matches = sorted((input_dir / "dragen").glob(f"{run_id}*MetricsOutput*.tsv"))
-        matches += sorted((input_dir / "localapp").glob(f"{run_id}*MetricsOutput*.tsv"))
+        matches = sorted((input_dir).glob(f"{run_id}*MetricsOutput*.tsv"))
+        matches += sorted((input_dir).glob(f"{run_id}*MetricsOutput*.tsv"))
         if not matches:
             raise FileNotFoundError(f"No MetricsOutput.tsv found for RUN_ID: {run_id}")
         candidates.extend(matches)
@@ -405,7 +399,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-directory", type=Path, default=Path("in"))
     parser.add_argument("--output", type=Path, default=Path("out/intermediate_metrics_files/master_metrics_table.tsv"))
-    parser.add_argument("--joint-output", type=Path, default=Path("out/intermediate_metrics_files/joint_metrics_file.tsv"))
+    parser.add_argument("--joint-output", type=Path, default=Path("out/intermediate_metrics_files/joint_sequencing_QC_file.tsv"))
     return parser.parse_args()
 
 
@@ -416,7 +410,9 @@ def main() -> None:
     master = concat_frames(frames)
 
     write_master(master, args.output)
-    write_joint_metrics_file(master, args.joint_output)
+#    run_ids = [run_id_from_filename(path) for path in files]
+
+    write_joint_sequencing_qc_file(frames, RUN_IDS, args.joint_output)
 
     print(f"files parsed: {len(files)}")
     print(f"rows: {master.height}")
