@@ -24,9 +24,9 @@ __pycache__/
 .vscode/
 
 # Generated outputs
-out/
-*.pdf
-*.zip
+#out/
+#*.pdf
+#*.zip
 
 # Temporary files
 *.swp
