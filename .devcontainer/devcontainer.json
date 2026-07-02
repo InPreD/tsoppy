@@ -20,7 +20,11 @@
 		"TZ": "Europe/Berlin",
 		"LC_ALL": "en_US.UTF-8",
 		"LANG": "en_US.UTF-8",
-		"LANGUAGE": "en_US.UTF-8"
+		"LANGUAGE": "en_US.UTF-8",
+		"HTTP_PROXY": "${localEnv:HTTP_PROXY}",
+		"HTTPS_PROXY": "${localEnv:HTTP_PROXY}",
+		"http_proxy": "${localEnv:HTTP_PROXY}",
+		"https_proxy": "${localEnv:HTTP_PROXY}"
 	},
 	"mounts": [
 		// Mount in forwarding of ssh keys
