@@ -69,10 +69,19 @@ class MetricPlots:
                 f"RUN ID file not found: {self.run_id_file}")
 
         run_ids = []
+        seen = set()
+
         with self.run_id_file.open() as handle:
             for line in handle:
-                run_id = line.strip()
-                if run_id and not run_id.startswith("#"):
+                run_id = line.strip().strip('"').strip("'")
+                run_id = re.sub(r"\s*_MetricsOutput.*\.tsv$",
+                                "", run_id).strip()
+
+                if not run_id or run_id.startswith("#"):
+                    continue
+
+                if run_id not in seen:
+                    seen.add(run_id)
                     run_ids.append(run_id)
 
         if not run_ids:
@@ -81,24 +90,35 @@ class MetricPlots:
         return run_ids
 
     def _find_metrics_files(self, run_ids: list[str]) -> list[Path]:
+        all_metrics_files = sorted(
+            self.input_directory.glob("*MetricsOutput*.tsv"))
+
+        if not all_metrics_files:
+            raise FileNotFoundError(
+                f"No MetricsOutput.tsv files found directly inside {self.input_directory}"
+            )
+
         files = []
+        seen_paths = set()
 
         for run_id in run_ids:
-            matches = []
-            for subdir in ["dragen", "localapp"]:
-                directory = self.input_directory / subdir
-                print(directory)
-                if directory.is_dir():
-                    matches.extend(
-                        sorted(directory.glob(f"{run_id}*MetricsOutput*.tsv"))
-                    )
+            matches = [
+                path
+                for path in all_metrics_files
+                if self._run_id_from_filename(path) == run_id
+            ]
 
             if not matches:
+                available = "\n".join(path.name for path in all_metrics_files)
                 raise FileNotFoundError(
-                    f"No MetricsOutput.tsv found for RUN ID: {run_id}"
+                    f"No MetricsOutput.tsv found for RUN ID: {run_id}\n\n"
+                    f"Available files:\n{available}"
                 )
 
-            files.extend(matches)
+            for path in matches:
+                if path not in seen_paths:
+                    seen_paths.add(path)
+                    files.append(path)
 
         return files
 
@@ -365,12 +385,9 @@ class MetricPlots:
 
     @staticmethod
     def _run_id_from_filename(path: Path) -> str:
-        name = path.name
-        name = re.sub(
-            r"_MetricsOutput_(Localapp|LocalApp|Dragen|DRAGEN)\.tsv$", "", name
-        )
-        name = re.sub(r"_MetricsOutput\.tsv$", "", name)
-        return name
+        name = path.name.strip()
+        name = re.sub(r"\s*_MetricsOutput.*\.tsv$", "", name)
+        return name.strip()
 
     def _concat_frames(self, frames: list[pl.DataFrame]) -> pl.DataFrame:
         if not frames:
