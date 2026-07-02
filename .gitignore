@@ -23,10 +23,13 @@ __pycache__/
 # VS Code
 .vscode/
 
+# Ins
+in/v2_test/
+
 # Generated outputs
-#out/
-#*.pdf
-#*.zip
+out/
+*.pdf
+*.zip
 
 # Temporary files
 *.swp

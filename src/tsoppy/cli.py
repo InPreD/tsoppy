@@ -6,9 +6,11 @@ import importlib.metadata
 import logging
 from typing import Annotated
 from pathlib import Path
-from tsoppy.metric_plots.main import MetricPlots
 
 import typer
+
+from tsoppy.metric_plots.main import MetricPlots
+
 
 app = typer.Typer()
 
