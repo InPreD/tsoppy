@@ -4,7 +4,7 @@ If you are contributing to the codebase of tsoppy, we would like for you to read
 
 ## Preparation
 
-### Development Environment
+### Development environment setup
 
 We recommend to install and use [**Visual Studio Code**](https://code.visualstudio.com/) for development but there might be other options more suitable if you are already familiar with them and if those support devcontainers. Download the appropriate version of Visual Studio Code and install it on your machine.
 
@@ -102,3 +102,19 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 
 1. Provide unit tests in `tests/test_<subpackage>_<module>.py`. If test data is necessary add it under `tests/test_data/<subpackage>_<module>/<function>/<test case name>.py`. Cover all edge cases as well as use cases from the different nodes.
 1. In general, make things configurable and avoid hard-coding paths and variables that might be subjected to changes.
+
+## Running `tsoppy` cli
+
+`tsoppy` needs to be reinstalled in order to reflect any changes you might have made to the code base:
+
+```bash
+$ pip install .
+```
+
+Here are useful commands if you want to try out `tsoppy`:
+
+```bash
+$ tsoppy --help # help text for main command
+$ tsoppy version # return version string
+$ tsoppy <subcommand> --help # help text for sub command
+```
