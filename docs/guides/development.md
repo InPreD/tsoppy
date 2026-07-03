@@ -2,6 +2,22 @@
 
 If you are contributing to the codebase of tsoppy, we would like for you to read this section to familiarize yourself with the structure and guidelines of the project.
 
+## Preparation
+
+### Development Environment
+
+We recommend to install and use [**Visual Studio Code**](https://code.visualstudio.com/) for development but there might be other options more suitable if you are already familiar with them and if those support devcontainers. Download the appropriate version of Visual Studio Code and install it on your machine.
+
+In order for you to use the devcontainer in this repository, you need to have [**Docker**](https://docs.docker.com/get-started/get-docker/) installed. Depending on your OS you should either go with Docker Desktop or install [Docker Engine](https://docs.docker.com/engine/install/) for linux distributions. Also, consider the [VS Code docs for setting up Docker](https://code.visualstudio.com/docs/devcontainers/containers#_installation).
+
+### Clone repository
+
+Open VS Code, open a new terminal, navigate to to directory you want to clone the repository into and run `git clone https://github.com/InPreD/tsoppy.git`. Now open the folder you just cloned to enter the local copy of the repository.
+
+### Start devcontainer
+
+Open the [`Command Palette`](https://code.visualstudio.com/api/ux-guidelines/command-palette) and choose `Dev Containers: Rebuild Container`. VS Code will launch the devcontainer which contains all the dependencies you need for developing in this repository. You can add extensions according to your needs and suggest changes to the devcontainer definition if they are relevant to other developers.
+
 ## Recommended workflow
 
 1. Create an [issue](https://github.com/InPreD/tsoppy/issues/new) which is assigned to yourself, labeled as `enhancement` and of type `feature`. Include an adequate description and link to any relevant old TSOPPI code or other documents.
