@@ -105,7 +105,7 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 
 ## Running `tsoppy` cli
 
-`tsoppy` needs to be reinstalled in order to reflect any changes you might have made to the code base:
+`tsoppy` needs to be reinstalled everytime you make changes to the code base which you want to test:
 
 ```bash
 $ pip install .
