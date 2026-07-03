@@ -91,7 +91,7 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 1. Any imports of python packages should follow and be sorted with `isort`. Also, add packages that are not installed yet to the `pyproject.toml`, section `[project]`, key `dependencies`.
 1. Create a logger below the import section like so: `logger = logging.getLogger(__name__)`.
 1. Functions should be named with snake_case. Starting with a capital letter indicates that the function is designed to be used outside of the module, e.g. `Public_function_name(...)`, while prefixing with `_` is for internal helper functions, e.g. `_internal_function(...)`. All input variables and output should be [typed](https://docs.python.org/3/library/typing.html). Include a short description under the function definition line. Also provide comments to describe individual sections of the function and for parts that are generally more complex.
-1. Classes should be named with [PascalCase](https://stringcase.org/cases/pascal/). The class should contain a description and a list over all attributes. It also needs a constructor method `__init__` and potentially a `__eq__` method for testing. The same guidelines listed for functions should be applied to methods.
+1. Classes should be named with [PascalCase](https://stringcase.org/cases/pascal/). The class should contain a description and a list over all attributes. It also needs a constructor method `__init__` and potentially a [`__eq__` method](#alternatives-for-assert-value1--value2) for testing. The same guidelines listed for functions should be applied to methods.
 1. Import your subpackage to `src/tsoppy/cli.py` like so: `from tsoppy.<subpackage>.<module> import <class or function>`. Subsequently, connect your subpackage to a command like so:
 
     ```python
@@ -100,8 +100,77 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
         # call your function or create your class instance here
     ```
 
-1. Provide unit tests in `tests/test_<subpackage>_<module>.py`. If test data is necessary add it under `tests/test_data/<subpackage>_<module>/<function>/<test case name>.py`. Cover all edge cases as well as use cases from the different nodes.
+1. Remember to add [unit tests](#unit-testing).
 1. In general, make things configurable and avoid hard-coding paths and variables that might be subjected to changes.
+
+## Unit testing
+
+We use pytest for unit testing and some kind of table-driven testing in order to reduce biolerplate code. Unit tests should be placed in `tests/<subpackage>_<module>_test.py`. If test data is necessary add it under `tests/test_data/<subpackage>_<module>/<function>/<test case name>.py`. Cover all edge cases as well as use cases from the different nodes.
+
+Please find an example of a unit test below:
+
+```python
+from contextlib import nullcontext # in case of exception testing
+from os import path # in case test data is used
+
+from pytest import mark, raises # mark is required to use parametrize making the tests table-driven; raises is for exception testing
+
+from tsoppy.<subpackage>.<module> import (
+    <function>
+    <class>
+) # import the function(s) or class(es) you want to test
+
+# Define path to test data - cannot be absolute due to different paths locally and in CI
+test_data_dir = "tests/test_data/<subpackage>_<module>" # only required if test data is used; just to avoid repeating the path
+
+@mark.parametrize(
+    "inputs, exception, want", # exception can be skipped if no exceptions are tested
+    [
+        (
+            # here should be a short description of the test case
+            (
+                "input1",
+                path.join(test_data_dir, "<function>/<test_case>.<txt,tsv,csv,json,vcf>")
+            ),
+            nullcontext(),
+            (
+                "output1",
+                2.0
+            )
+        ),
+        ...
+    ]
+)
+def test_<function>(inputs, exception, want):
+    with exception: # if an exception is expected for some cases
+        got = <function>(inputs[0], inputs[1])
+        # assert that two values are equal is the simplest way to check if the output is as expected but not always adequate
+        assert got[0] == want[0]
+        assert got[1] == want[1]
+```
+
+> [!WARNING]
+> Please keep in mind that the example is simplified and you need to adapt the tests to your needs. Start by defining your test cases and expected output and then modify the unit test accordingly.
+
+### Potential exceptions to test for
+
+- `FileNotFoundError`: If your function takes a file path as input.
+- `polars.exceptions.NoDataError`: If you are reading a table into a polars dataframe.
+
+### Alternatives for `assert value1 == value2`
+
+- `dataframe1.equals(dataframe2)`: If you are comparing two polars dataframes.
+- `__eq__(self, other)`: For classes, we can define a method to enable the `==` comparison:
+
+    ```python
+    def __eq__(self, other):
+        if not isinstance(other, <class>):
+            return False
+        if self.<attribute1> != other.<attribute1>:
+            return False
+        ...
+        return self.<attributeN> == other.<attributeN>:
+    ```
 
 ## Running `tsoppy` cli
 
