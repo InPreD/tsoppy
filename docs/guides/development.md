@@ -105,7 +105,7 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 
 ## Unit testing
 
-We use pytest for unit testing and some kind of table-driven testing in order to reduce biolerplate code. Unit tests should be placed in `tests/<subpackage>_<module>_test.py`. If test data is necessary add it under `tests/test_data/<subpackage>_<module>/<function>/<test case name>.py`. Cover all edge cases as well as use cases from the different nodes.
+We use pytest for unit testing and some kind of table-driven testing in order to reduce boilerplate code. Unit tests should be placed in `tests/<subpackage>_<module>_test.py`. If test data is necessary add it under `tests/test_data/<subpackage>_<module>/<function>/<test case name>.py`. Cover all edge cases as well as use cases from the different nodes.
 
 Please find an example of a unit test below:
 
