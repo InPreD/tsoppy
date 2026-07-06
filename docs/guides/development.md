@@ -8,7 +8,7 @@ If you are contributing to the codebase of tsoppy, we would like for you to read
 
 We recommend to install and use [**Visual Studio Code**](https://code.visualstudio.com/) for development but there might be other options more suitable if you are already familiar with them and if those support devcontainers. Download the appropriate version of Visual Studio Code and install it on your machine.
 
-In order for you to use the devcontainer in this repository, you need to have [**Docker**](https://docs.docker.com/get-started/get-docker/) installed. Depending on your OS you should either go with Docker Desktop or install [Docker Engine](https://docs.docker.com/engine/install/) for linux distributions. Also, consider the [VS Code docs for setting up Docker](https://code.visualstudio.com/docs/devcontainers/containers#_installation).
+In order for you to use the devcontainer in this repository, you need to have [**Docker**](https://docs.docker.com/get-started/get-docker/) installed. Depending on your OS you should either go with [Docker Desktop](https://www.docker.com/products/docker-desktop/) or install [Docker Engine](https://docs.docker.com/engine/install/) for linux distributions. Also, consider the [VS Code docs for setting up Docker](https://code.visualstudio.com/docs/devcontainers/containers#_installation).
 
 ### Clone repository
 
