@@ -17,19 +17,16 @@ def validate_uniqueness(df: pl.DataFrame, column: str):
     """
     Test that all the values in column 'column' of dataframe 'df' are unique.
     """
-    try:
-        if not df[column].is_unique().all():
-            # find the duplicates to make the error message helpful
-            duplicates = (
-                df[column].filter(df[column].is_duplicated()).unique().to_list()
-            )
-            raise ValueError(f"Duplicate IDs found in '{column}': {duplicates}")
-
-    except ValueError:
+    if not df[column].is_unique().all():
+        # find the duplicates to make the error message helpful
+        duplicates = (
+            df[column].filter(df[column].is_duplicated()).unique().to_list()
+        )
         # this captures the full traceback automatically
         logger.exception("Data Integrity Validation Failed.")
-        # re-raise the current exception so the caller can handle it
-        raise
+        raise ValueError(f"Duplicate IDs found in '{column}': {duplicates}")
+    else:
+        return
 
 
 def tumor_purity_range_validation(tumor_purity: float):
