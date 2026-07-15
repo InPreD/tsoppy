@@ -58,6 +58,39 @@ def test_workflowoutput_init(inputs, exception, want):
                 False_,
                 float32(-1),
                 str_("A/A"),
+                {
+                    "fileformat": "VCFv4.2",
+                    "FILTER": {"PASS": {"Description": '"All filters passed"'}},
+                    "ALT": {
+                        "NON_REF": {
+                            "Description": '"Represents any possible alternative allele at this location"'
+                        }
+                    },
+                    "FORMAT": {
+                        "AD": {
+                            "Number": "R",
+                            "Type": "Integer",
+                            "Description": '"Allelic depths (counting only informative reads out of the total reads) for the ref and alt alleles in the order listed"',
+                        },
+                        "DP": {
+                            "Number": "1",
+                            "Type": "Integer",
+                            "Description": '"Approximate read depth (reads with MQ=255 or with bad mates are filtered)"',
+                        },
+                        "GT": {
+                            "Number": "1",
+                            "Type": "String",
+                            "Description": '"Genotype"',
+                        },
+                        "SQ": {
+                            "Number": "A",
+                            "Type": "Float",
+                            "Description": '"Somatic quality"',
+                        },
+                    },
+                    "contig": {"chr1": {"length": "249250621"}},
+                    "reference": "file://hashtable/reference.bin",
+                },
             ),
         ),
         (
@@ -73,12 +106,76 @@ def test_workflowoutput_init(inputs, exception, want):
                 False_,
                 float32(0),
                 str_("A/A"),
+                {
+                    "fileformat": "VCFv4.1",
+                    "FILTER": {"PASS": {"Description": '"All filters passed"'}},
+                    "ALT": {
+                        "NON_REF": {
+                            "Description": '"Represents any possible alternative allele at this location"'
+                        }
+                    },
+                    "FORMAT": {
+                        "AD": {
+                            "Number": None,
+                            "Type": "Integer",
+                            "Description": '"Allele Depth"',
+                        },
+                        "DP": {
+                            "Number": "1",
+                            "Type": "Integer",
+                            "Description": '"Total Depth Used For Variant Calling"',
+                        },
+                        "GT": {
+                            "Number": "1",
+                            "Type": "String",
+                            "Description": '"Genotype"',
+                        },
+                        "SQ": {
+                            "Number": "A",
+                            "Type": "Float",
+                            "Description": '"Somatic quality"',
+                        },
+                        "GQ": {
+                            "Number": "1",
+                            "Type": "Integer",
+                            "Description": '"Genotype Quality"',
+                        },
+                        "VF": {
+                            "Number": None,
+                            "Type": "Float",
+                            "Description": '"Variant Frequency"',
+                        },
+                        "NL": {
+                            "Number": "1",
+                            "Type": "Integer",
+                            "Description": '"Applied BaseCall Noise Level"',
+                        },
+                        "SB": {
+                            "Number": "1",
+                            "Type": "Float",
+                            "Description": '"StrandBias Score"',
+                        },
+                        "NC": {
+                            "Number": "1",
+                            "Type": "Float",
+                            "Description": '"Fraction of bases which were uncalled or with basecall quality below the minimum threshold"',
+                        },
+                        "US": {
+                            "Number": None,
+                            "Type": "Integer",
+                            "Description": '"Supporting read type counts"',
+                        },
+                    },
+                    "contig": {"chr1": {"length": "249250621"}},
+                    "reference": "/opt/illumina/resources/genomes/hg19_hardPAR",
+                },
             ),
         ),
         (
             ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
             raises(FileNotFoundError),
             (
+                None,
                 None,
                 None,
                 None,
@@ -108,6 +205,7 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
         assert got_variant.gt_phases[0] == want[6]
         assert got_variant.gt_quals[0] == want[7]
         assert got_variant.gt_bases[0] == want[8]
+        assert got.header_dict == want[9]
 
 
 @mark.parametrize(
