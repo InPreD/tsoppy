@@ -8,7 +8,7 @@ from typing import Annotated
 
 import typer
 
-from tsoppy.reportPredispositions.main import report_predispositions
+from tsoppy.report_predispositions.main import report_predispositions
 
 app = typer.Typer()
 app_version = importlib.metadata.version("tsoppy")
