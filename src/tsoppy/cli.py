@@ -58,7 +58,13 @@ def report_predispositions(
     cancer_susceptibility_genes_column_list: Annotated[
         list[str],
         typer.Option(
-            help="List of column names for the columns that should be reported in the output predisposition file. The first column has to contain gene names (e.g. BRCA1, TP53)."
+            help="List of column names for the columns that should be reported in the output predisposition file."
+        ),
+    ],
+    cancer_susceptibility_genes_gene_name_column: Annotated[
+        str,
+        typer.Option(
+            help="Name of the column containing HUGO gene names (e.g. BRCA1, TP53)."
         ),
     ],
     germline_small_variant_calls: Annotated[
@@ -82,6 +88,7 @@ def report_predispositions(
         tumor_purity,
         cancer_susceptibility_genes,
         cancer_susceptibility_genes_column_list,
+        cancer_susceptibility_genes_gene_name_column,
         germline_small_variant_calls,
         output,
     )

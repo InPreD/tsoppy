@@ -73,6 +73,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
     # duplicate records for a gene
 
     column_list = list(("Gene", "Actionability", "Age"))
+    gene_name_column = "Gene"
 
     print(column_list)
 
@@ -100,7 +101,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
     # test the expected input
     assert (
         load_data_from_cancer_susceptibility_genes_table(
-            test_file_expected, column_list
+            test_file_expected, column_list, gene_name_column
         )
         == result
     )
@@ -122,7 +123,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
     # test the input with missing column
     with pytest.raises(pl.exceptions.ColumnNotFoundError):
         load_data_from_cancer_susceptibility_genes_table(
-            test_file_missing_column, column_list
+            test_file_missing_column, column_list, gene_name_column
         )
 
     # remove the temporary file test_file_missing_column
@@ -134,7 +135,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
     # test the nonexistent input file
     with pytest.raises(FileNotFoundError):
         load_data_from_cancer_susceptibility_genes_table(
-            test_file_nonexistent, column_list
+            test_file_nonexistent, column_list, gene_name_column
         )
 
     # test the input with duplicated genes
@@ -146,7 +147,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
 
     with pytest.raises(ValueError):
         load_data_from_cancer_susceptibility_genes_table(
-            test_file_duplicated, column_list
+            test_file_duplicated, column_list, gene_name_column
         )
 
     # remove the temp file test_file_duplicated
