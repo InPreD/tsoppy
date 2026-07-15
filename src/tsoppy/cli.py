@@ -12,7 +12,7 @@ import typer
 from tsoppy.add_variant_summary.main import Summarise_variant_output
 from tsoppy.metric_plots.main import MetricPlots
 from tsoppy.metric_plots.plotting import Generate_qc_plots
-from tsoppy.report_predispositions.main import report_predispositions
+from tsoppy.report_predispositions.main import generate_report
 
 app = typer.Typer()
 
@@ -87,7 +87,6 @@ def version():
 
 
 @app.command()
-<<<<<<< HEAD
 def metric_plots(
     input_glob: Annotated[
         str,
@@ -339,7 +338,7 @@ def add_variant_summary(
 
 
 @app.command()
-def report_predisposition_variants(
+def report_predispositions(
     sample_id: Annotated[str, typer.Option(help="ID of the input sample.")],
     version_string: Annotated[
         str,
@@ -378,7 +377,8 @@ def report_predisposition_variants(
         ),
     ],
     germline_small_variant_calls: Annotated[
-        Path, typer.Option(help="File containing germline small variant calls.")
+        Path, typer.Option(
+            help="File containing germline small variant calls.")
     ],
     output: Annotated[
         Path, typer.Option(help="File containing predisposition variants.")
@@ -389,7 +389,7 @@ def report_predisposition_variants(
     in the cancer susceptibility genes.
     """
 
-    report_predispositions(
+    generate_report(
         sample_id,
         version_string,
         doi_reference,

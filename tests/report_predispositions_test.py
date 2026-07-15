@@ -17,7 +17,7 @@ from tsoppy.report_predispositions.main import (
 )
 
 # TODO: test_lookup_predisposition_variants
-# TODO: test_report_predispositions
+# TODO: test_generate_report
 
 
 def test_validate_uniqueness():
