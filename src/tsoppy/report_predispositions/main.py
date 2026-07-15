@@ -42,30 +42,29 @@ def tumor_purity_range_validation(tumor_purity: float):
 
 
 def load_data_from_cancer_susceptibility_genes_table(
-    cancer_susceptibility_genes: Path, column_list: list[str]
+    file_path: Path, column_list: list[str], gene_name_column: str
 ) -> dict[str, dict[str, str]]:
     """
     Load data from the input table of cancer susceptibility genes.
     """
 
-    # column_list[0] is primary key of the cancer_susceptibility_genes file
-    # contains gene name
-    gene_column_name = column_list[0]
-
     # load input data
-    df = pl.read_csv(cancer_susceptibility_genes,
+    df = pl.read_csv(file_path,
                      columns=column_list, separator="\t")
+
+    # gene_column_name is supposed to be a column containing
+    # primary key of the cancer_susceptibility_genes file
 
     # check that none of the genes is present multiple times,
     # exit if there is such a gene, report all duplicates
-    validate_uniqueness(df, gene_column_name)
+    validate_uniqueness(df, gene_name_column)
 
     # dictionary of dictionaries to store the input data
     # gene names being the primary keys
     # and for each gene, there is a dictionary
     # with actionability and age
     cancer_susceptibility_genes_dict = {
-        row.pop(gene_column_name): row for row in df.to_dicts()
+        row.pop(gene_name_column): row for row in df.to_dicts()
     }
 
     return cancer_susceptibility_genes_dict
@@ -255,6 +254,7 @@ def generate_report(
     tumor_purity: float,
     cancer_susceptibility_genes: Path,
     csg_column_list: list[str],
+    gene_name_column: str,
     small_variant_calls: Path,
     output_file: Path,
 ):
@@ -271,7 +271,7 @@ def generate_report(
     logger.info(
         f"Load data from the {cancer_susceptibility_genes} input file.")
     cancer_susceptibility_genes_dict = load_data_from_cancer_susceptibility_genes_table(
-        cancer_susceptibility_genes, csg_column_list
+        cancer_susceptibility_genes, csg_column_list, gene_name_column
     )
 
     logger.info(
