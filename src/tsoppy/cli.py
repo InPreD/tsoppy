@@ -1,12 +1,9 @@
 """This module contains the CLI commands for tsoppy."""
 
 import importlib.metadata
-<<<<<<< HEAD
 import logging
 from dataclasses import dataclass
 from enum import Enum
-=======
->>>>>>> eb31d61 (feat: add functionality except for working with the small variant calls, test: add tests for all the implemented functions)
 from pathlib import Path
 from typing import Annotated
 
@@ -15,7 +12,7 @@ import typer
 from tsoppy.add_variant_summary.main import Summarise_variant_output
 from tsoppy.metric_plots.main import MetricPlots
 from tsoppy.metric_plots.plotting import Generate_qc_plots
-from tsoppy.reportPredispositions.main import report_predispositions
+from tsoppy.report_predispositions.main import report_predispositions
 
 app = typer.Typer()
 
@@ -342,8 +339,6 @@ def add_variant_summary(
 
 
 @app.command()
-=======
->>>>>>> eb31d61 (feat: add functionality except for working with the small variant calls, test: add tests for all the implemented functions)
 def report_predisposition_variants(
     sample_id: Annotated[str, typer.Option(help="ID of the input sample.")],
     version_string: Annotated[
