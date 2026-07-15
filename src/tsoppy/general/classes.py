@@ -1,6 +1,7 @@
 import gzip
 import logging
 import os
+import re
 from pathlib import Path
 
 import cyvcf2
@@ -97,10 +98,17 @@ class SmallVariantGenomeVcf(WorkflowOutput):
     """Input class for small variant genome VCF files produced by different workflows.
 
     Attributes:
+        header_dict: Dict containing parsed VCF object header information accessible by keys (dict)
+        header_rex: Regex to parse top level key value pairs in VCF object header (str)
+        header_rex: Regex to parse sub level key value pairs in VCF object header (str)
         path: Path to vcf (Path)
         sample_id: Sample identifier (str)
         vcf: Parsed VCF object (cyvcf2.VCF)
     """
+
+    header_dict = {}
+    header_rex = r"##(?P<key>\w+)=(?P<value>.+)"
+    header_subrex = r"(\w+)=([\w\d]+|\".+\")?"
 
     def __init__(self, config_yaml: str | Path, root_path: str | Path, sample_id: str):
         """Initialize SmallVariantGenomeVcf"""
@@ -129,6 +137,35 @@ class SmallVariantGenomeVcf(WorkflowOutput):
             )
             raise FileNotFoundError
         self.vcf = cyvcf2.VCF(self.path)
+        self._parse_header()
+
+    def _parse_header(self):
+        """Parse vcf header into dict"""
+        for match in re.finditer(self.header_rex, self.vcf.raw_header):
+            # Use named capture groups to split line into key and value
+            key = match.groupdict()["key"]
+            value = match.groupdict()["value"]
+
+            # Check if value containes additional key value pairs
+            if not bool(re.search(self.header_subrex, value)):
+                self.header_dict[key] = value
+            else:
+                # Parse key value pairs into dict
+                item = dict()
+                for match2 in re.finditer(self.header_subrex, value):
+                    g = match2.groups()
+                    item[g[0]] = g[1]
+
+                # Use ID value as subkey if it exists
+                if "ID" not in item:
+                    if key not in self.header_dict:
+                        self.header_dict[key] = list()
+                    self.header_dict[key].append(item)
+                else:
+                    if key not in self.header_dict:
+                        self.header_dict[key] = dict()
+                    subkey = item.pop("ID")
+                    self.header_dict[key][subkey] = item
 
 
 class TmbTraceTsv(WorkflowOutput):
