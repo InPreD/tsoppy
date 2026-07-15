@@ -8,7 +8,7 @@ from typing import Annotated
 
 import typer
 
-from tsoppy.report_predispositions.main import report_predispositions
+from tsoppy.report_predispositions.main import generate_report
 
 app = typer.Typer()
 app_version = importlib.metadata.version("tsoppy")
@@ -23,7 +23,7 @@ def version():
 
 
 @app.command()
-def report_predisposition_variants(
+def report_predispositions(
     sample_id: Annotated[str, typer.Option(help="ID of the input sample.")],
     version_string: Annotated[
         str,
@@ -62,7 +62,8 @@ def report_predisposition_variants(
         ),
     ],
     germline_small_variant_calls: Annotated[
-        Path, typer.Option(help="File containing germline small variant calls.")
+        Path, typer.Option(
+            help="File containing germline small variant calls.")
     ],
     output: Annotated[
         Path, typer.Option(help="File containing predisposition variants.")
@@ -73,7 +74,7 @@ def report_predisposition_variants(
     in the cancer susceptibility genes.
     """
 
-    report_predispositions(
+    generate_report(
         sample_id,
         version_string,
         doi_reference,
