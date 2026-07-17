@@ -8,6 +8,14 @@ logger = logging.getLogger(__name__)
 
 
 class sectionIdx:
+    """Section index class to save information about section
+
+    Attributes:
+        empty: Empty state of section (bool)
+        length: Length of section in rows (int)
+        name: Section name (str)
+        start: Start row index of section (int)
+    """
     empty = False
     length = 0
     start = 0
@@ -135,7 +143,8 @@ def _handle_row_with_nulls(df: polars.DataFrame) -> polars.DataFrame:
 
     # remove any columns that are completely null (no column header nor values)
     df = df.select(
-        [polars.col(col) for col in df.columns if not df[col].null_count() == df.height]
+        [polars.col(col)
+         for col in df.columns if not df[col].null_count() == df.height]
     )
 
     # avoid null values by filling with "-"
