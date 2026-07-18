@@ -30,15 +30,15 @@ def validate_uniqueness(df: pl.DataFrame, column: str):
 
 
 def validate_tumor_purity_range(tumor_purity: float):
-    try:
-        if not 0 <= tumor_purity <= 1:
-            raise ValueError(
-                f"Tumor purity value {tumor_purity} is out of range.")
-    except ValueError:
+    """
+    Test that tumor purity value is between 0 and 1.
+    """
+    if not 0 <= tumor_purity <= 1:
         # this captures the full traceback automatically
         logger.exception("Data Integrity Validation Failed.")
-        # re-raise the current exception so the caller can handle it
-        raise
+        raise ValueError(f"Tumor purity value {tumor_purity} is out of range.")
+    else:
+        return
 
 
 def load_data_from_cancer_susceptibility_genes_table(
