@@ -12,7 +12,7 @@ from tsoppy.report_predispositions.main import (
     get_genomic_location,
     load_data_from_cancer_susceptibility_genes_table,
     print_predisposition_variants_to_output_file,
-    tumor_purity_range_validation,
+    validate_tumor_purity_range,
     validate_uniqueness,
 )
 
@@ -46,23 +46,23 @@ def test_validate_uniqueness():
         validate_uniqueness(non_unique_df, "Gene")
 
 
-def test_tumor_purity_range_validation():
+def test_validate_tumor_purity_range():
     # value in the range
     value = 0.15
 
-    assert tumor_purity_range_validation(value) is None
+    assert validate_tumor_purity_range(value) is None
 
     # value below 0
     value = -5
 
     with pytest.raises(ValueError):
-        tumor_purity_range_validation(value)
+        validate_tumor_purity_range(value)
 
     # value higher than 1
     value = 12
 
     with pytest.raises(ValueError):
-        tumor_purity_range_validation(value)
+        validate_tumor_purity_range(value)
 
 
 def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
