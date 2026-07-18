@@ -29,7 +29,7 @@ def validate_uniqueness(df: pl.DataFrame, column: str):
         return
 
 
-def tumor_purity_range_validation(tumor_purity: float):
+def validate_tumor_purity_range(tumor_purity: float):
     try:
         if not 0 <= tumor_purity <= 1:
             raise ValueError(
