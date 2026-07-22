@@ -51,7 +51,7 @@ test_data_dir = "tests/test_data/general_classes"
 def test_workflowoutput_init(inputs, exception, want):
     with exception:
         got = WorkflowOutput(inputs[0], inputs[1], inputs[2])
-        assert got.workflow_id() == want[0]
+        assert got.workflow_id == want[0]
         assert got.sample_exists(want[1])
 
 
