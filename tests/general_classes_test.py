@@ -89,7 +89,7 @@ def test_workflowoutput_init(inputs, exception, want):
     ],
 )
 def test_workflowoutput_sample_meta(inputs, want):
-    got = WorkflowOutput(inputs[0], inputs[1], inputs[2])
+    got = WorkflowOutput(*inputs)
     assert got.sample_meta(inputs[3]) == want
 
 
