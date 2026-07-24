@@ -50,7 +50,7 @@ test_data_dir = "tests/test_data/general_classes"
 )
 def test_workflowoutput_init(inputs, exception, want):
     with exception:
-        got = WorkflowOutput(inputs[0], inputs[1], inputs[2])
+        got = WorkflowOutput(*inputs)
         assert got.workflow_id == want[0]
         assert got.sample_exists(want[1])
 
@@ -89,7 +89,7 @@ def test_workflowoutput_init(inputs, exception, want):
     ],
 )
 def test_workflowoutput_sample_meta(inputs, want):
-    got = WorkflowOutput(*inputs)
+    got = WorkflowOutput(*inputs[:3])
     assert got.sample_meta(inputs[3]) == want
 
 
@@ -160,7 +160,7 @@ def test_workflowoutput_sample_meta(inputs, want):
 )
 def test_smallvariantgenomevcf_create(inputs, exception, want):
     with exception:
-        workflow_output = WorkflowOutput(inputs[0], inputs[1], inputs[2])
+        workflow_output = WorkflowOutput(*inputs[:3])
         got = SmallVariantGenomeVcf.create(workflow_output, inputs[3])
         got_variants = list(got.vcf)
         assert len(got_variants) == 1
@@ -266,7 +266,7 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
 )
 def test_tmbtracetsv_create(inputs, exception, want):
     with exception:
-        workflow_output = WorkflowOutput(inputs[0], inputs[1], inputs[2])
+        workflow_output = WorkflowOutput(*inputs[:3])
         got = TmbTraceTsv.create(workflow_output, inputs[3])
         assert got.table.equals(want)
 
@@ -308,6 +308,6 @@ def test_tmbtracetsv_create(inputs, exception, want):
 )
 def test_variantsannotatedjson_create(inputs, exception, want):
     with exception:
-        workflow_output = WorkflowOutput(inputs[0], inputs[1], inputs[2])
+        workflow_output = WorkflowOutput(*inputs[:3])
         got = VariantsAnnotatedJson.create(workflow_output, inputs[3])
         assert got.data == want
