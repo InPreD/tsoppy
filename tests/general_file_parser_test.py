@@ -198,7 +198,7 @@ test_data_dir = "tests/test_data/general_file_parser"
 )
 def test_parse_section_tsv(inputs, exception, want):
     with exception:
-        got = _parse_section_sep_val(inputs[0], inputs[1], inputs[2])
+        got = _parse_section_sep_val(*inputs)
         assert got[0] == want[0]
         for key in want[1].keys():
             assert key in got[1]
