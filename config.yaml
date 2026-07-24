@@ -1,6 +1,9 @@
 metrics_output_tsv:
   dragen_2.6.2.4: Logs_Intermediates/MetricsOutput/MetricsOutput.tsv
   localapp_ruo-2.2.0.12: Logs_Intermediates/MetricsOutput/MetricsOutput.tsv
+samplesheet:
+  dragen_2.6.2.4: Logs_Intermediates/SampleSheetValidation/SampleSheet_Intermediate.csv
+  localapp_ruo-2.2.0.12: Logs_Intermediates/SamplesheetValidation/*_SampleSheet.csv
 small_variant_genome_vcf:
   dragen_2.6.2.4: Logs_Intermediates/DnaDragenCaller/{}/{}.hard-filtered.gvcf.gz
   localapp_ruo-2.2.0.12: Logs_Intermediates/VariantMatching/{}/{}_MergedSmallVariants.genome.vcf
