@@ -288,14 +288,14 @@ class SmallVariantGenomeVcf(WorkflowOutput):
     @classmethod
     def create(cls, workflow_output: WorkflowOutput, sample_id: str):
         """Create SmallVariantGenomeVcf from existing WorkflowOutput"""
-        obj = cls.__new__(cls)
-        obj.__dict__.update(workflow_output.__dict__)
-        obj.sample_id = sample_id
-        obj._parse()
         if not workflow_output.sample_exists(sample_id):
             logger.error(f"Sample {sample_id} does not exist")
             raise ValueError
         else:
+            obj = cls.__new__(cls)
+            obj.__dict__.update(workflow_output.__dict__)
+            obj.sample_id = sample_id
+            obj._parse()
             return obj
 
     def _parse(self):
@@ -336,11 +336,15 @@ class TmbTraceTsv(WorkflowOutput):
     @classmethod
     def create(cls, workflow_output: WorkflowOutput, sample_id: str):
         """Create TmbTraceTsv from existing WorkflowOutput."""
-        obj = cls.__new__(cls)
-        obj.__dict__.update(workflow_output.__dict__)
-        obj.sample_id = sample_id
-        obj._parse()
-        return obj
+        if not workflow_output.sample_exists(sample_id):
+            logger.error(f"Sample {sample_id} does not exist")
+            raise ValueError
+        else:
+            obj = cls.__new__(cls)
+            obj.__dict__.update(workflow_output.__dict__)
+            obj.sample_id = sample_id
+            obj._parse()
+            return obj
 
     def _parse(self):
         """Parse the TMB trace tsv."""
@@ -380,11 +384,15 @@ class VariantsAnnotatedJson(WorkflowOutput):
     @classmethod
     def create(cls, workflow_output: WorkflowOutput, sample_id: str):
         """Create VariantsAnnotatedJson from existing WorkflowOutput."""
-        obj = cls.__new__(cls)
-        obj.__dict__.update(workflow_output.__dict__)
-        obj.sample_id = sample_id
-        obj._parse()
-        return obj
+        if not workflow_output.sample_exists(sample_id):
+            logger.error(f"Sample {sample_id} does not exist")
+            raise ValueError
+        else:
+            obj = cls.__new__(cls)
+            obj.__dict__.update(workflow_output.__dict__)
+            obj.sample_id = sample_id
+            obj._parse()
+            return obj
 
     def _parse(self):
         """Parse the variants annotated JSON file"""
