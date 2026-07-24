@@ -312,7 +312,7 @@ def test_get_section_idx(input, want):
     ],
 )
 def test_parse_headers(inputs, want):
-    got = _parse_headers(inputs[0], inputs[1])
+    got = _parse_headers(*inputs)
     assert got == want
 
 
