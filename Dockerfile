@@ -8,7 +8,9 @@ COPY pyproject.toml ./
 COPY src/ ./src/
 
 # Install build dependencies and build the package as a wheel
-RUN pip install --no-cache-dir --upgrade pip \
+# Ignore hadolint warning of pinning version of 'build'-package
+# hadolint ignore=DL3013
+RUN pip install --no-cache-dir --upgrade pip==26.1.2 \
     && pip install --no-cache-dir build \
     && python -m build --wheel --outdir dist/ .
 
