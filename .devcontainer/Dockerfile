@@ -5,9 +5,8 @@ FROM hadolint/hadolint:latest-debian AS hadolint
 FROM mcr.microsoft.com/devcontainers/python:3.14-trixie
 
 # Define build arguments for user configuration
-ARG USERNAME=inpred
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
+ARG USERNAME
+ARG USER_UID
 ARG FULLNAME="Your full name"
 ARG MAIL="some@mail.address"
 
@@ -24,8 +23,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Create the user
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME -s /usr/bin/fish\
+RUN groupadd --gid $USER_UID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_UID -m $USERNAME -s /usr/bin/fish\
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 ENV PATH=$PATH:/home/$USERNAME/.local/bin
