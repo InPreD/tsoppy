@@ -26,10 +26,6 @@
 		"http_proxy": "${localEnv:HTTP_PROXY}",
 		"https_proxy": "${localEnv:HTTP_PROXY}"
 	},
-	"mounts": [
-		// Mount in forwarding of ssh keys
-		"source=${localEnv:SSH_AUTH_SOCK},target=${localEnv:SSH_AUTH_SOCK},type=bind"
-	],
 	// Configure tool-specific properties.
 	"customizations": {
 		// Configure properties specific to VS Code.
