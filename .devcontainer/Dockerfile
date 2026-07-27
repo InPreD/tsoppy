@@ -7,8 +7,8 @@ FROM mcr.microsoft.com/devcontainers/python:3.14-trixie
 # Define build arguments for user configuration
 ARG USERNAME
 ARG USER_UID
-ARG FULLNAME="Your full name"
-ARG MAIL="some@mail.address"
+ARG FULLNAME
+ARG MAIL
 
 # Install packages and set locale
 COPY --from=hadolint /bin/hadolint /bin/hadolint
