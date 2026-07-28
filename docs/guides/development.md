@@ -18,6 +18,9 @@ Open VS Code, open a new terminal, navigate to to directory you want to clone th
 
 Open the [`Command Palette`](https://code.visualstudio.com/api/ux-guidelines/command-palette) and choose `Dev Containers: Rebuild Container`. VS Code will launch the devcontainer which contains all the dependencies you need for developing in this repository. You can add extensions according to your needs and suggest changes to the devcontainer definition if they are relevant to other developers.
 
+> [!WARNING]
+> If you are using MacOS, you have to define `UID` and set it to `id -u` in your shell startup script (e.g. `.profile`, `.bashrc`, `.zshrc`)
+
 ## Recommended workflow
 
 1. Create an [issue](https://github.com/InPreD/tsoppy/issues/new) which is assigned to yourself, labeled as `enhancement` and of type `feature`. Include an adequate description and link to any relevant old TSOPPI code or other documents.
