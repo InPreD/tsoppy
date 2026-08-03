@@ -16,7 +16,6 @@
 		"seccomp=unconfined"
 	],
 	"containerEnv": {
-		"SSH_AUTH_SOCK": "${localEnv:SSH_AUTH_SOCK}",
 		"TZ": "Europe/Berlin",
 		"LC_ALL": "en_US.UTF-8",
 		"LANG": "en_US.UTF-8",
