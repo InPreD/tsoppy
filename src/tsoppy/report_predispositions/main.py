@@ -199,7 +199,6 @@ def print_predisposition_variants_to_output_file(
     sample_id: str,
     version_string: str,
     cancer_susceptibility_genes: Path,
-    doi_reference: str,
     small_variant_calls: Path,
     length_of_targeted_coding_regions: float,
     tumor_purity: float,
@@ -214,9 +213,12 @@ def print_predisposition_variants_to_output_file(
     with open(output_file, "w") as output:
         # print metadata comments to the output file
         print_header_lines_versions(sample_id, version_string, output)
-        print_header_lines_cancer_susceptibility_data_source(
-            sample_id, cancer_susceptibility_genes, doi_reference, output
-        )
+        # -----
+        # TODO: get source info from metadata of cancer_susceptibility_genes file and print it out
+        # -----
+        #  print_header_lines_cancer_susceptibility_data_source(
+        #    sample_id, cancer_susceptibility_genes, doi_reference, output
+        # )
         print_header_lines_remaining_variant_info_data_source(
             sample_id, small_variant_calls, output
         )
@@ -249,7 +251,6 @@ def print_predisposition_variants_to_output_file(
 def generate_report(
     sample_id: str,
     version_string: str,
-    doi_reference: str,
     length_of_targeted_coding_regions: float,
     tumor_purity: float,
     cancer_susceptibility_genes: Path,
@@ -288,7 +289,6 @@ def generate_report(
         sample_id,
         version_string,
         cancer_susceptibility_genes,
-        doi_reference,
         small_variant_calls,
         length_of_targeted_coding_regions,
         tumor_purity,
