@@ -31,12 +31,6 @@ def report_predispositions(
             help="String of the tools (and their versions) that were used in the data analysis."
         ),
     ],
-    doi_reference: Annotated[
-        str,
-        typer.Option(
-            help="Url of the article recommanding the cancer susceptibility gene list that is defined in the '--cancer-susceptibility-genes' option."
-        ),
-    ],
     length_of_targeted_coding_regions: Annotated[
         float,
         typer.Option(
@@ -83,7 +77,6 @@ def report_predispositions(
     generate_report(
         sample_id,
         version_string,
-        doi_reference,
         length_of_targeted_coding_regions,
         tumor_purity,
         cancer_susceptibility_genes,
