@@ -29,19 +29,19 @@ class TestMetricPlots(unittest.TestCase):
                 "name": "create master table from dragen workflow",
                 "input_directory": path.join(
                     test_data_dir,
-                    "dragen",
+                    "dragen_case",
                 ),
                 "run_ids": [
                     "240809_A02134_0013_BHCGJYDRX5",
                 ],
                 "workdir": path.join(
                     test_data_dir,
-                    "dragen",
+                    "dragen_case",
                     "out",
                 ),
                 "expected": path.join(
                     test_data_dir,
-                    "dragen",
+                    "dragen_case",
                     "master_metrics_table_expected.tsv",
                 ),
             },
@@ -49,19 +49,19 @@ class TestMetricPlots(unittest.TestCase):
                 "name": "create master table from localapp workflow",
                 "input_directory": path.join(
                     test_data_dir,
-                    "localapp",
+                    "localapp_case",
                 ),
                 "run_ids": [
                     "240906_A02134_0019_BHHGKGDRX5",
                 ],
                 "workdir": path.join(
                     test_data_dir,
-                    "localapp",
+                    "localapp_case",
                     "out",
                 ),
                 "expected": path.join(
                     test_data_dir,
-                    "localapp",
+                    "localapp_case",
                     "master_metrics_table_expected.tsv",
                 ),
             },
@@ -206,9 +206,7 @@ class TestMetricPlots(unittest.TestCase):
             plot_last_runs=10,
         )
 
-        expected = master.filter(
-            polars.col("WORKFLOW_TYPE") == "dragen"
-        )
+        expected = master.filter(polars.col("WORKFLOW_TYPE") == "dragen")
 
         assert got.equals(expected)
 
@@ -266,10 +264,7 @@ class TestMetricPlots(unittest.TestCase):
                     "RUN4",
                 ]
             )
-            & (
-                polars.col("WORKFLOW_TYPE")
-                == "dragen"
-            )
+            & (polars.col("WORKFLOW_TYPE") == "dragen")
         )
 
         assert got.equals(expected)
@@ -310,10 +305,7 @@ class TestMetricPlots(unittest.TestCase):
             ],
         )
 
-        expected = master.filter(
-            polars.col("WORKFLOW_TYPE")
-            == "localapp"
-        )
+        expected = master.filter(polars.col("WORKFLOW_TYPE") == "localapp")
         print("MASTER")
         print(master)
         print(master.schema)

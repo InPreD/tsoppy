@@ -94,18 +94,10 @@ class MetricPlots:
     ) -> None:
         """Initialize MetricPlots."""
         self.config_yaml = Path(config_yaml)
-        self.inpred_nomenclature = Path(
-            inpred_nomenclature
-        )
-        self.input_directory = Path(
-            input_directory
-        )
+        self.inpred_nomenclature = Path(inpred_nomenclature)
+        self.input_directory = Path(input_directory)
         self.workdir = Path(workdir)
-        self.run_id_file = (
-            Path(run_id_file)
-            if run_id_file
-            else None
-        )
+        self.run_id_file = Path(run_id_file) if run_id_file else None
 
         self.run_ids = self._resolve_run_ids(
             run_ids=run_ids,
@@ -119,39 +111,26 @@ class MetricPlots:
         pl.DataFrame,
     ]:
         """Create and write master and joint QC tables."""
-        metrics_outputs = (
-            self._load_metrics_outputs()
-        )
+        metrics_outputs = self._load_metrics_outputs()
 
         run_frames = [
             self._transform_metrics_output(
                 run_id=run_id,
                 metrics_output=metrics_output,
             )
-            for run_id, metrics_output
-            in metrics_outputs
+            for run_id, metrics_output in metrics_outputs
         ]
 
-        master = self._combine_runs(
-            run_frames
-        )
-        joint_qc = self._create_joint_qc(
-            master
-        )
+        master = self._combine_runs(run_frames)
+        joint_qc = self._create_joint_qc(master)
 
         self.workdir.mkdir(
             parents=True,
             exist_ok=True,
         )
 
-        master_path = (
-            self.workdir
-            / "master_metrics_table.tsv"
-        )
-        joint_qc_path = (
-            self.workdir
-            / "joint_sequencing_QC_file.tsv"
-        )
+        master_path = self.workdir / "master_metrics_table.tsv"
+        joint_qc_path = self.workdir / "joint_sequencing_QC_file.tsv"
 
         master.write_csv(
             master_path,
@@ -181,9 +160,7 @@ class MetricPlots:
         plot_run_ids: list[str] | None = None,
     ) -> pl.DataFrame:
         """Prepare workflow-specific rows for downstream plotting."""
-        workflow_frame = master.filter(
-            pl.col("WORKFLOW_TYPE") == workflow_type
-        )
+        workflow_frame = master.filter(pl.col("WORKFLOW_TYPE") == workflow_type)
 
         available_runs = (
             workflow_frame.select("RUN")
@@ -197,9 +174,7 @@ class MetricPlots:
 
         elif plot_run_ids is not None:
             missing_runs = [
-                run_id
-                for run_id in plot_run_ids
-                if run_id not in available_runs
+                run_id for run_id in plot_run_ids if run_id not in available_runs
             ]
 
             if missing_runs:
@@ -211,9 +186,7 @@ class MetricPlots:
                 )
 
             selected_runs = [
-                run_id
-                for run_id in plot_run_ids
-                if run_id in available_runs
+                run_id for run_id in plot_run_ids if run_id in available_runs
             ]
 
         else:
@@ -225,9 +198,7 @@ class MetricPlots:
             workflow_type,
         )
 
-        return workflow_frame.filter(
-            pl.col("RUN").is_in(selected_runs)
-        )
+        return workflow_frame.filter(pl.col("RUN").is_in(selected_runs))
 
     def _resolve_run_ids(
         self,
@@ -238,31 +209,16 @@ class MetricPlots:
         collected: list[str] = []
 
         if run_ids:
-            collected.extend(
-                self._parse_run_id_input(
-                    run_ids
-                )
-            )
+            collected.extend(self._parse_run_id_input(run_ids))
 
         if run_id_file:
-            collected.extend(
-                self._read_run_id_file(
-                    run_id_file
-                )
-            )
+            collected.extend(self._read_run_id_file(run_id_file))
 
-        unique_run_ids = list(
-            dict.fromkeys(collected)
-        )
+        unique_run_ids = list(dict.fromkeys(collected))
 
         if not unique_run_ids:
-            logger.error(
-                "No run IDs were provided."
-            )
-            raise ValueError(
-                "Provide run IDs using run_ids, "
-                "run_id_file, or both."
-            )
+            logger.error("No run IDs were provided.")
+            raise ValueError("Provide run IDs using run_ids, run_id_file, or both.")
 
         logger.info(
             "Selected %d unique run ID(s).",
@@ -281,9 +237,7 @@ class MetricPlots:
                 "Run ID file does not exist: %s.",
                 run_id_file,
             )
-            raise FileNotFoundError(
-                run_id_file
-            )
+            raise FileNotFoundError(run_id_file)
 
         run_ids: list[str] = []
 
@@ -293,17 +247,10 @@ class MetricPlots:
             for line in handle:
                 cleaned = line.strip()
 
-                if (
-                    not cleaned
-                    or cleaned.startswith("#")
-                ):
+                if not cleaned or cleaned.startswith("#"):
                     continue
 
-                run_ids.extend(
-                    self._parse_run_id_input(
-                        cleaned
-                    )
-                )
+                run_ids.extend(self._parse_run_id_input(cleaned))
 
         return run_ids
 
@@ -315,43 +262,28 @@ class MetricPlots:
         if isinstance(run_ids, str):
             values = run_ids.split(",")
         else:
-            values = [
-                item
-                for value in run_ids
-                for item in value.split(",")
-            ]
+            values = [item for value in run_ids for item in value.split(",")]
 
         return [
-            value.strip()
-            .strip('"')
-            .strip("'")
+            value.strip().strip('"').strip("'")
             for value in values
-            if value.strip()
-            and not value.strip()
-            .startswith("#")
+            if value.strip() and not value.strip().startswith("#")
         ]
 
     def _load_metrics_outputs(
         self,
-    ) -> list[
-        tuple[str, MetricsOutputTsv]
-    ]:
+    ) -> list[tuple[str, MetricsOutputTsv]]:
         """Load all configured workflow outputs for selected runs."""
         self._validate_inputs()
 
-        outputs: list[
-            tuple[str, MetricsOutputTsv]
-        ] = []
+        outputs: list[tuple[str, MetricsOutputTsv]] = []
 
         for run_id in self.run_ids:
-            run_roots = self._find_run_roots(
-                run_id
-            )
+            run_roots = self._find_run_roots(run_id)
 
             if not run_roots:
                 raise FileNotFoundError(
-                    "No workflow output root found "
-                    f"for run {run_id}."
+                    f"No workflow output root found for run {run_id}."
                 )
 
             loaded_for_run = 0
@@ -360,17 +292,11 @@ class MetricPlots:
                 try:
                     workflow_output = WorkflowOutput(
                         config_yaml=self.config_yaml,
-                        inpred_nomenclature=(
-                            self.inpred_nomenclature
-                        ),
+                        inpred_nomenclature=self.inpred_nomenclature,
                         root_path=root,
                     )
 
-                    metrics_output = (
-                        MetricsOutputTsv.create(
-                            workflow_output
-                        )
-                    )
+                    metrics_output = MetricsOutputTsv.create(workflow_output)
                 except (
                     FileNotFoundError,
                     KeyError,
@@ -401,8 +327,7 @@ class MetricPlots:
 
             if loaded_for_run == 0:
                 raise FileNotFoundError(
-                    "No valid MetricsOutput.tsv found "
-                    f"for run {run_id}."
+                    f"No valid MetricsOutput.tsv found for run {run_id}."
                 )
 
         return outputs
@@ -422,14 +347,11 @@ class MetricPlots:
             ),
         ]:
             if not path.is_file():
-                raise FileNotFoundError(
-                    f"{description} file does not exist: {path}"
-                )
+                raise FileNotFoundError(f"{description} file does not exist: {path}")
 
         if not self.input_directory.is_dir():
             raise FileNotFoundError(
-                "Input directory does not exist: "
-                f"{self.input_directory}"
+                f"Input directory does not exist: {self.input_directory}"
             )
 
     def _find_run_roots(
@@ -437,49 +359,16 @@ class MetricPlots:
         run_id: str,
     ) -> list[Path]:
         """Find workflow roots containing a selected run ID."""
-        candidates = [
-            path
-            for path in self.input_directory.rglob(
-                "*"
-            )
-            if path.is_dir()
-            and run_id in str(
-                path.relative_to(
-                    self.input_directory
-                )
-            )
-        ]
 
-        direct_root = (
-            self.input_directory
-            / run_id
-        )
+        roots: list[Path] = []
 
-        if direct_root.is_dir():
-            candidates.insert(
-                0,
-                direct_root,
-            )
+        for workflow in ("dragen", "localapp"):
+            candidate = self.input_directory / workflow / run_id
 
-        unique_roots: list[Path] = []
-        seen: set[Path] = set()
+            if candidate.is_dir():
+                roots.append(candidate)
 
-        for candidate in sorted(
-            candidates
-        ):
-            resolved = (
-                candidate.resolve()
-            )
-
-            if resolved in seen:
-                continue
-
-            seen.add(resolved)
-            unique_roots.append(
-                candidate
-            )
-
-        return unique_roots
+        return roots
 
     def _transform_metrics_output(
         self,
@@ -487,47 +376,29 @@ class MetricPlots:
         metrics_output: MetricsOutputTsv,
     ) -> pl.DataFrame:
         """Transform one parsed MetricsOutput.tsv."""
-        sample_frames: list[
-            pl.DataFrame
-        ] = []
-        threshold_frames: list[
-            pl.DataFrame
-        ] = []
-        run_metric_frames: list[
-            pl.DataFrame
-        ] = []
+        sample_frames: list[pl.DataFrame] = []
+        threshold_frames: list[pl.DataFrame] = []
+        run_metric_frames: list[pl.DataFrame] = []
 
         for (
             section_name,
             section,
         ) in metrics_output.sections.items():
-            if (
-                section_name
-                in self.IGNORED_SECTIONS
-                or section.is_empty()
-            ):
+            if section_name in self.IGNORED_SECTIONS or section.is_empty():
                 continue
 
-            standardized = (
-                self._standardize_section(
-                    section_name=section_name,
-                    section=section,
-                )
+            standardized = self._standardize_section(
+                section_name=section_name,
+                section=section,
             )
 
-            sample_columns = (
-                self._sample_columns(
-                    standardized
-                )
-            )
+            sample_columns = self._sample_columns(standardized)
 
             if sample_columns:
                 sample_frames.append(
                     self._section_to_wide(
                         section=standardized,
-                        value_columns=(
-                            sample_columns
-                        ),
+                        value_columns=(sample_columns),
                     )
                 )
 
@@ -539,56 +410,32 @@ class MetricPlots:
                         self.USL_COL,
                     ],
                     identifier_mapping={
-                        self.LSL_COL: (
-                            self.LSL_SAMPLE_ID
-                        ),
-                        self.USL_COL: (
-                            self.USL_SAMPLE_ID
-                        ),
+                        self.LSL_COL: (self.LSL_SAMPLE_ID),
+                        self.USL_COL: (self.USL_SAMPLE_ID),
                     },
                 )
             )
 
-            if (
-                self.VALUE_COL
-                in standardized.columns
-            ):
+            if self.VALUE_COL in standardized.columns:
                 run_metric_frames.append(
                     self._section_to_wide(
                         section=standardized,
-                        value_columns=[
-                            self.VALUE_COL
-                        ],
-                        identifier_mapping={
-                            self.VALUE_COL: (
-                                self.RUN_VALUE_ID
-                            )
-                        },
+                        value_columns=[self.VALUE_COL],
+                        identifier_mapping={self.VALUE_COL: (self.RUN_VALUE_ID)},
                     )
                 )
 
-        samples = self._merge_wide_frames(
-            sample_frames
-        )
-        thresholds = self._merge_wide_frames(
-            threshold_frames
-        )
-        run_metrics = self._merge_wide_frames(
-            run_metric_frames
-        )
+        samples = self._merge_wide_frames(sample_frames)
+        thresholds = self._merge_wide_frames(threshold_frames)
+        run_metrics = self._merge_wide_frames(run_metric_frames)
 
         if not run_metrics.is_empty():
             if run_metrics.height != 1:
                 raise ValueError(
-                    "Expected exactly one run-level "
-                    f"metrics row for run {run_id}."
+                    f"Expected exactly one run-level metrics row for run {run_id}."
                 )
 
-            run_values = (
-                run_metrics.drop(
-                    "SAMPLE_ID"
-                )
-            )
+            run_values = run_metrics.drop("SAMPLE_ID")
 
             if samples.is_empty():
                 logger.warning(
@@ -602,33 +449,14 @@ class MetricPlots:
                 )
 
         if not samples.is_empty():
-            samples = (
-                self._add_record_type(
-                    samples
-                )
-            )
+            samples = self._add_record_type(samples)
 
         if not thresholds.is_empty():
-            thresholds = (
-                thresholds.with_columns(
-                    pl.when(
-                        pl.col("SAMPLE_ID")
-                        == self.LSL_SAMPLE_ID
-                    )
-                    .then(
-                        pl.lit(
-                            self.LOWER_THRESHOLD
-                        )
-                    )
-                    .otherwise(
-                        pl.lit(
-                            self.UPPER_THRESHOLD
-                        )
-                    )
-                    .alias(
-                        "RECORD_TYPE"
-                    )
-                )
+            thresholds = thresholds.with_columns(
+                pl.when(pl.col("SAMPLE_ID") == self.LSL_SAMPLE_ID)
+                .then(pl.lit(self.LOWER_THRESHOLD))
+                .otherwise(pl.lit(self.UPPER_THRESHOLD))
+                .alias("RECORD_TYPE")
             )
 
         output_frames = [
@@ -642,37 +470,19 @@ class MetricPlots:
 
         if not output_frames:
             raise ValueError(
-                "No metric data could be transformed "
-                f"from {metrics_output.path}."
+                f"No metric data could be transformed from {metrics_output.path}."
             )
 
-        result = (
-            pl.concat(
-                output_frames,
-                how="diagonal",
-            )
-            .with_columns(
-                pl.lit(run_id).alias(
-                    "RUN"
-                ),
-                pl.lit(
-                    metrics_output.workflow_type
-                ).alias(
-                    "WORKFLOW_TYPE"
-                ),
-                pl.lit(
-                    str(
-                        metrics_output.workflow_version
-                    )
-                ).alias(
-                    "WORKFLOW_VERSION"
-                ),
-            )
+        result = pl.concat(
+            output_frames,
+            how="diagonal",
+        ).with_columns(
+            pl.lit(run_id).alias("RUN"),
+            pl.lit(metrics_output.workflow_type).alias("WORKFLOW_TYPE"),
+            pl.lit(str(metrics_output.workflow_version)).alias("WORKFLOW_VERSION"),
         )
 
-        return self._finalize_frame(
-            result
-        )
+        return self._finalize_frame(result)
 
     def _standardize_section(
         self,
@@ -680,39 +490,21 @@ class MetricPlots:
         section: pl.DataFrame,
     ) -> pl.DataFrame:
         """Standardize section columns and metric names."""
-        metric_column = (
-            section.columns[0]
-        )
+        metric_column = section.columns[0]
 
-        if (
-            metric_column
-            != self.METRIC_COL
-        ):
-            section = section.rename(
-                {
-                    metric_column: (
-                        self.METRIC_COL
-                    )
-                }
-            )
+        if metric_column != self.METRIC_COL:
+            section = section.rename({metric_column: (self.METRIC_COL)})
 
         for required_column in [
             self.LSL_COL,
             self.USL_COL,
         ]:
-            if (
-                required_column
-                not in section.columns
-            ):
-                section = (
-                    section.with_columns(
-                        pl.lit(
-                            None,
-                            dtype=pl.String,
-                        ).alias(
-                            required_column
-                        )
-                    )
+            if required_column not in section.columns:
+                section = section.with_columns(
+                    pl.lit(
+                        None,
+                        dtype=pl.String,
+                    ).alias(required_column)
                 )
 
         section = section.with_columns(
@@ -723,19 +515,13 @@ class MetricPlots:
         )
 
         value_columns = [
-            column
-            for column in section.columns
-            if column
-            != self.METRIC_COL
+            column for column in section.columns if column != self.METRIC_COL
         ]
 
         section = section.with_columns(
             [
                 pl.when(
-                    pl.col(column).is_null()
-                    | pl.col(column).is_in(
-                        self.MISSING_VALUES
-                    )
+                    pl.col(column).is_null() | pl.col(column).is_in(self.MISSING_VALUES)
                 )
                 .then(
                     pl.lit(
@@ -743,19 +529,13 @@ class MetricPlots:
                         dtype=pl.String,
                     )
                 )
-                .otherwise(
-                    pl.col(column)
-                    .str.strip_chars()
-                )
+                .otherwise(pl.col(column).str.strip_chars())
                 .alias(column)
-                for column
-                in value_columns
+                for column in value_columns
             ]
         )
 
-        prefix = self._section_prefix(
-            section_name
-        )
+        prefix = self._section_prefix(section_name)
 
         metric_expression = (
             pl.col(self.METRIC_COL)
@@ -781,44 +561,20 @@ class MetricPlots:
 
         if prefix:
             metric_expression = (
-                pl.when(
-                    metric_expression
-                    .str.starts_with(
-                        prefix
-                    )
-                )
-                .then(
-                    metric_expression
-                )
+                pl.when(metric_expression.str.starts_with(prefix))
+                .then(metric_expression)
                 .otherwise(
                     pl.concat_str(
                         [
-                            pl.lit(
-                                prefix
-                            ),
+                            pl.lit(prefix),
                             metric_expression,
                         ]
                     )
                 )
             )
 
-        return (
-            section.with_columns(
-                metric_expression.alias(
-                    self.METRIC_COL
-                )
-            )
-            .filter(
-                pl.col(
-                    self.METRIC_COL
-                ).is_not_null()
-                & (
-                    pl.col(
-                        self.METRIC_COL
-                    )
-                    != ""
-                )
-            )
+        return section.with_columns(metric_expression.alias(self.METRIC_COL)).filter(
+            pl.col(self.METRIC_COL).is_not_null() & (pl.col(self.METRIC_COL) != "")
         )
 
     @staticmethod
@@ -826,9 +582,7 @@ class MetricPlots:
         section_name: str,
     ) -> str:
         """Return the DNA or RNA prefix."""
-        upper_name = (
-            section_name.upper()
-        )
+        upper_name = section_name.upper()
 
         if "DNA" in upper_name:
             return "DNA_"
@@ -852,34 +606,23 @@ class MetricPlots:
             "",
         }
 
-        return [
-            column
-            for column in section.columns
-            if column not in reserved
-        ]
+        return [column for column in section.columns if column not in reserved]
 
     def _section_to_wide(
         self,
         section: pl.DataFrame,
         value_columns: list[str],
-        identifier_mapping: (
-            dict[str, str] | None
-        ) = None,
+        identifier_mapping: (dict[str, str] | None) = None,
     ) -> pl.DataFrame:
         """Convert one section into a wide table."""
         existing_columns = [
-            column
-            for column in value_columns
-            if column in section.columns
+            column for column in value_columns if column in section.columns
         ]
 
         if not existing_columns:
             return pl.DataFrame()
 
-        mapping = (
-            identifier_mapping
-            or {}
-        )
+        mapping = identifier_mapping or {}
 
         long_frame = (
             section.select(
@@ -894,15 +637,8 @@ class MetricPlots:
                 variable_name="SAMPLE_ID",
                 value_name="VALUE",
             )
-            .with_columns(
-                pl.col("SAMPLE_ID")
-                .replace(mapping)
-                .alias("SAMPLE_ID")
-            )
-            .filter(
-                pl.col("VALUE")
-                .is_not_null()
-            )
+            .with_columns(pl.col("SAMPLE_ID").replace(mapping).alias("SAMPLE_ID"))
+            .filter(pl.col("VALUE").is_not_null())
         )
 
         if long_frame.is_empty():
@@ -915,15 +651,8 @@ class MetricPlots:
                     self.METRIC_COL,
                 ]
             )
-            .agg(
-                pl.col("VALUE")
-                .n_unique()
-                .alias("VALUE_COUNT")
-            )
-            .filter(
-                pl.col("VALUE_COUNT")
-                > 1
-            )
+            .agg(pl.col("VALUE").n_unique().alias("VALUE_COUNT"))
+            .filter(pl.col("VALUE_COUNT") > 1)
         )
 
         if conflicts.height:
@@ -931,10 +660,7 @@ class MetricPlots:
                 "Conflicting duplicate metric values:\n%s",
                 conflicts,
             )
-            raise ValueError(
-                "Conflicting duplicate metric values "
-                "were detected."
-            )
+            raise ValueError("Conflicting duplicate metric values were detected.")
 
         return long_frame.pivot(
             index="SAMPLE_ID",
@@ -948,11 +674,7 @@ class MetricPlots:
         frames: list[pl.DataFrame],
     ) -> pl.DataFrame:
         """Merge section frames by sample ID."""
-        usable_frames = [
-            frame
-            for frame in frames
-            if not frame.is_empty()
-        ]
+        usable_frames = [frame for frame in frames if not frame.is_empty()]
 
         if not usable_frames:
             return pl.DataFrame()
@@ -962,50 +684,25 @@ class MetricPlots:
             how="diagonal",
         )
 
-        value_columns = [
-            column
-            for column in combined.columns
-            if column != "SAMPLE_ID"
-        ]
+        value_columns = [column for column in combined.columns if column != "SAMPLE_ID"]
 
         for column in value_columns:
             conflicts = (
-                combined.group_by(
-                    "SAMPLE_ID"
-                )
-                .agg(
-                    pl.col(column)
-                    .drop_nulls()
-                    .n_unique()
-                    .alias(
-                        "VALUE_COUNT"
-                    )
-                )
-                .filter(
-                    pl.col(
-                        "VALUE_COUNT"
-                    )
-                    > 1
-                )
+                combined.group_by("SAMPLE_ID")
+                .agg(pl.col(column).drop_nulls().n_unique().alias("VALUE_COUNT"))
+                .filter(pl.col("VALUE_COUNT") > 1)
             )
 
             if conflicts.height:
-                raise ValueError(
-                    "Conflicting values detected for "
-                    f"metric {column}."
-                )
+                raise ValueError(f"Conflicting values detected for metric {column}.")
 
         return combined.group_by(
             "SAMPLE_ID",
             maintain_order=True,
         ).agg(
             [
-                pl.col(column)
-                .drop_nulls()
-                .first()
-                .alias(column)
-                for column
-                in value_columns
+                pl.col(column).drop_nulls().first().alias(column)
+                for column in value_columns
             ]
         )
 
@@ -1015,90 +712,39 @@ class MetricPlots:
     ) -> pl.DataFrame:
         """Classify sample rows as DNA, RNA, or unknown."""
         dna_columns = [
-            column
-            for column in samples.columns
-            if column.startswith(
-                "DNA_"
-            )
+            column for column in samples.columns if column.startswith("DNA_")
         ]
         rna_columns = [
-            column
-            for column in samples.columns
-            if column.startswith(
-                "RNA_"
-            )
+            column for column in samples.columns if column.startswith("RNA_")
         ]
 
         dna_has_value = (
-            pl.any_horizontal(
-                [
-                    pl.col(column)
-                    .is_not_null()
-                    for column
-                    in dna_columns
-                ]
-            )
+            pl.any_horizontal([pl.col(column).is_not_null() for column in dna_columns])
             if dna_columns
             else pl.lit(False)
         )
 
         rna_has_value = (
-            pl.any_horizontal(
-                [
-                    pl.col(column)
-                    .is_not_null()
-                    for column
-                    in rna_columns
-                ]
-            )
+            pl.any_horizontal([pl.col(column).is_not_null() for column in rna_columns])
             if rna_columns
             else pl.lit(False)
         )
 
-        sample_id_upper = (
-            pl.col("SAMPLE_ID")
-            .str.to_uppercase()
-        )
+        sample_id_upper = pl.col("SAMPLE_ID").str.to_uppercase()
 
         return samples.with_columns(
             pl.when(
-                sample_id_upper
-                .str.contains(
-                    r"(^DNA)|(^TVD)|([-_]D)"
-                )
-                | (
-                    dna_has_value
-                    & ~rna_has_value
-                )
+                sample_id_upper.str.contains(r"(^DNA)|(^TVD)|([-_]D)")
+                | (dna_has_value & ~rna_has_value)
             )
-            .then(
-                pl.lit(
-                    self.DNA_SAMPLE
-                )
-            )
+            .then(pl.lit(self.DNA_SAMPLE))
             .when(
-                sample_id_upper
-                .str.contains(
-                    r"(^RNA)|(^TVR)|([-_]R)"
-                )
-                | (
-                    rna_has_value
-                    & ~dna_has_value
-                )
+                sample_id_upper.str.contains(r"(^RNA)|(^TVR)|([-_]R)")
+                | (rna_has_value & ~dna_has_value)
             )
-            .then(
-                pl.lit(
-                    self.RNA_SAMPLE
-                )
-            )
-            .otherwise(
-                pl.lit(
-                    self.UNKNOWN_SAMPLE
-                )
-            )
-            .alias(
-                "RECORD_TYPE"
-            )
+            .then(pl.lit(self.RNA_SAMPLE))
+            .otherwise(pl.lit(self.UNKNOWN_SAMPLE))
+            .alias("RECORD_TYPE")
         )
 
     def _finalize_frame(
@@ -1107,47 +753,27 @@ class MetricPlots:
     ) -> pl.DataFrame:
         """Order columns and replace null values with NA."""
         metadata = [
-            column
-            for column
-            in self.METADATA_COLUMNS
-            if column in frame.columns
+            column for column in self.METADATA_COLUMNS if column in frame.columns
         ]
 
         run_metrics = sorted(
             column
             for column in frame.columns
             if column not in metadata
-            and not column.startswith(
-                "DNA_"
-            )
-            and not column.startswith(
-                "RNA_"
-            )
+            and not column.startswith("DNA_")
+            and not column.startswith("RNA_")
         )
 
         dna_metrics = sorted(
-            column
-            for column in frame.columns
-            if column.startswith(
-                "DNA_"
-            )
+            column for column in frame.columns if column.startswith("DNA_")
         )
 
         rna_metrics = sorted(
-            column
-            for column in frame.columns
-            if column.startswith(
-                "RNA_"
-            )
+            column for column in frame.columns if column.startswith("RNA_")
         )
 
         return (
-            frame.select(
-                metadata
-                + run_metrics
-                + dna_metrics
-                + rna_metrics
-            )
+            frame.select(metadata + run_metrics + dna_metrics + rna_metrics)
             .with_columns(
                 pl.all().cast(
                     pl.String,
@@ -1159,15 +785,11 @@ class MetricPlots:
 
     @staticmethod
     def _combine_runs(
-        run_frames: list[
-            pl.DataFrame
-        ],
+        run_frames: list[pl.DataFrame],
     ) -> pl.DataFrame:
         """Combine all processed workflow frames."""
         if not run_frames:
-            raise ValueError(
-                "No run metrics were parsed."
-            )
+            raise ValueError("No run metrics were parsed.")
 
         return pl.concat(
             run_frames,
@@ -1180,9 +802,7 @@ class MetricPlots:
     ) -> pl.DataFrame:
         """Create one joint QC row per run and workflow."""
         sample_rows = master.filter(
-            pl.col(
-                "RECORD_TYPE"
-            ).is_in(
+            pl.col("RECORD_TYPE").is_in(
                 [
                     self.DNA_SAMPLE,
                     self.RNA_SAMPLE,
@@ -1191,27 +811,13 @@ class MetricPlots:
             )
         )
 
-        aggregations: list[
-            pl.Expr
-        ] = []
+        aggregations: list[pl.Expr] = []
 
-        for metric in (
-            self.JOINT_QC_METRICS
-        ):
-            if (
-                metric
-                in sample_rows.columns
-            ):
+        for metric in self.JOINT_QC_METRICS:
+            if metric in sample_rows.columns:
                 aggregations.append(
                     pl.col(metric)
-                    .filter(
-                        pl.col(metric)
-                        .is_not_null()
-                        & (
-                            pl.col(metric)
-                            != "NA"
-                        )
-                    )
+                    .filter(pl.col(metric).is_not_null() & (pl.col(metric) != "NA"))
                     .first()
                     .alias(metric)
                 )
@@ -1232,9 +838,7 @@ class MetricPlots:
                 ],
                 maintain_order=True,
             )
-            .agg(
-                aggregations
-            )
+            .agg(aggregations)
             .rename(
                 {
                     "RUN": "RUN_ID",
@@ -1244,15 +848,7 @@ class MetricPlots:
                 "RUN_NUMBER",
                 offset=1,
             )
-            .with_columns(
-                pl.col(
-                    "RUN_NUMBER"
-                ).cast(
-                    pl.String
-                )
-            )
-            .select(
-                self.JOINT_QC_COLUMNS
-            )
+            .with_columns(pl.col("RUN_NUMBER").cast(pl.String))
+            .select(self.JOINT_QC_COLUMNS)
             .fill_null("NA")
         )

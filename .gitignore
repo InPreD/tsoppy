@@ -1,12 +1,20 @@
-*.egg-info
-.mypy_cache
-.ruff_cache
-__pycache__
-build
-dist
-venv
+# Python build/cache
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+*.pyo
+build/
+dist/
+venv/
+.venv/
+
+# IDE
 .project
 .pydevproject
+.vscode/
+
 # macOS
 .DS_Store
 
@@ -15,22 +23,20 @@ venv
 .RData
 .Rproj.user/
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
+# Legacy metric-plots input data
+tests/test_data/metric_plots_main/in/
 
-# VS Code
-.vscode/
-
-# Ins
-in/v2_test/
+# Local metric-plots integration inputs
+tests/test_data/metric_plots_main/input/
 
 # Generated outputs
-out/
+**/out/
 *.pdf
 *.zip
 
 # Temporary files
 *.swp
 *.tmp
+
+./test_metrics_plots_cli.sh
+

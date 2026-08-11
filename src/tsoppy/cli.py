@@ -56,13 +56,22 @@ def metric_plots(
             help="Root directory containing workflow output directories.",
         ),
     ],
+    config_yaml: Annotated[
+        Path,
+        typer.Option(
+            help="Workflow configuration YAML.",
+        ),
+    ] = Path("config.yaml"),
+    inpred_nomenclature: Annotated[
+        Path,
+        typer.Option(
+            help="InPreD nomenclature YAML.",
+        ),
+    ] = Path("resources/nomenclature.yaml"),
     run_ids: Annotated[
         str | None,
         typer.Option(
-            help=(
-                "Comma-separated run IDs to include "
-                "in the master metrics table."
-            ),
+            help=("Comma-separated run IDs to include in the master metrics table."),
         ),
     ] = None,
     run_id_file: Annotated[
@@ -123,39 +132,27 @@ def metric_plots(
 
     if run_ids:
         master_run_ids.extend(
-            run_id.strip()
-            for run_id in run_ids.split(",")
-            if run_id.strip()
+            run_id.strip() for run_id in run_ids.split(",") if run_id.strip()
         )
 
     if run_id_file:
         master_run_ids.extend(
             line.strip()
             for line in run_id_file.read_text().splitlines()
-            if line.strip()
-            and not line.strip().startswith("#")
+            if line.strip() and not line.strip().startswith("#")
         )
 
-    master_run_ids = list(
-        dict.fromkeys(master_run_ids)
-    )
+    master_run_ids = list(dict.fromkeys(master_run_ids))
 
     if not master_run_ids:
         raise typer.BadParameter(
-            "Provide run IDs for the master table using "
-            "--run-ids or --run-id-file."
+            "Provide run IDs for the master table using --run-ids or --run-id-file."
         )
 
     # Plot-selection mode
-    explicit_plot_runs = (
-        plot_run_ids is not None
-        or plot_run_id_file is not None
-    )
+    explicit_plot_runs = plot_run_ids is not None or plot_run_id_file is not None
 
-    plotting_requested = (
-        plot_last_runs is not None
-        or explicit_plot_runs
-    )
+    plotting_requested = plot_last_runs is not None or explicit_plot_runs
 
     if plot_last_runs is not None and explicit_plot_runs:
         raise typer.BadParameter(
@@ -168,26 +165,21 @@ def metric_plots(
             "--plot-workflow is required when plotting is requested."
         )
 
-    if (
-        plot_workflow is not None
-        and plot_workflow not in {"dragen", "localapp"}
-    ):
+    if plot_workflow is not None and plot_workflow not in {"dragen", "localapp"}:
         raise typer.BadParameter(
             "--plot-workflow must be either 'dragen' or 'localapp'."
         )
 
-    if (
-        plot_last_runs is not None
-        and plot_last_runs < 1
-    ):
-        raise typer.BadParameter(
-            "--plot-last-runs must be greater than zero."
-        )
+    if plot_last_runs is not None and plot_last_runs < 1:
+        raise typer.BadParameter("--plot-last-runs must be greater than zero.")
 
     metric_plotter = MetricPlots(
+        config_yaml=config_yaml,
+        inpred_nomenclature=inpred_nomenclature,
         input_directory=input_directory,
-        run_ids=master_run_ids,
         workdir=workdir,
+        run_ids=run_ids,
+        run_id_file=run_id_file,
     )
 
     master, joint_qc = metric_plotter.run()
@@ -197,34 +189,26 @@ def metric_plots(
 
         if plot_run_ids:
             plotting_run_ids.extend(
-                run_id.strip()
-                for run_id in plot_run_ids.split(",")
-                if run_id.strip()
+                run_id.strip() for run_id in plot_run_ids.split(",") if run_id.strip()
             )
 
         if plot_run_id_file:
             plotting_run_ids.extend(
                 line.strip()
-                for line
-                in plot_run_id_file.read_text().splitlines()
-                if line.strip()
-                and not line.strip().startswith("#")
+                for line in plot_run_id_file.read_text().splitlines()
+                if line.strip() and not line.strip().startswith("#")
             )
 
-        plotting_run_ids = list(
-            dict.fromkeys(plotting_run_ids)
-        )
+        plotting_run_ids = list(dict.fromkeys(plotting_run_ids))
 
         plot_frame = metric_plotter.prepare_plot_frame(
             master=master,
             workflow_type=plot_workflow,
             plot_last_runs=plot_last_runs,
-            plot_run_ids=(
-                plotting_run_ids
-                if plotting_run_ids
-                else None
-            ),
+            plot_run_ids=(plotting_run_ids if plotting_run_ids else None),
         )
+
+        logger.info("Plot frame:\n%s", plot_frame)
 
         # Future:
         # create_qc_plots(
@@ -239,6 +223,4 @@ def metric_plots(
             plot_workflow,
         )
 
-    logger.info(
-        "Finished creating metrics tables."
-    )
+    logger.info("Finished creating metrics tables.")
