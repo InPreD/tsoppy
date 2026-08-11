@@ -53,47 +53,192 @@ def metric_plots(
     input_directory: Annotated[
         Path,
         typer.Option(
-            "--input-directory",
-            "-i",
-            help="Input directory containing dragen/ and/or localapp/ MetricsOutput.tsv files.",
+            help="Root directory containing workflow output directories.",
         ),
-    ] = Path("in"),
+    ],
+    run_ids: Annotated[
+        str | None,
+        typer.Option(
+            help=(
+                "Comma-separated run IDs to include "
+                "in the master metrics table."
+            ),
+        ),
+    ] = None,
     run_id_file: Annotated[
+        Path | None,
+        typer.Option(
+            help=(
+                "Text file containing run IDs to include "
+                "in the master metrics table, one per line."
+            ),
+        ),
+    ] = None,
+    workdir: Annotated[
         Path,
         typer.Option(
-            "--run-id-file",
-            "-r",
-            help="Text file containing one RUN ID per line.",
+            help="Working directory for generated output files.",
         ),
-    ] = Path("in/RUN_IDs.txt"),
-    output_directory: Annotated[
-        Path,
+    ] = Path("."),
+    plot_last_runs: Annotated[
+        int | None,
         typer.Option(
-            "--output-directory",
-            "-o",
-            help="Output directory for master table, joint QC file, and plots.",
+            help=(
+                "Select the last N runs from the workflow "
+                "specified with --plot-workflow."
+            ),
         ),
-    ] = Path("out"),
-    create_plots: Annotated[
-        bool,
+    ] = None,
+    plot_run_ids: Annotated[
+        str | None,
         typer.Option(
-            "--create-plots/--no-create-plots",
-            help="Create PDF plots after generating metrics tables.",
+            help=(
+                "Comma-separated run IDs to select for plotting. "
+                "Requires --plot-workflow."
+            ),
         ),
-    ] = True,
+    ] = None,
+    plot_run_id_file: Annotated[
+        Path | None,
+        typer.Option(
+            help=(
+                "Text file containing run IDs to select for plotting. "
+                "Requires --plot-workflow."
+            ),
+        ),
+    ] = None,
+    plot_workflow: Annotated[
+        str | None,
+        typer.Option(
+            help="Workflow to plot: 'dragen' or 'localapp'.",
+        ),
+    ] = None,
 ):
-    """
-    Create TSO500 metrics master table, joint sequencing QC file, and optional plots.
-    """
-    logger.info("Start metric plotting workflow.")
+    """Create metrics tables and optionally prepare data for plotting."""
+
+    logger.info("Start creating metrics tables.")
+
+    # Master-table run IDs
+    master_run_ids = []
+
+    if run_ids:
+        master_run_ids.extend(
+            run_id.strip()
+            for run_id in run_ids.split(",")
+            if run_id.strip()
+        )
+
+    if run_id_file:
+        master_run_ids.extend(
+            line.strip()
+            for line in run_id_file.read_text().splitlines()
+            if line.strip()
+            and not line.strip().startswith("#")
+        )
+
+    master_run_ids = list(
+        dict.fromkeys(master_run_ids)
+    )
+
+    if not master_run_ids:
+        raise typer.BadParameter(
+            "Provide run IDs for the master table using "
+            "--run-ids or --run-id-file."
+        )
+
+    # Plot-selection mode
+    explicit_plot_runs = (
+        plot_run_ids is not None
+        or plot_run_id_file is not None
+    )
+
+    plotting_requested = (
+        plot_last_runs is not None
+        or explicit_plot_runs
+    )
+
+    if plot_last_runs is not None and explicit_plot_runs:
+        raise typer.BadParameter(
+            "--plot-last-runs cannot be combined with "
+            "--plot-run-ids or --plot-run-id-file."
+        )
+
+    if plotting_requested and plot_workflow is None:
+        raise typer.BadParameter(
+            "--plot-workflow is required when plotting is requested."
+        )
+
+    if (
+        plot_workflow is not None
+        and plot_workflow not in {"dragen", "localapp"}
+    ):
+        raise typer.BadParameter(
+            "--plot-workflow must be either 'dragen' or 'localapp'."
+        )
+
+    if (
+        plot_last_runs is not None
+        and plot_last_runs < 1
+    ):
+        raise typer.BadParameter(
+            "--plot-last-runs must be greater than zero."
+        )
 
     metric_plotter = MetricPlots(
         input_directory=input_directory,
-        run_id_file=run_id_file,
-        output_directory=output_directory,
-        create_plots=create_plots,
+        run_ids=master_run_ids,
+        workdir=workdir,
     )
 
-    metric_plotter.run()
+    master, joint_qc = metric_plotter.run()
 
-    logger.info("Finished metric plotting workflow.")
+    if plotting_requested:
+        plotting_run_ids = []
+
+        if plot_run_ids:
+            plotting_run_ids.extend(
+                run_id.strip()
+                for run_id in plot_run_ids.split(",")
+                if run_id.strip()
+            )
+
+        if plot_run_id_file:
+            plotting_run_ids.extend(
+                line.strip()
+                for line
+                in plot_run_id_file.read_text().splitlines()
+                if line.strip()
+                and not line.strip().startswith("#")
+            )
+
+        plotting_run_ids = list(
+            dict.fromkeys(plotting_run_ids)
+        )
+
+        plot_frame = metric_plotter.prepare_plot_frame(
+            master=master,
+            workflow_type=plot_workflow,
+            plot_last_runs=plot_last_runs,
+            plot_run_ids=(
+                plotting_run_ids
+                if plotting_run_ids
+                else None
+            ),
+        )
+
+        # Future:
+        # create_qc_plots(
+        #     metrics=plot_frame,
+        #     joint_qc=joint_qc,
+        #     workdir=workdir,
+        # )
+
+        logger.info(
+            "Prepared %d rows for %s plotting.",
+            plot_frame.height,
+            plot_workflow,
+        )
+
+    logger.info(
+        "Finished creating metrics tables."
+    )
