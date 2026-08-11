@@ -7,7 +7,6 @@ import unittest
 from os import path
 
 import polars
-import pytest
 
 from tsoppy.metric_plots.main import MetricPlots
 
