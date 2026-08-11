@@ -1,0 +1,45 @@
+format: "PPPyyyy-Ann-Sxz-Mll"
+
+project_code:
+  code: PPP
+  choices:
+    IPD: "InPreD OUS"
+
+patient_code:
+  code: yyyy
+
+nucleic_acid_input_type_code:
+  code: A
+  choices:
+    D: "DNA"
+    R: "RNA"
+
+assay_type_code:
+  code: nn
+  choices:
+    "01": "TSO500 DNA"
+    "03": "TSO500 RNA"
+
+sample_type_code:
+  code: S
+  choices:
+    T: "Primary tumor"
+    N: "Normal/control"
+
+library_preparation_attempt:
+  code: x
+  choices:
+    "0": "First try"
+
+biological_replicate:
+  code: z
+
+sample_material:
+  code: M
+  choices:
+    A: "Archived (FFPE)"
+
+tumor_site:
+  code: ll
+  choices:
+    "00": "Cancer origo incerta"

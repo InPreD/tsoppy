@@ -6,6 +6,7 @@ from polars import DataFrame
 from pytest import mark, raises
 
 from tsoppy.general.classes import (
+    MetricsOutputTsv,
     SmallVariantGenomeVcf,
     TmbTraceTsv,
     VariantsAnnotatedJson,
@@ -20,33 +21,89 @@ test_data_dir = "tests/test_data/general_classes"
     "inputs, exception, want",
     [
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/standard")),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+            ),
             nullcontext(),
-            "dragen_2.6.2.4",
+            ("dragen_2.6.2.4", "sample1"),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/standard")),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+            ),
             nullcontext(),
-            "localapp_ruo-2.2.0.12",
+            ("localapp_ruo-2.2.0.12", "sample1"),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/non-existent")),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/non-existent"),
+            ),
             raises(FileNotFoundError),
-            "",
+            ("", ""),
         ),
     ],
 )
 def test_workflowoutput_init(inputs, exception, want):
     with exception:
-        got = WorkflowOutput(inputs[0], inputs[1])
-        assert got.workflow_id() == want
+        got = WorkflowOutput(*inputs)
+        assert got.workflow_id == want[0]
+        assert got.sample_exists(want[1])
+
+
+@mark.parametrize(
+    "inputs, want",
+    [
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "IPH0001-D01-P01-A00",
+            ),
+            {
+                "project": "InPreD HUS",
+                "patient": "0001",
+                "nucleic_acid_input_type": "DNA",
+                "assay_type": "TSO500 DNA",
+                "sample_type": "Primary tumor, naive",
+                "library_preparation_attempt": "First try",
+                "biological_replicate": "1",
+                "sample_material": "Archived (FFPE)",
+                "tumor_site": "Cancer origo incerta",
+            },
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "sample1",
+            ),
+            None,
+        ),
+    ],
+)
+def test_workflowoutput_sample_meta(inputs, want):
+    got = WorkflowOutput(*inputs[:3])
+    assert got.sample_meta(inputs[3]) == want
 
 
 @mark.parametrize(
     "inputs, exception, want",
     [
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "sample1",
+            ),
             nullcontext(),
             (
                 "chr1",
@@ -61,7 +118,12 @@ def test_workflowoutput_init(inputs, exception, want):
             ),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+                "sample1",
+            ),
             nullcontext(),
             (
                 "chr1",
@@ -76,7 +138,12 @@ def test_workflowoutput_init(inputs, exception, want):
             ),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/non-existent"),
+                "sample1",
+            ),
             raises(FileNotFoundError),
             (
                 None,
@@ -94,8 +161,8 @@ def test_workflowoutput_init(inputs, exception, want):
 )
 def test_smallvariantgenomevcf_create(inputs, exception, want):
     with exception:
-        workflow_output = WorkflowOutput(inputs[0], inputs[1])
-        got = SmallVariantGenomeVcf.create(workflow_output, inputs[2])
+        workflow_output = WorkflowOutput(*inputs[:3])
+        got = SmallVariantGenomeVcf.create(workflow_output, inputs[3])
         got_variants = list(got.vcf)
         assert len(got_variants) == 1
         got_variant = got_variants[0]
@@ -114,7 +181,12 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
     "inputs, exception, want",
     [
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "sample1",
+            ),
             nullcontext(),
             DataFrame(
                 {
@@ -149,7 +221,12 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
             ),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+                "sample1",
+            ),
             nullcontext(),
             DataFrame(
                 {
@@ -177,7 +254,12 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
             ),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/non-existent"),
+                "sample1",
+            ),
             raises(FileNotFoundError),
             None,
         ),
@@ -185,8 +267,8 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
 )
 def test_tmbtracetsv_create(inputs, exception, want):
     with exception:
-        workflow_output = WorkflowOutput(inputs[0], inputs[1])
-        got = TmbTraceTsv.create(workflow_output, inputs[2])
+        workflow_output = WorkflowOutput(*inputs[:3])
+        got = TmbTraceTsv.create(workflow_output, inputs[3])
         assert got.table.equals(want)
 
 
@@ -194,17 +276,32 @@ def test_tmbtracetsv_create(inputs, exception, want):
     "inputs, exception, want",
     [
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "sample1",
+            ),
             nullcontext(),
             {"id": "sample1"},
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+                "sample1",
+            ),
             nullcontext(),
             {"id": "sample1"},
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/non-existent"),
+                "sample1",
+            ),
             raises(FileNotFoundError),
             None,
         ),
@@ -212,6 +309,62 @@ def test_tmbtracetsv_create(inputs, exception, want):
 )
 def test_variantsannotatedjson_create(inputs, exception, want):
     with exception:
-        workflow_output = WorkflowOutput(inputs[0], inputs[1])
-        got = VariantsAnnotatedJson.create(workflow_output, inputs[2])
+        workflow_output = WorkflowOutput(*inputs[:3])
+        got = VariantsAnnotatedJson.create(workflow_output, inputs[3])
         assert got.data == want
+
+
+@mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+            ),
+            nullcontext(),
+            (
+                "dragen_2.6.2.4",
+                path.join(
+                    test_data_dir,
+                    "dragen/standard/Logs_Intermediates/"
+                    "MetricsOutput/MetricsOutput.tsv",
+                ),
+            ),
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+            ),
+            nullcontext(),
+            (
+                "localapp_ruo-2.2.0.12",
+                path.join(
+                    test_data_dir,
+                    "localapp/standard/Logs_Intermediates/"
+                    "MetricsOutput/MetricsOutput.tsv",
+                ),
+            ),
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/non-existent"),
+            ),
+            raises(FileNotFoundError),
+            ("", ""),
+        ),
+    ],
+)
+def test_metricsoutputtsv_create(inputs, exception, want):
+    with exception:
+        workflow_output = WorkflowOutput(*inputs)
+        got = MetricsOutputTsv.create(workflow_output)
+
+        assert got.workflow_id == want[0]
+        assert str(got.path) == want[1]
+        assert "Header" in got.sections
