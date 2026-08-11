@@ -16,7 +16,6 @@
 		"seccomp=unconfined"
 	],
 	"containerEnv": {
-		"SSH_AUTH_SOCK": "${localEnv:SSH_AUTH_SOCK}",
 		"TZ": "Europe/Berlin",
 		"LC_ALL": "en_US.UTF-8",
 		"LANG": "en_US.UTF-8",
@@ -26,10 +25,6 @@
 		"http_proxy": "${localEnv:HTTP_PROXY}",
 		"https_proxy": "${localEnv:HTTP_PROXY}"
 	},
-	"mounts": [
-		// Mount in forwarding of ssh keys
-		"source=${localEnv:SSH_AUTH_SOCK},target=${localEnv:SSH_AUTH_SOCK},type=bind"
-	],
 	// Configure tool-specific properties.
 	"customizations": {
 		// Configure properties specific to VS Code.
