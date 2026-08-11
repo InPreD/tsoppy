@@ -133,8 +133,7 @@ class WorkflowOutput:
         """Initialize WorkflowOutput."""
         self.root = Path(root_path)
         with open(config_yaml, "r") as yaml_file:
-            self.config = msgspec.yaml.decode(
-                yaml_file.read(), type=WorkflowConfig)
+            self.config = msgspec.yaml.decode(yaml_file.read(), type=WorkflowConfig)
         with open(inpred_nomenclature, "r") as yaml_file:
             self.nomenclature = msgspec.yaml.decode(
                 yaml_file.read(), type=InPredNomenclature
@@ -191,8 +190,7 @@ class WorkflowOutput:
         _, sections = Parse_section_csv(samplesheet_path, [])
 
         # Find and check that there is only one Data section present
-        data_sections = [section for section in list(
-            sections) if "Data" in section]
+        data_sections = [section for section in list(sections) if "Data" in section]
         if len(data_sections) != 1:
             logger.error(
                 f"Expected one data section in samplesheet {samplesheet_path} - got {len(data_sections)}."
@@ -216,8 +214,7 @@ class WorkflowOutput:
         else:
             choices = list(code_dict.choices.keys())
             if choice not in choices:
-                logger.warning(
-                    f"{choice} is not valid - expected any: {choices}")
+                logger.warning(f"{choice} is not valid - expected any: {choices}")
                 return choice
             else:
                 return code_dict.choices[choice]
@@ -457,9 +454,7 @@ class MetricsOutputTsv(WorkflowOutput):
         )
 
         if not self.path.is_file():
-            logger.error(
-                f"MetricsOutput TSV missing: File {self.path} does not exist."
-            )
+            logger.error(f"MetricsOutput TSV missing: File {self.path} does not exist.")
             raise FileNotFoundError
 
         self.headers, self.sections = Parse_section_tsv(
@@ -480,6 +475,5 @@ class MetricsOutputTsv(WorkflowOutput):
         if self.sections.keys() != other.sections.keys():
             return False
         return all(
-            self.sections[name].equals(other.sections[name])
-            for name in self.sections
+            self.sections[name].equals(other.sections[name]) for name in self.sections
         )
