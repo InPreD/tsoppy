@@ -214,12 +214,17 @@ def metric_plots(
         #            separator="\t",
         #        )
 
+        # plot_joint_qc.write_csv(
+        #     "plot_joint_qc.tsv",
+        #     separator="\t",
+        # )
+
         logger.info("Plot frame:\n%s", plot_frame)
 
         # Future:
         # create_qc_plots(
         #     metrics=plot_frame,
-        #    joint_qc=plot_joint_qc,
+        #     joint_qc=plot_joint_qc,
         #     workflow_type=plot_workflow,
         #     output="metric_plots.pdf",
         # )
