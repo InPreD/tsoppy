@@ -1,5 +1,5 @@
 """
-This module generates predispositions table for a patient.
+This module filters an input list of small variants and outputs a table containing only variants located in cancer-predisposing genes.
 """
 
 import io
