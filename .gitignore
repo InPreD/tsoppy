@@ -39,4 +39,4 @@ tests/test_data/metric_plots_main/input/
 *.tmp
 
 ./test_metrics_plots_cli.sh
-
+./scripts/test_metrics_plots_cli.sh
