@@ -152,14 +152,16 @@ class MetricPlots:
 
         return master, joint_qc
 
-    def prepare_plot_frame(
+    def prepare_plot_frames(
         self,
         master: pl.DataFrame,
+        joint_qc: pl.DataFrame,
         workflow_type: str,
         plot_last_runs: int | None = None,
         plot_run_ids: list[str] | None = None,
-    ) -> pl.DataFrame:
-        """Prepare workflow-specific rows for downstream plotting."""
+    ) -> tuple[pl.DataFrame, pl.DataFrame]:
+        """Prepare workflow-specific metrics and joint QC rows for plotting."""
+
         workflow_frame = master.filter(pl.col("WORKFLOW_TYPE") == workflow_type)
 
         available_runs = (
@@ -198,7 +200,14 @@ class MetricPlots:
             workflow_type,
         )
 
-        return workflow_frame.filter(pl.col("RUN").is_in(selected_runs))
+        plot_frame = workflow_frame.filter(pl.col("RUN").is_in(selected_runs))
+
+        plot_joint_qc = joint_qc.filter(
+            (pl.col("WORKFLOW_TYPE") == workflow_type)
+            & pl.col("RUN_ID").is_in(selected_runs)
+        )
+
+        return plot_frame, plot_joint_qc
 
     def _resolve_run_ids(
         self,

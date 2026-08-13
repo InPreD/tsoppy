@@ -11,7 +11,8 @@ import polars
 from tsoppy.metric_plots.main import MetricPlots
 
 
-# Define path to test data - cannot be absolute due to different paths locally and in CI
+# Define paths to test data - cannot be absolute due to different paths
+# locally and in CI.
 test_data_dir = "tests/test_data/metric_plots_main"
 
 config_yaml = "config.yaml"
@@ -22,6 +23,83 @@ inpred_nomenclature = path.join(
 
 
 class TestMetricPlots(unittest.TestCase):
+    @staticmethod
+    def _master_frame():
+        """Create a synthetic master metrics dataframe for plotting tests."""
+        return polars.DataFrame(
+            {
+                "SAMPLE_ID": [
+                    "S1",
+                    "S2",
+                    "S3",
+                    "S4",
+                    "S5",
+                ],
+                "RUN": [
+                    "RUN1",
+                    "RUN2",
+                    "RUN3",
+                    "RUN4",
+                    "RUN5",
+                ],
+                "WORKFLOW_TYPE": [
+                    "dragen",
+                    "localapp",
+                    "dragen",
+                    "localapp",
+                    "dragen",
+                ],
+                "WORKFLOW_VERSION": [
+                    "2.6.2.4",
+                    "ruo-2.2.0.12",
+                    "2.6.2.4",
+                    "ruo-2.2.0.12",
+                    "2.6.2.4",
+                ],
+                "RECORD_TYPE": [
+                    "DNA_SAMPLE",
+                    "DNA_SAMPLE",
+                    "DNA_SAMPLE",
+                    "DNA_SAMPLE",
+                    "DNA_SAMPLE",
+                ],
+            }
+        )
+
+    @staticmethod
+    def _joint_qc_frame():
+        """Create a synthetic joint QC dataframe for plotting tests."""
+        return polars.DataFrame(
+            {
+                "RUN_ID": [
+                    "RUN1",
+                    "RUN2",
+                    "RUN3",
+                    "RUN4",
+                    "RUN5",
+                ],
+                "WORKFLOW_TYPE": [
+                    "dragen",
+                    "localapp",
+                    "dragen",
+                    "localapp",
+                    "dragen",
+                ],
+                "WORKFLOW_VERSION": [
+                    "2.6.2.4",
+                    "ruo-2.2.0.12",
+                    "2.6.2.4",
+                    "ruo-2.2.0.12",
+                    "2.6.2.4",
+                ],
+            }
+        )
+
+    @staticmethod
+    def _metric_plots_without_init():
+        """Create MetricPlots without filesystem-dependent initialization."""
+        return MetricPlots.__new__(MetricPlots)
+
     def test_run(self):
         test_cases = [
             {
@@ -106,51 +184,14 @@ class TestMetricPlots(unittest.TestCase):
                 if path.isdir(test_case["workdir"]):
                     os.rmdir(test_case["workdir"])
 
-    def test_prepare_plot_frame_last_runs(self):
-        master = polars.DataFrame(
-            {
-                "SAMPLE_ID": [
-                    "S1",
-                    "S2",
-                    "S3",
-                    "S4",
-                    "S5",
-                ],
-                "RUN": [
-                    "RUN1",
-                    "RUN2",
-                    "RUN3",
-                    "RUN4",
-                    "RUN5",
-                ],
-                "WORKFLOW_TYPE": [
-                    "dragen",
-                    "localapp",
-                    "dragen",
-                    "localapp",
-                    "dragen",
-                ],
-                "WORKFLOW_VERSION": [
-                    "2.6.2.4",
-                    "ruo-2.2.0.12",
-                    "2.6.2.4",
-                    "ruo-2.2.0.12",
-                    "2.6.2.4",
-                ],
-                "RECORD_TYPE": [
-                    "DNA_SAMPLE",
-                    "DNA_SAMPLE",
-                    "DNA_SAMPLE",
-                    "DNA_SAMPLE",
-                    "DNA_SAMPLE",
-                ],
-            }
-        )
+    def test_prepare_plot_frames_last_runs(self):
+        master = self._master_frame()
+        joint_qc = self._joint_qc_frame()
+        metric_plots = self._metric_plots_without_init()
 
-        metric_plots = MetricPlots.__new__(MetricPlots)
-
-        got = metric_plots.prepare_plot_frame(
+        got, _ = metric_plots.prepare_plot_frames(
             master=master,
+            joint_qc=joint_qc,
             workflow_type="dragen",
             plot_last_runs=2,
         )
@@ -166,41 +207,30 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
-    def test_prepare_plot_frame_last_runs_more_than_available(self):
-        master = polars.DataFrame(
-            {
-                "SAMPLE_ID": [
-                    "S1",
-                    "S2",
-                    "S3",
-                ],
-                "RUN": [
-                    "RUN1",
-                    "RUN2",
-                    "RUN3",
-                ],
-                "WORKFLOW_TYPE": [
-                    "dragen",
-                    "localapp",
-                    "dragen",
-                ],
-                "WORKFLOW_VERSION": [
-                    "2.6.2.4",
-                    "ruo-2.2.0.12",
-                    "2.6.2.4",
-                ],
-                "RECORD_TYPE": [
-                    "DNA_SAMPLE",
-                    "DNA_SAMPLE",
-                    "DNA_SAMPLE",
-                ],
-            }
+    def test_prepare_plot_frames_joint_qc_last_runs(self):
+        master = self._master_frame()
+        joint_qc = self._joint_qc_frame()
+        metric_plots = self._metric_plots_without_init()
+
+        _, got = metric_plots.prepare_plot_frames(
+            master=master,
+            joint_qc=joint_qc,
+            workflow_type="dragen",
+            plot_last_runs=1,
         )
 
-        metric_plots = MetricPlots.__new__(MetricPlots)
+        expected = joint_qc.filter(polars.col("RUN_ID") == "RUN5")
 
-        got = metric_plots.prepare_plot_frame(
+        assert got.equals(expected)
+
+    def test_prepare_plot_frames_last_runs_more_than_available(self):
+        master = self._master_frame()
+        joint_qc = self._joint_qc_frame()
+        metric_plots = self._metric_plots_without_init()
+
+        got, _ = metric_plots.prepare_plot_frames(
             master=master,
+            joint_qc=joint_qc,
             workflow_type="dragen",
             plot_last_runs=10,
         )
@@ -209,50 +239,18 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
-    def test_prepare_plot_frame_explicit_runs(self):
-        master = polars.DataFrame(
-            {
-                "SAMPLE_ID": [
-                    "S1",
-                    "S2",
-                    "S3",
-                    "S4",
-                ],
-                "RUN": [
-                    "RUN1",
-                    "RUN2",
-                    "RUN3",
-                    "RUN4",
-                ],
-                "WORKFLOW_TYPE": [
-                    "dragen",
-                    "dragen",
-                    "localapp",
-                    "dragen",
-                ],
-                "WORKFLOW_VERSION": [
-                    "2.6.2.4",
-                    "2.6.2.4",
-                    "ruo-2.2.0.12",
-                    "2.6.2.4",
-                ],
-                "RECORD_TYPE": [
-                    "DNA_SAMPLE",
-                    "DNA_SAMPLE",
-                    "DNA_SAMPLE",
-                    "DNA_SAMPLE",
-                ],
-            }
-        )
+    def test_prepare_plot_frames_explicit_runs(self):
+        master = self._master_frame()
+        joint_qc = self._joint_qc_frame()
+        metric_plots = self._metric_plots_without_init()
 
-        metric_plots = MetricPlots.__new__(MetricPlots)
-
-        got = metric_plots.prepare_plot_frame(
+        got, _ = metric_plots.prepare_plot_frames(
             master=master,
+            joint_qc=joint_qc,
             workflow_type="dragen",
             plot_run_ids=[
                 "RUN1",
-                "RUN4",
+                "RUN5",
             ],
         )
 
@@ -260,7 +258,7 @@ class TestMetricPlots(unittest.TestCase):
             polars.col("RUN").is_in(
                 [
                     "RUN1",
-                    "RUN4",
+                    "RUN5",
                 ]
             )
             & (polars.col("WORKFLOW_TYPE") == "dragen")
@@ -268,7 +266,34 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
-    def test_prepare_plot_frame_filters_workflow_first(self):
+    def test_prepare_plot_frames_joint_qc_explicit_runs(self):
+        master = self._master_frame()
+        joint_qc = self._joint_qc_frame()
+        metric_plots = self._metric_plots_without_init()
+
+        _, got = metric_plots.prepare_plot_frames(
+            master=master,
+            joint_qc=joint_qc,
+            workflow_type="dragen",
+            plot_run_ids=[
+                "RUN1",
+                "RUN5",
+            ],
+        )
+
+        expected = joint_qc.filter(
+            polars.col("RUN_ID").is_in(
+                [
+                    "RUN1",
+                    "RUN5",
+                ]
+            )
+            & (polars.col("WORKFLOW_TYPE") == "dragen")
+        )
+
+        assert got.equals(expected)
+
+    def test_prepare_plot_frames_filters_workflow_first(self):
         master = polars.DataFrame(
             {
                 "SAMPLE_ID": [
@@ -294,10 +319,28 @@ class TestMetricPlots(unittest.TestCase):
             }
         )
 
-        metric_plots = MetricPlots.__new__(MetricPlots)
+        joint_qc = polars.DataFrame(
+            {
+                "RUN_ID": [
+                    "RUN1",
+                    "RUN1",
+                ],
+                "WORKFLOW_TYPE": [
+                    "dragen",
+                    "localapp",
+                ],
+                "WORKFLOW_VERSION": [
+                    "2.6.2.4",
+                    "ruo-2.2.0.12",
+                ],
+            }
+        )
 
-        got = metric_plots.prepare_plot_frame(
+        metric_plots = self._metric_plots_without_init()
+
+        got, _ = metric_plots.prepare_plot_frames(
             master=master,
+            joint_qc=joint_qc,
             workflow_type="localapp",
             plot_run_ids=[
                 "RUN1",
@@ -305,40 +348,75 @@ class TestMetricPlots(unittest.TestCase):
         )
 
         expected = master.filter(polars.col("WORKFLOW_TYPE") == "localapp")
-        print("MASTER")
-        print(master)
-        print(master.schema)
 
-        print("EXPECTED")
-        print(expected)
-        print(expected.schema)
         assert got.equals(expected)
 
-    def test_prepare_plot_frame_missing_explicit_run(self):
+    def test_prepare_plot_frames_joint_qc_filters_workflow_first(self):
         master = polars.DataFrame(
             {
                 "SAMPLE_ID": [
-                    "S1",
+                    "DRAGEN_SAMPLE",
+                    "LOCALAPP_SAMPLE",
                 ],
                 "RUN": [
+                    "RUN1",
                     "RUN1",
                 ],
                 "WORKFLOW_TYPE": [
                     "dragen",
+                    "localapp",
                 ],
                 "WORKFLOW_VERSION": [
                     "2.6.2.4",
+                    "ruo-2.2.0.12",
                 ],
                 "RECORD_TYPE": [
+                    "DNA_SAMPLE",
                     "DNA_SAMPLE",
                 ],
             }
         )
 
-        metric_plots = MetricPlots.__new__(MetricPlots)
+        joint_qc = polars.DataFrame(
+            {
+                "RUN_ID": [
+                    "RUN1",
+                    "RUN1",
+                ],
+                "WORKFLOW_TYPE": [
+                    "dragen",
+                    "localapp",
+                ],
+                "WORKFLOW_VERSION": [
+                    "2.6.2.4",
+                    "ruo-2.2.0.12",
+                ],
+            }
+        )
 
-        got = metric_plots.prepare_plot_frame(
+        metric_plots = self._metric_plots_without_init()
+
+        _, got = metric_plots.prepare_plot_frames(
             master=master,
+            joint_qc=joint_qc,
+            workflow_type="localapp",
+            plot_run_ids=[
+                "RUN1",
+            ],
+        )
+
+        expected = joint_qc.filter(polars.col("WORKFLOW_TYPE") == "localapp")
+
+        assert got.equals(expected)
+
+    def test_prepare_plot_frames_missing_explicit_run(self):
+        master = self._master_frame()
+        joint_qc = self._joint_qc_frame()
+        metric_plots = self._metric_plots_without_init()
+
+        got, got_joint_qc = metric_plots.prepare_plot_frames(
+            master=master,
+            joint_qc=joint_qc,
             workflow_type="dragen",
             plot_run_ids=[
                 "RUN_DOES_NOT_EXIST",
@@ -346,3 +424,19 @@ class TestMetricPlots(unittest.TestCase):
         )
 
         assert got.is_empty()
+        assert got_joint_qc.is_empty()
+
+    def test_prepare_plot_frames_filters_both_outputs_consistently(self):
+        master = self._master_frame()
+        joint_qc = self._joint_qc_frame()
+        metric_plots = self._metric_plots_without_init()
+
+        plot_frame, plot_joint_qc = metric_plots.prepare_plot_frames(
+            master=master,
+            joint_qc=joint_qc,
+            workflow_type="dragen",
+            plot_last_runs=1,
+        )
+
+        assert plot_frame["RUN"].to_list() == ["RUN5"]
+        assert plot_joint_qc["RUN_ID"].to_list() == ["RUN5"]

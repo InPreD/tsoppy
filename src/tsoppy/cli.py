@@ -201,8 +201,9 @@ def metric_plots(
 
         plotting_run_ids = list(dict.fromkeys(plotting_run_ids))
 
-        plot_frame = metric_plotter.prepare_plot_frame(
+        plot_frame, plot_joint_qc = metric_plotter.prepare_plot_frames(
             master=master,
+            joint_qc=joint_qc,
             workflow_type=plot_workflow,
             plot_last_runs=plot_last_runs,
             plot_run_ids=(plotting_run_ids if plotting_run_ids else None),
@@ -218,6 +219,7 @@ def metric_plots(
         # Future:
         # create_qc_plots(
         #     metrics=plot_frame,
+        #    joint_qc=plot_joint_qc,
         #     workflow_type=plot_workflow,
         #     output="metric_plots.pdf",
         # )
