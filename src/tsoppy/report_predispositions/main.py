@@ -264,9 +264,6 @@ def generate_report(
     in the cancer susceptibility genes.
     """
 
-    predisposition_variants = dict()
-    cancer_susceptibility_genes_dict = dict()
-
     tumor_purity_range_validation(tumor_purity)
 
     logger.info(
