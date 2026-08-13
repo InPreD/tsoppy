@@ -208,13 +208,18 @@ def metric_plots(
             plot_run_ids=(plotting_run_ids if plotting_run_ids else None),
         )
 
+#        plot_frame.write_csv(
+#            "plot_frame.tsv",
+#            separator="\t",
+#        )
+
         logger.info("Plot frame:\n%s", plot_frame)
 
         # Future:
         # create_qc_plots(
         #     metrics=plot_frame,
-        #     joint_qc=joint_qc,
-        #     workdir=workdir,
+        #     workflow_type=plot_workflow,
+        #     output="metric_plots.pdf",
         # )
 
         logger.info(
