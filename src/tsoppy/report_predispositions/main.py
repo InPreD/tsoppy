@@ -2,9 +2,10 @@
 This module filters an input list of small variants and outputs a table containing only variants located in cancer-predisposing genes.
 """
 
-import io
 import logging
+import re
 from pathlib import Path
+from string import Template
 
 import polars as pl
 
@@ -19,9 +20,7 @@ def validate_uniqueness(df: pl.DataFrame, column: str):
     """
     if not df[column].is_unique().all():
         # find the duplicates to make the error message helpful
-        duplicates = (
-            df[column].filter(df[column].is_duplicated()).unique().to_list()
-        )
+        duplicates = df[column].filter(df[column].is_duplicated()).unique().to_list()
         # this captures the full traceback automatically
         logger.exception("Data Integrity Validation Failed.")
         raise ValueError(f"Duplicate IDs found in '{column}': {duplicates}")
@@ -43,14 +42,20 @@ def validate_tumor_purity_range(tumor_purity: float):
 
 def load_data_from_cancer_susceptibility_genes_table(
     file_path: Path, column_list: list[str], gene_name_column: str
-) -> dict[str, dict[str, str]]:
+) -> tuple[dict[str, dict[str, str]], str]:
     """
     Load data from the input table of cancer susceptibility genes.
     """
 
+    # load metadata about source of the info
+    with open(file_path, "r") as file:
+        for line in file:
+            if re.match(r"# source:", line):
+                source = line.replace("# source:", "", 1)
+                source = source.strip()
+
     # load input data
-    df = pl.read_csv(file_path,
-                     columns=column_list, separator="\t")
+    df = pl.read_csv(file_path, columns=column_list, separator="\t")
 
     # gene_column_name is supposed to be a column containing
     # primary key of the cancer_susceptibility_genes file
@@ -67,7 +72,7 @@ def load_data_from_cancer_susceptibility_genes_table(
         row.pop(gene_name_column): row for row in df.to_dicts()
     }
 
-    return cancer_susceptibility_genes_dict
+    return cancer_susceptibility_genes_dict, source
 
 
 def lookup_predisposition_variants(
@@ -107,82 +112,6 @@ def lookup_predisposition_variants(
     return predispositions
 
 
-def print_header_lines_versions(
-    sample_id: str, version_string: str, output_file_handle: io.TextIOBase
-):
-    output_file_handle.write(
-        f"# [{sample_id}] Version string: {version_string}\n")
-    return
-
-
-def print_header_lines_cancer_susceptibility_data_source(
-    sample_id: str,
-    cancer_susceptibility_genes: Path,
-    doi_reference: str,
-    output_file_handle: io.TextIOBase,
-):
-    output_file_handle.write(
-        f"# [{sample_id}] Cancer susceptibility genes are defined in:\n"
-    )
-    output_file_handle.write(
-        f"# [{sample_id}] \tfile {cancer_susceptibility_genes}\n")
-    output_file_handle.write(f"# [{sample_id}] \tarticle {doi_reference}\n")
-    return
-
-
-def print_header_lines_remaining_variant_info_data_source(
-    sample_id: str, small_variant_calls: Path, output_file_handle: io.TextIOBase
-):
-    output_file_handle.write(
-        f"# [{sample_id}] Small variant calls are defined in: {small_variant_calls}\n"
-    )
-    return
-
-
-def print_header_lines_length_of_targeted_coding_regions(
-    sample_id: str,
-    length_of_targeted_coding_regions: float,
-    output_file_handle: io.TextIOBase,
-):
-    # report length of targeted coding regions
-    output_file_handle.write(
-        f"# [{sample_id}] Cumulative length of all the targeted coding regions (in millions of bases): {length_of_targeted_coding_regions:.2f}\n"
-    )
-    return
-
-
-def print_header_lines_tumor_purity(
-    sample_id: str, tumor_purity: float, output_file_handle: io.TextIOBase
-):
-    # report tumor purity (percentage of tumor cells in the sample)
-    output_file_handle.write(
-        f"# [{sample_id}] Tumor purity (as a fraction between 0 and 1): {tumor_purity:.2f}\n"
-    )
-    output_file_handle.write(
-        f"# [{sample_id}] \tThe tumor purity is provided as an input parameter for tsoppy.\n"
-    )
-    return
-
-
-def print_header_lines_gene_predisposition(
-    sample_id: str, output_file_handle: io.TextIOBase
-):
-    # all the info in the Gene_predisposition column come from the cancer susceptibility genes input file
-    output_file_handle.write(
-        f"# [{sample_id}] Gene_predisposition column format:\n")
-    output_file_handle.write(f"# [{sample_id}] \t[Actionability]_[Age]\n")
-    output_file_handle.write(f"# [{sample_id}] \twhere:\n")
-    output_file_handle.write(
-        f"# [{sample_id}] \t\tActionability: [ MA-CSG | HA-CSG | SA-CSG ]\n"
-    )
-    output_file_handle.write(
-        f"# [{sample_id}] \t\t\t - MA-CSG = most actionable cancer susceptibility gene, HA-CSG = highly actionable csg, SA-CSG = standardly actionable csg\n"
-    )
-    output_file_handle.write(
-        f"# [{sample_id}] \t\tAge: [ Allages | Age<30 ]\n")
-    return
-
-
 def get_genomic_location(variant_id: str) -> str:
     # variant_id format: chromosome:position:ref>alt
     chromosome, position = variant_id.split(":")[0:2]
@@ -198,6 +127,7 @@ def get_dna_change(variant_id: str) -> str:
 def print_predisposition_variants_to_output_file(
     sample_id: str,
     version_string: str,
+    source: str,
     cancer_susceptibility_genes: Path,
     small_variant_calls: Path,
     length_of_targeted_coding_regions: float,
@@ -209,24 +139,94 @@ def print_predisposition_variants_to_output_file(
     Print predispositions into the output file.
     """
 
+    header_lines_versions = Template(
+        """# [$sample_id] Version string: $version_string
+"""
+    )
+
+    header_lines_cancer_susceptibility_data_source = Template(
+        """# [$sample_id] Cancer susceptibility genes are defined in:
+# [$sample_id]    file: $cancer_susceptibility_genes
+# [$sample_id]    source: $source
+"""
+    )
+
+    header_lines_small_variant_info_data_source = Template(
+        """# [$sample_id] Small variant calls are defined in: $small_variant_calls
+"""
+    )
+
+    header_lines_length_of_targeted_coding_regions = Template(
+        """# [$sample_id] Cumulative length of all the targeted coding regions (in millions of bases): $length_of_targeted_coding_regions}
+"""
+    )
+
+    header_lines_tumor_purity = Template(
+        """# [$sample_id] Tumor purity (as a fraction between 0 and 1): $tumor_purity
+# [$sample_id]    The tumor purity is provided as an input parameter for tsoppy.
+"""
+    )
+
+    header_lines_gene_predisposition = Template(
+        """# [$sample_id] Gene_predisposition column format:
+# [$sample_id]    [Actionability]_[Age]
+# [$sample_id]    where:
+# [$sample_id]        Actionability: [ MA-CSG | HA-CSG | SA-CSG ]
+# [$sample_id]            - MA-CSG = most actionable cancer susceptibility gene, HA-CSG = highly actionable csg, SA-CSG = standardly actionable csg
+# [$sample_id]        Age: [ Allages | Age<30 ]
+"""
+    )
+    # all the info in the Gene_predisposition column come from the cancer susceptibility genes input file
+
     # open output file for writing
     with open(output_file, "w") as output:
         # print metadata comments to the output file
-        print_header_lines_versions(sample_id, version_string, output)
-        # -----
-        # TODO: get source info from metadata of cancer_susceptibility_genes file and print it out
-        # -----
-        #  print_header_lines_cancer_susceptibility_data_source(
-        #    sample_id, cancer_susceptibility_genes, doi_reference, output
-        # )
-        print_header_lines_remaining_variant_info_data_source(
-            sample_id, small_variant_calls, output
+
+        # print info about tool versions
+        versions = {"sample_id": sample_id, "version_string": version_string}
+        output.write(header_lines_versions.safe_substitute(versions))
+
+        # print info about where the susceptibility gene list comes from
+        sus_genes_data_source = {
+            "sample_id": sample_id,
+            "cancer_susceptibility_genes": cancer_susceptibility_genes,
+            "source": source,
+        }
+        output.write(
+            header_lines_cancer_susceptibility_data_source.safe_substitute(
+                sus_genes_data_source
+            )
         )
-        print_header_lines_length_of_targeted_coding_regions(
-            sample_id, length_of_targeted_coding_regions, output
+
+        # print info about where the small variant info comes from
+        small_variant_info = {
+            "sample_id": sample_id,
+            "small_variant_calls": small_variant_calls,
+        }
+        output.write(
+            header_lines_small_variant_info_data_source.safe_substitute(
+                small_variant_info
+            )
         )
-        print_header_lines_tumor_purity(sample_id, tumor_purity, output)
-        print_header_lines_gene_predisposition(sample_id, output)
+
+        targeted_coding_regions = {
+            "sample_id": sample_id,
+            "length_of_targeted_coding_regions": f"{length_of_targeted_coding_regions:.2f}",
+        }
+        output.write(
+            header_lines_length_of_targeted_coding_regions.safe_substitute(
+                targeted_coding_regions
+            )
+        )
+
+        tumor_purity_info = {
+            "sample_id": sample_id,
+            "tumor_purity": f"{tumor_purity:.2f}",
+        }
+        output.write(header_lines_tumor_purity.safe_substitute(tumor_purity_info))
+
+        gene_predisposition_info = {"sample_id": sample_id}
+        header_lines_gene_predisposition.safe_substitute(gene_predisposition_info)
 
     # transform the nested dict into a list of dicts
     # using **fields to unpack the rest of the dictionary values
@@ -266,10 +266,11 @@ def generate_report(
 
     tumor_purity_range_validation(tumor_purity)
 
-    logger.info(
-        f"Load data from the {cancer_susceptibility_genes} input file.")
-    cancer_susceptibility_genes_dict = load_data_from_cancer_susceptibility_genes_table(
-        cancer_susceptibility_genes, csg_column_list, gene_name_column
+    logger.info(f"Load data from the {cancer_susceptibility_genes} input file.")
+    cancer_susceptibility_genes_dict, source = (
+        load_data_from_cancer_susceptibility_genes_table(
+            cancer_susceptibility_genes, csg_column_list, gene_name_column
+        )
     )
 
     logger.info(
@@ -285,6 +286,7 @@ def generate_report(
     print_predisposition_variants_to_output_file(
         sample_id,
         version_string,
+        source,
         cancer_susceptibility_genes,
         small_variant_calls,
         length_of_targeted_coding_regions,

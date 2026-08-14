@@ -62,8 +62,7 @@ def report_predispositions(
         ),
     ],
     germline_small_variant_calls: Annotated[
-        Path, typer.Option(
-            help="File containing germline small variant calls.")
+        Path, typer.Option(help="File containing germline small variant calls.")
     ],
     output: Annotated[
         Path, typer.Option(help="File containing predisposition variants.")

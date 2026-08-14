@@ -86,8 +86,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
     cancer_susceptibility_genes_table_content_expected = (
         "Gene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages"
     )
-    test_file_expected.write_text(
-        cancer_susceptibility_genes_table_content_expected)
+    test_file_expected.write_text(cancer_susceptibility_genes_table_content_expected)
 
     # expected result
     result = dict()
@@ -291,5 +290,4 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
         output_file,
     )
 
-    assert Path(expected_output_file).read_text() == Path(
-        output_file).read_text()
+    assert Path(expected_output_file).read_text() == Path(output_file).read_text()
