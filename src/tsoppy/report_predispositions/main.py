@@ -9,6 +9,8 @@ from string import Template
 
 import polars as pl
 
+from tsoppy.general.classes import SmallVariantGenomeVcf, TmbTraceTsv, VariantsAnnotatedJson
+
 logger = logging.getLogger(__name__)
 
 # TODO: implement lookup_predisposition_variants
@@ -20,7 +22,8 @@ def validate_uniqueness(df: pl.DataFrame, column: str):
     """
     if not df[column].is_unique().all():
         # find the duplicates to make the error message helpful
-        duplicates = df[column].filter(df[column].is_duplicated()).unique().to_list()
+        duplicates = df[column].filter(
+            df[column].is_duplicated()).unique().to_list()
         # this captures the full traceback automatically
         logger.exception("Data Integrity Validation Failed.")
         raise ValueError(f"Duplicate IDs found in '{column}': {duplicates}")
@@ -77,12 +80,22 @@ def load_data_from_cancer_susceptibility_genes_table(
 
 def lookup_predisposition_variants(
     cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
-    small_variant_calls: Path,
+    sample_id: str,
+    config_yaml: str | Path,
+    inpred_nomenclature: str | Path,
+    root_path: str | Path
 ):
     """
     Look up predispositions and store all the relevant info.
     """
+
     predispositions = dict()
+
+    small_variants = SmallVariantGenomeVcf(
+        config_yaml, inpred_nomenclature, root_path, sample_id)
+
+    # TODO: add nirvana annotation to the small_variants (method to be implemented in classes.py, possibly part of create? so nothing to do here)
+    # TODO: iterate through the annotated variants, store the variants overlapping with genes in the cancer_susceptibility_genes_dict into predispositions
 
     #    # define names of columns of the output file
     #    column_names = [
@@ -103,11 +116,6 @@ def lookup_predisposition_variants(
     #        "TCGA_frequency",
     #        "ICGC_PCAWG_occurrence",
     #        "Gene_predisposition"]
-
-    # open small_variant_calls file
-    # iterate through all the variants, store the variants located in the genes in the genes dict in predispositions
-
-    # select only records from the genes in {cancer_susceptibility_genes}
 
     return predispositions
 
@@ -223,10 +231,12 @@ def print_predisposition_variants_to_output_file(
             "sample_id": sample_id,
             "tumor_purity": f"{tumor_purity:.2f}",
         }
-        output.write(header_lines_tumor_purity.safe_substitute(tumor_purity_info))
+        output.write(
+            header_lines_tumor_purity.safe_substitute(tumor_purity_info))
 
         gene_predisposition_info = {"sample_id": sample_id}
-        header_lines_gene_predisposition.safe_substitute(gene_predisposition_info)
+        header_lines_gene_predisposition.safe_substitute(
+            gene_predisposition_info)
 
     # transform the nested dict into a list of dicts
     # using **fields to unpack the rest of the dictionary values
@@ -250,13 +260,15 @@ def print_predisposition_variants_to_output_file(
 
 def generate_report(
     sample_id: str,
+    config_yaml: str | Path,
+    inpred_nomenclature: str | Path,
+    root_path: str | Path,
     version_string: str,
     length_of_targeted_coding_regions: float,
     tumor_purity: float,
     cancer_susceptibility_genes: Path,
     csg_column_list: list[str],
     gene_name_column: str,
-    small_variant_calls: Path,
     output_file: Path,
 ):
     """
@@ -266,7 +278,8 @@ def generate_report(
 
     tumor_purity_range_validation(tumor_purity)
 
-    logger.info(f"Load data from the {cancer_susceptibility_genes} input file.")
+    logger.info(
+        f"Load data from the {cancer_susceptibility_genes} input file.")
     cancer_susceptibility_genes_dict, source = (
         load_data_from_cancer_susceptibility_genes_table(
             cancer_susceptibility_genes, csg_column_list, gene_name_column
@@ -274,10 +287,10 @@ def generate_report(
     )
 
     logger.info(
-        f"Open the {small_variant_calls} file and iterate through the variants. Store all the variants present in the {cancer_susceptibility_genes} table together with all the info that should be reported into the {predisposition_variants}."
+        f"Find predisposition_variants in SmallVariantGenomeVcf object of a given sample {sample_id}."
     )
     predisposition_variants = lookup_predisposition_variants(
-        cancer_susceptibility_genes_dict, small_variant_calls
+        cancer_susceptibility_genes_dict, sample_id, config_yaml, inpred_nomenclature, root_path
     )
 
     logger.info(

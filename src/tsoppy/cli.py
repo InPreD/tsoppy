@@ -25,6 +25,16 @@ def version():
 @app.command()
 def report_predispositions(
     sample_id: Annotated[str, typer.Option(help="ID of the input sample.")],
+    config_yaml: Annotated[str | Path, typer.Option(help="Config yaml file.")],
+    inpred_nomenclature: Annotated[
+        str | Path, typer.Option(help="InPreD nomenclature definition file.")
+    ],
+    root_path: Annotated[
+        str | Path,
+        typer.Option(
+            help="Root path to the folder containing TSO500 analysis the sequencing run which contains the input sample."
+        ),
+    ],
     version_string: Annotated[
         str,
         typer.Option(
@@ -61,9 +71,6 @@ def report_predispositions(
             help="Name of the column containing HUGO gene names (e.g. BRCA1, TP53)."
         ),
     ],
-    germline_small_variant_calls: Annotated[
-        Path, typer.Option(help="File containing germline small variant calls.")
-    ],
     output: Annotated[
         Path, typer.Option(help="File containing predisposition variants.")
     ],
@@ -75,12 +82,14 @@ def report_predispositions(
 
     generate_report(
         sample_id,
+        config_yaml,
+        inpred_nomenclature,
+        root_path,
         version_string,
         length_of_targeted_coding_regions,
         tumor_purity,
         cancer_susceptibility_genes,
         cancer_susceptibility_genes_column_list,
         cancer_susceptibility_genes_gene_name_column,
-        germline_small_variant_calls,
         output,
     )
