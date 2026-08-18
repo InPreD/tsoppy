@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-
+from glob import glob
 import polars as pl
 
 from tsoppy.general.classes import MetricsOutputTsv, WorkflowOutput
@@ -19,8 +19,8 @@ class MetricPlots:
     Attributes:
         config_yaml: Workflow output configuration path.
         inpred_nomenclature: InPreD nomenclature configuration path.
-        input_directory: Root directory containing workflow outputs.
-        workdir: Directory where output tables are written.
+        input_glob: Glob pattern matching workflow output roots.
+        input_roots: Workflow roots resolved from input_glob.
         run_ids: Run IDs selected for processing.
     """
 
@@ -39,6 +39,8 @@ class MetricPlots:
     RNA_SAMPLE = "RNA_SAMPLE"
     UNKNOWN_SAMPLE = "SAMPLE"
 
+    RUN_INDEX = "RUN_INDEX"
+
     IGNORED_SECTIONS = {
         "Header",
         "Notes",
@@ -54,6 +56,7 @@ class MetricPlots:
     ]
 
     METADATA_COLUMNS = [
+        RUN_INDEX,
         "SAMPLE_ID",
         "RUN",
         "WORKFLOW_TYPE",
@@ -71,6 +74,7 @@ class MetricPlots:
     ]
 
     JOINT_QC_COLUMNS = [
+        "RUN_INDEX",
         "RUN_ID",
         "WORKFLOW_TYPE",
         "WORKFLOW_VERSION",
@@ -80,37 +84,53 @@ class MetricPlots:
         "CLUSTER_DENSITY",
         "ESTIMATED_YIELD",
         "CLUSTERS_PASSING_FILTER",
-        "RUN_NUMBER",
     ]
 
     def __init__(
         self,
         config_yaml: Path,
         inpred_nomenclature: Path,
-        input_directory: Path,
-        workdir: Path,
+        input_glob: str,
         run_ids: str | list[str] | None = None,
         run_id_file: Path | None = None,
-    ) -> None:
-        """Initialize MetricPlots."""
+    ):
+        """Initialize metric plot processing.
+
+        Args:
+            config_yaml: Workflow configuration file.
+            inpred_nomenclature: InPreD nomenclature file.
+            input_glob: Glob matching workflow output roots.
+            workdir: Output directory.
+            run_ids: Comma-separated string or list of run IDs.
+            run_id_file: File containing run IDs.
+        """
+
+        # although typer checks for mutual exclusivity, we also check here to ensure that the class is used correctly from other contexts
+        if run_ids is not None and run_id_file is not None:
+            raise ValueError("run_ids and run_id_file are mutually exclusive.")
+
         self.config_yaml = Path(config_yaml)
         self.inpred_nomenclature = Path(inpred_nomenclature)
-        self.input_directory = Path(input_directory)
-        self.workdir = Path(workdir)
-        self.run_id_file = Path(run_id_file) if run_id_file else None
+        self.input_glob = input_glob
 
         self.run_ids = self._resolve_run_ids(
             run_ids=run_ids,
-            run_id_file=self.run_id_file,
+            run_id_file=run_id_file,
         )
 
-    def run(
+        self.input_roots: list[Path] = []
+
+    def generate_metrics_tables(
         self,
     ) -> tuple[
         pl.DataFrame,
         pl.DataFrame,
     ]:
         """Create and write master and joint QC tables."""
+        logger.info(
+            "Generating metrics tables for %d run(s).",
+            len(self.run_ids),
+        )
         metrics_outputs = self._load_metrics_outputs()
 
         run_frames = [
@@ -122,15 +142,16 @@ class MetricPlots:
         ]
 
         master = self._combine_runs(run_frames)
+        master = self._add_run_index(
+            master,
+            run_column="RUN",
+        )
+        master = self._finalize_frame(master)
+
         joint_qc = self._create_joint_qc(master)
 
-        self.workdir.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
-        master_path = self.workdir / "master_metrics_table.tsv"
-        joint_qc_path = self.workdir / "joint_sequencing_QC_file.tsv"
+        master_path = Path("master_metrics_table.tsv")
+        joint_qc_path = Path("joint_sequencing_QC_file.tsv")
 
         master.write_csv(
             master_path,
@@ -142,17 +163,14 @@ class MetricPlots:
         )
 
         logger.info(
-            "Wrote master metrics table to %s.",
-            master_path,
-        )
-        logger.info(
-            "Wrote joint sequencing QC table to %s.",
-            joint_qc_path,
+            "Generated %d master rows and %d joint QC rows.",
+            master.height,
+            joint_qc.height,
         )
 
         return master, joint_qc
 
-    def prepare_plot_frames(
+    def select_plot_data(
         self,
         master: pl.DataFrame,
         joint_qc: pl.DataFrame,
@@ -214,20 +232,22 @@ class MetricPlots:
         run_ids: str | list[str] | None,
         run_id_file: Path | None,
     ) -> list[str]:
-        """Read run IDs from CLI values, a file, or both."""
-        collected: list[str] = []
+        """Read run IDs from CLI values or a run ID file."""
 
-        if run_ids:
-            collected.extend(self._parse_run_id_input(run_ids))
+        if run_ids is not None:
+            selected_run_ids = self._parse_run_id_input(run_ids)
 
-        if run_id_file:
-            collected.extend(self._read_run_id_file(run_id_file))
+        elif run_id_file is not None:
+            selected_run_ids = self._read_run_id_file(run_id_file)
 
-        unique_run_ids = list(dict.fromkeys(collected))
+        else:
+            logger.error("No run IDs were provided.")
+            raise ValueError("Provide run IDs using run_ids or run_id_file.")
+
+        unique_run_ids = list(dict.fromkeys(selected_run_ids))
 
         if not unique_run_ids:
-            logger.error("No run IDs were provided.")
-            raise ValueError("Provide run IDs using run_ids, run_id_file, or both.")
+            raise ValueError("No valid run IDs were provided.")
 
         logger.info(
             "Selected %d unique run ID(s).",
@@ -291,6 +311,10 @@ class MetricPlots:
             run_roots = self._find_run_roots(run_id)
 
             if not run_roots:
+                logger.error(
+                    "No workflow output root found for run %s.",
+                    run_id,
+                )
                 raise FileNotFoundError(
                     f"No workflow output root found for run {run_id}."
                 )
@@ -335,6 +359,10 @@ class MetricPlots:
                 )
 
             if loaded_for_run == 0:
+                logger.error(
+                    "No valid MetricsOutput.tsv found for run %s.",
+                    run_id,
+                )
                 raise FileNotFoundError(
                     f"No valid MetricsOutput.tsv found for run {run_id}."
                 )
@@ -344,7 +372,8 @@ class MetricPlots:
     def _validate_inputs(
         self,
     ) -> None:
-        """Validate required input paths."""
+        """Validate required inputs and resolve workflow roots."""
+
         for path, description in [
             (
                 self.config_yaml,
@@ -356,28 +385,46 @@ class MetricPlots:
             ),
         ]:
             if not path.is_file():
+                logger.error(
+                    "%s file does not exist: %s",
+                    description,
+                    path,
+                )
                 raise FileNotFoundError(f"{description} file does not exist: {path}")
 
-        if not self.input_directory.is_dir():
-            raise FileNotFoundError(
-                f"Input directory does not exist: {self.input_directory}"
+        self.input_roots = list(
+            dict.fromkeys(
+                Path(match)
+                for match in glob(
+                    self.input_glob,
+                    recursive=True,
+                )
+                if Path(match).is_dir()
             )
+        )
+
+        if not self.input_roots:
+            logger.error(
+                "Input glob did not match any workflow output directories: %s",
+                self.input_glob,
+            )
+            raise FileNotFoundError(
+                "Input glob did not match any workflow output "
+                f"directories: {self.input_glob}"
+            )
+
+        logger.info(
+            "Input glob matched %d workflow root(s).",
+            len(self.input_roots),
+        )
 
     def _find_run_roots(
         self,
         run_id: str,
     ) -> list[Path]:
-        """Find workflow roots containing a selected run ID."""
+        """Find glob-matched workflow roots for a selected run ID."""
 
-        roots: list[Path] = []
-
-        for workflow in ("dragen", "localapp"):
-            candidate = self.input_directory / workflow / run_id
-
-            if candidate.is_dir():
-                roots.append(candidate)
-
-        return roots
+        return [root for root in self.input_roots if root.name == run_id]
 
     def _transform_metrics_output(
         self,
@@ -440,6 +487,11 @@ class MetricPlots:
 
         if not run_metrics.is_empty():
             if run_metrics.height != 1:
+                logger.error(
+                    "Expected exactly one run-level metrics row for run %s, found %d.",
+                    run_id,
+                    run_metrics.height,
+                )
                 raise ValueError(
                     f"Expected exactly one run-level metrics row for run {run_id}."
                 )
@@ -478,6 +530,10 @@ class MetricPlots:
         ]
 
         if not output_frames:
+            logger.error(
+                "No metric data could be transformed from %s.",
+                metrics_output.path,
+            )
             raise ValueError(
                 f"No metric data could be transformed from {metrics_output.path}."
             )
@@ -703,6 +759,11 @@ class MetricPlots:
             )
 
             if conflicts.height:
+                logger.error(
+                    "Conflicting values detected for metric %s:\n%s",
+                    column,
+                    conflicts,
+                )
                 raise ValueError(f"Conflicting values detected for metric {column}.")
 
         return combined.group_by(
@@ -798,6 +859,7 @@ class MetricPlots:
     ) -> pl.DataFrame:
         """Combine all processed workflow frames."""
         if not run_frames:
+            logger.error("No run metrics were parsed.")
             raise ValueError("No run metrics were parsed.")
 
         return pl.concat(
@@ -841,6 +903,7 @@ class MetricPlots:
         return (
             sample_rows.group_by(
                 [
+                    "RUN_INDEX",
                     "RUN",
                     "WORKFLOW_TYPE",
                     "WORKFLOW_VERSION",
@@ -853,11 +916,29 @@ class MetricPlots:
                     "RUN": "RUN_ID",
                 }
             )
-            .with_row_index(
-                "RUN_NUMBER",
-                offset=1,
-            )
-            .with_columns(pl.col("RUN_NUMBER").cast(pl.String))
             .select(self.JOINT_QC_COLUMNS)
             .fill_null("NA")
+        )
+
+    def _add_run_index(
+        self,
+        frame: pl.DataFrame,
+        run_column: str,
+    ) -> pl.DataFrame:
+        """Add run index where 001 corresponds to the latest run."""
+
+        n_runs = len(self.run_ids)
+        width = max(3, len(str(n_runs)))
+
+        mapping = {
+            run_id: str(n_runs - index).zfill(width)
+            for index, run_id in enumerate(self.run_ids)
+        }
+        logger.info(
+            "Assigned run indices to %d run(s); latest run %s has index 001.",
+            n_runs,
+            self.run_ids[-1],
+        )
+        return frame.with_columns(
+            pl.col(run_column).replace(mapping).alias(self.RUN_INDEX)
         )

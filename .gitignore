@@ -9,6 +9,8 @@ build/
 dist/
 venv/
 .venv/
+.gitignore
+docker-compose.yml
 
 # IDE
 .project
@@ -33,6 +35,7 @@ tests/test_data/metric_plots_main/input/
 **/out/
 *.pdf
 *.zip
+./*.tsv
 
 # Temporary files
 *.swp

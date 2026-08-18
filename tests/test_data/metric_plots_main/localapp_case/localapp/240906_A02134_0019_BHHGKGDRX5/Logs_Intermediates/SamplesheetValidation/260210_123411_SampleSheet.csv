@@ -1,3 +1,4 @@
 [TSO500S_Data],,,,,
 Sample_ID,Index_ID,Sample_Type,Pair_ID,Sample_Feature,Sample_Description
-sample1,IDX0001,DNA,sample1,HRD,
+DNA_TEST,IDX0001,DNA,DNA_TEST,HRD,
+RNA_TEST,IDX0002,RNA,RNA_TEST,,

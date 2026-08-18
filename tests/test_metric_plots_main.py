@@ -1,10 +1,11 @@
 """
-metric plots subpackage main module unit tests.
+Metric plots subpackage main module unit tests.
 """
 
 import os
 import unittest
 from os import path
+import tempfile
 
 import polars
 
@@ -14,12 +15,8 @@ from tsoppy.metric_plots.main import MetricPlots
 # Define paths to test data - cannot be absolute due to different paths
 # locally and in CI.
 test_data_dir = "tests/test_data/metric_plots_main"
-
 config_yaml = "config.yaml"
-inpred_nomenclature = path.join(
-    test_data_dir,
-    "nomenclature.yaml",
-)
+inpred_nomenclature = "resources/nomenclature.yaml"
 
 
 class TestMetricPlots(unittest.TestCase):
@@ -101,21 +98,19 @@ class TestMetricPlots(unittest.TestCase):
         return MetricPlots.__new__(MetricPlots)
 
     def test_run(self):
+        """Create master metrics tables from DRAGEN and LocalApp fixtures."""
         test_cases = [
             {
                 "name": "create master table from dragen workflow",
-                "input_directory": path.join(
+                "input_glob": path.join(
                     test_data_dir,
                     "dragen_case",
+                    "dragen",
+                    "*",
                 ),
                 "run_ids": [
                     "240809_A02134_0013_BHCGJYDRX5",
                 ],
-                "workdir": path.join(
-                    test_data_dir,
-                    "dragen_case",
-                    "out",
-                ),
                 "expected": path.join(
                     test_data_dir,
                     "dragen_case",
@@ -124,18 +119,13 @@ class TestMetricPlots(unittest.TestCase):
             },
             {
                 "name": "create master table from localapp workflow",
-                "input_directory": path.join(
+                "input_glob": path.join(
                     test_data_dir,
                     "localapp_case",
+                    "localapp",
+                    "*",
                 ),
-                "run_ids": [
-                    "240906_A02134_0019_BHHGKGDRX5",
-                ],
-                "workdir": path.join(
-                    test_data_dir,
-                    "localapp_case",
-                    "out",
-                ),
+                "run_ids": ["240906_A02134_0019_BHHGKGDRX5"],
                 "expected": path.join(
                     test_data_dir,
                     "localapp_case",
@@ -146,50 +136,47 @@ class TestMetricPlots(unittest.TestCase):
 
         for test_case in test_cases:
             with self.subTest(msg=test_case["name"]):
-                metric_plots = MetricPlots(
-                    config_yaml=config_yaml,
-                    inpred_nomenclature=inpred_nomenclature,
-                    input_directory=test_case["input_directory"],
-                    run_ids=test_case["run_ids"],
-                    workdir=test_case["workdir"],
-                )
+                config = path.abspath(config_yaml)
+                nomenclature = path.abspath(inpred_nomenclature)
+                input_glob = path.abspath(test_case["input_glob"])
+                expected_path = path.abspath(test_case["expected"])
 
-                master, _ = metric_plots.run()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    current_dir = os.getcwd()
 
-                expected = polars.read_csv(
-                    test_case["expected"],
-                    separator="\t",
-                    infer_schema=False,
-                )
+                    try:
+                        os.chdir(tmpdir)
 
-                assert master.equals(expected)
+                        metric_plots = MetricPlots(
+                            config_yaml=config,
+                            inpred_nomenclature=nomenclature,
+                            input_glob=input_glob,
+                            run_ids=test_case["run_ids"],
+                        )
 
-                output = path.join(
-                    test_case["workdir"],
-                    "master_metrics_table.tsv",
-                )
+                        master, _ = metric_plots.generate_metrics_tables()
 
-                assert path.isfile(output)
+                        expected = polars.read_csv(
+                            expected_path,
+                            separator="\t",
+                            infer_schema=False,
+                        )
 
-                os.remove(output)
+                        assert master.equals(expected)
 
-                joint_qc = path.join(
-                    test_case["workdir"],
-                    "joint_sequencing_QC_file.tsv",
-                )
+                        assert path.isfile("master_metrics_table.tsv")
 
-                if path.isfile(joint_qc):
-                    os.remove(joint_qc)
+                        assert path.isfile("joint_sequencing_QC_file.tsv")
 
-                if path.isdir(test_case["workdir"]):
-                    os.rmdir(test_case["workdir"])
+                    finally:
+                        os.chdir(current_dir)
 
-    def test_prepare_plot_frames_last_runs(self):
+    def test_select_plot_data_last_runs(self):
         master = self._master_frame()
         joint_qc = self._joint_qc_frame()
         metric_plots = self._metric_plots_without_init()
 
-        got, _ = metric_plots.prepare_plot_frames(
+        got, _ = metric_plots.select_plot_data(
             master=master,
             joint_qc=joint_qc,
             workflow_type="dragen",
@@ -207,12 +194,12 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
-    def test_prepare_plot_frames_joint_qc_last_runs(self):
+    def test_select_plot_data_joint_qc_last_runs(self):
         master = self._master_frame()
         joint_qc = self._joint_qc_frame()
         metric_plots = self._metric_plots_without_init()
 
-        _, got = metric_plots.prepare_plot_frames(
+        _, got = metric_plots.select_plot_data(
             master=master,
             joint_qc=joint_qc,
             workflow_type="dragen",
@@ -223,12 +210,12 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
-    def test_prepare_plot_frames_last_runs_more_than_available(self):
+    def test_select_plot_data_last_runs_more_than_available(self):
         master = self._master_frame()
         joint_qc = self._joint_qc_frame()
         metric_plots = self._metric_plots_without_init()
 
-        got, _ = metric_plots.prepare_plot_frames(
+        got, _ = metric_plots.select_plot_data(
             master=master,
             joint_qc=joint_qc,
             workflow_type="dragen",
@@ -239,12 +226,12 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
-    def test_prepare_plot_frames_explicit_runs(self):
+    def test_select_plot_data_explicit_runs(self):
         master = self._master_frame()
         joint_qc = self._joint_qc_frame()
         metric_plots = self._metric_plots_without_init()
 
-        got, _ = metric_plots.prepare_plot_frames(
+        got, _ = metric_plots.select_plot_data(
             master=master,
             joint_qc=joint_qc,
             workflow_type="dragen",
@@ -266,12 +253,12 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
-    def test_prepare_plot_frames_joint_qc_explicit_runs(self):
+    def test_select_plot_data_joint_qc_explicit_runs(self):
         master = self._master_frame()
         joint_qc = self._joint_qc_frame()
         metric_plots = self._metric_plots_without_init()
 
-        _, got = metric_plots.prepare_plot_frames(
+        _, got = metric_plots.select_plot_data(
             master=master,
             joint_qc=joint_qc,
             workflow_type="dragen",
@@ -293,7 +280,7 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
-    def test_prepare_plot_frames_filters_workflow_first(self):
+    def test_select_plot_data_filters_workflow_first(self):
         master = polars.DataFrame(
             {
                 "SAMPLE_ID": [
@@ -338,7 +325,7 @@ class TestMetricPlots(unittest.TestCase):
 
         metric_plots = self._metric_plots_without_init()
 
-        got, _ = metric_plots.prepare_plot_frames(
+        got, _ = metric_plots.select_plot_data(
             master=master,
             joint_qc=joint_qc,
             workflow_type="localapp",
@@ -351,7 +338,7 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
-    def test_prepare_plot_frames_joint_qc_filters_workflow_first(self):
+    def test_select_plot_data_joint_qc_filters_workflow_first(self):
         master = polars.DataFrame(
             {
                 "SAMPLE_ID": [
@@ -396,7 +383,7 @@ class TestMetricPlots(unittest.TestCase):
 
         metric_plots = self._metric_plots_without_init()
 
-        _, got = metric_plots.prepare_plot_frames(
+        _, got = metric_plots.select_plot_data(
             master=master,
             joint_qc=joint_qc,
             workflow_type="localapp",
@@ -409,12 +396,12 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
-    def test_prepare_plot_frames_missing_explicit_run(self):
+    def test_select_plot_data_missing_explicit_run(self):
         master = self._master_frame()
         joint_qc = self._joint_qc_frame()
         metric_plots = self._metric_plots_without_init()
 
-        got, got_joint_qc = metric_plots.prepare_plot_frames(
+        got, got_joint_qc = metric_plots.select_plot_data(
             master=master,
             joint_qc=joint_qc,
             workflow_type="dragen",
@@ -426,12 +413,12 @@ class TestMetricPlots(unittest.TestCase):
         assert got.is_empty()
         assert got_joint_qc.is_empty()
 
-    def test_prepare_plot_frames_filters_both_outputs_consistently(self):
+    def test_select_plot_data_filters_both_outputs_consistently(self):
         master = self._master_frame()
         joint_qc = self._joint_qc_frame()
         metric_plots = self._metric_plots_without_init()
 
-        plot_frame, plot_joint_qc = metric_plots.prepare_plot_frames(
+        plot_frame, plot_joint_qc = metric_plots.select_plot_data(
             master=master,
             joint_qc=joint_qc,
             workflow_type="dragen",
@@ -439,4 +426,5 @@ class TestMetricPlots(unittest.TestCase):
         )
 
         assert plot_frame["RUN"].to_list() == ["RUN5"]
+
         assert plot_joint_qc["RUN_ID"].to_list() == ["RUN5"]
