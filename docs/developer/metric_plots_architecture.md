@@ -1,6 +1,6 @@
 # Metric Plots Architecture
 
-This document describes the internal architecture of the `metric-plots` module, its design decisions, and the responsibilities of each component. It is intended for developers extending or maintaining the metric plotting functionality.
+This document describes the internal architecture of the `metric_plots` module, its design decisions, and the responsibilities of each component. It is intended for developers extending or maintaining the metric plotting functionality.
 
 ---
 
