@@ -1,8 +1,8 @@
 # Metric plots
 
-The `metric-plots` command extracts quality control (QC) metrics from TSO500 workflow outputs and produces standardized metrics tables together with publication-ready QC plots.
+The `metric-plots` command extracts quality control (QC) metrics from TSO500 workflow outputs and produces standardized metrics tables together with QC plots.
 
-The command supports both **DRAGEN** and **LocalApp** workflow outputs. Workflow type and workflow version are detected automatically from each workflow output, allowing multiple workflow versions to be processed in a single run.
+The command supports both **DRAGEN** and **LocalApp** workflow outputs. Workflow type and workflow version are detected automatically from each workflow output, allowing multiple workflow versions to be processed simultaneously.
 
 ---
 

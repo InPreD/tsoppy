@@ -2,20 +2,16 @@
 
 This document describes the internal architecture of the `metric_plots` module, its design decisions, and the responsibilities of each component. It is intended for developers extending or maintaining the metric plotting functionality.
 
----
-
 ## Overview
 
-The metric plotting pipeline has two independent responsibilities:
+The `metric_plots` subpackage has two independent responsibilities:
 
 1. **Extract and normalize QC metrics**
 2. **Generate QC plots**
 
 Separating these responsibilities allows metrics to be extracted once and reused for plotting, reporting, validation, or downstream analyses without reparsing workflow outputs.
 
-The pipeline supports multiple TSO500 workflow implementations while exposing a single standardized data model to the plotting layer.
-
----
+The subpackage supports multiple TSO500 workflow implementations while exposing a single standardized data model to the plotting layer.
 
 # High-level Architecture
 
@@ -56,7 +52,7 @@ Each layer has a single responsibility and communicates using standardized data 
 The module is built around the following principles:
 
 - Single responsibility per component
-- Automatic workflow detection
+- Automatic TSO500 workflow detection
 - Standardized metric naming
 - Workflow-independent plotting
 - In-memory processing using Polars
@@ -69,22 +65,18 @@ The module is built around the following principles:
 
 ## MetricsOutputTsv
 
-`MetricsOutputTsv` is responsible for parsing individual workflow output files.
+`MetricsOutputTsv` is responsible for parsing individual `MetricsOutput.tsv` files from TSO500 workflow output.
 
 Responsibilities include:
 
 - Reading `MetricsOutput.tsv`
-- Parsing workflow sections
+- Parsing metric sections
 - Extracting metadata
-- Detecting workflow type
-- Detecting workflow version
+- Detecting workflow type and version
 - Reading metric values
-- Reading Lower Specification Limit (LSL) values
-- Reading Upper Specification Limit (USL) values
+- Reading Lower Specification Limit (LSL) and Upper Specification Limit (USL) values
 
-This class **does not perform plotting** and **does not rename metrics**.
-
-It simply represents one workflow output in a structured form.
+This class **does not perform plotting** and **does not rename metrics**. It simply represents one workflow output in a structured form.
 
 ---
 
@@ -97,20 +89,8 @@ Responsibilities include:
 - Iterating over workflow outputs
 - Standardizing metric names
 - Adding DNA/RNA prefixes
-- Creating sample-level records
-- Creating threshold records
-- Writing
-
-```
-master_metrics_table.tsv
-```
-
-- Writing
-
-```
-joint_sequencing_QC_file.tsv
-```
-
+- Creating sample-level and threshold records
+- Writing `master_metrics_table.tsv`and `joint_sequencing_QC_file.tsv`
 - Producing Polars DataFrames for downstream plotting
 
 This class forms the interface between parsing and visualization.
@@ -128,11 +108,9 @@ Responsibilities include:
 - Drawing QC plots
 - Applying threshold lines
 - Labelling plots
-- Exporting publication-quality figures
+- Writing figures to file
 
-The plotting code is intentionally isolated from workflow parsing.
-
-It only depends on the standardized tables.
+The plotting code is intentionally isolated from the `MetricsOutput.tsv` parsing and only depends on the standardized tables.
 
 ---
 
@@ -146,29 +124,21 @@ Instead it operates on a normalized schema.
 
 Each row contains metadata describing its origin.
 
-Examples include
+Examples include:
 
-```
-RUN
-
-SAMPLE_ID
-
-WORKFLOW_TYPE
-
-WORKFLOW_VERSION
-
-RECORD_TYPE
-```
+- `RUN`
+- `SAMPLE_ID`
+- `WORKFLOW_TYPE`
+- `WORKFLOW_VERSION`
+- `RECORD_TYPE`
 
 This allows multiple workflow versions to coexist in the same dataset.
 
 ---
 
-## Metric Naming
+## Metric Naming Convention
 
-Metrics are standardized before plotting.
-
-Naming convention:
+Metrics are standardized before plotting as follows:
 
 | Prefix | Description |
 |---------|-------------|
@@ -261,9 +231,7 @@ The two options are mutually exclusive.
 
 # Why Threshold Rows?
 
-Threshold values are stored as ordinary records rather than configuration files.
-
-Advantages include:
+Threshold values are stored as ordinary records rather than configuration files. Advantages include:
 
 - version-specific thresholds remain attached to each workflow
 - historical runs preserve historical limits
