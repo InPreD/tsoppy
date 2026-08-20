@@ -4,7 +4,7 @@ This document describes the internal architecture of the `metric_plots` module, 
 
 ---
 
-# Overview
+## Overview
 
 The metric plotting pipeline has two independent responsibilities:
 
