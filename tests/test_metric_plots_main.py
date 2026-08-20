@@ -16,7 +16,7 @@ from tsoppy.metric_plots.main import MetricPlots
 # locally and in CI.
 test_data_dir = "tests/test_data/metric_plots_main"
 config_yaml = "config.yaml"
-inpred_nomenclature = "resources/nomenclature.yaml"
+inpred_nomenclature = "tests/test_data/metric_plots_main/nomenclature.yaml"
 
 
 class TestMetricPlots(unittest.TestCase):
