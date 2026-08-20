@@ -234,6 +234,8 @@ class MetricPlots:
     ) -> list[str]:
         """Read run IDs from CLI values or a run ID file."""
 
+        message = "No run IDs were provided. Use run_ids or run_id_file."
+
         if run_ids is not None:
             selected_run_ids = self._parse_run_id_input(run_ids)
 
@@ -241,13 +243,13 @@ class MetricPlots:
             selected_run_ids = self._read_run_id_file(run_id_file)
 
         else:
-            logger.error("No run IDs were provided.")
-            raise ValueError("Provide run IDs using run_ids or run_id_file.")
+            logger.error(message)
+            raise ValueError(message)
 
         unique_run_ids = list(dict.fromkeys(selected_run_ids))
 
         if not unique_run_ids:
-            raise ValueError("No valid run IDs were provided.")
+            raise ValueError(message)
 
         logger.info(
             "Selected %d unique run ID(s).",
@@ -261,12 +263,11 @@ class MetricPlots:
         run_id_file: Path,
     ) -> list[str]:
         """Read one or more run IDs from a text file."""
+
         if not run_id_file.is_file():
-            logger.error(
-                "Run ID file does not exist: %s.",
-                run_id_file,
-            )
-            raise FileNotFoundError(run_id_file)
+            message = f"Run ID file does not exist: {run_id_file}."
+            logger.error(message)
+            raise FileNotFoundError(message)
 
         run_ids: list[str] = []
 
@@ -311,13 +312,9 @@ class MetricPlots:
             run_roots = self._find_run_roots(run_id)
 
             if not run_roots:
-                logger.error(
-                    "No workflow output root found for run %s.",
-                    run_id,
-                )
-                raise FileNotFoundError(
-                    f"No workflow output root found for run {run_id}."
-                )
+                message = f"No workflow output root found for run {run_id}."
+                logger.error(message)
+                raise FileNotFoundError(message)
 
             loaded_for_run = 0
 
@@ -330,16 +327,13 @@ class MetricPlots:
                     )
 
                     metrics_output = MetricsOutputTsv.create(workflow_output)
+
                 except (
                     FileNotFoundError,
                     KeyError,
                     ValueError,
                 ) as error:
-                    logger.debug(
-                        "Skipping workflow root %s: %s",
-                        root,
-                        error,
-                    )
+                    logger.debug(f"Skipping workflow root {root}: {error}")
                     continue
 
                 outputs.append(
@@ -351,21 +345,15 @@ class MetricPlots:
                 loaded_for_run += 1
 
                 logger.info(
-                    "Loaded %s %s for run %s from %s.",
-                    metrics_output.workflow_type,
-                    metrics_output.workflow_version,
-                    run_id,
-                    metrics_output.path,
+                    f"Loaded {metrics_output.workflow_type} "
+                    f"{metrics_output.workflow_version} "
+                    f"for run {run_id} from {metrics_output.path}."
                 )
 
             if loaded_for_run == 0:
-                logger.error(
-                    "No valid MetricsOutput.tsv found for run %s.",
-                    run_id,
-                )
-                raise FileNotFoundError(
-                    f"No valid MetricsOutput.tsv found for run {run_id}."
-                )
+                message = f"No valid MetricsOutput.tsv found for run {run_id}."
+                logger.error(message)
+                raise FileNotFoundError(message)
 
         return outputs
 
@@ -385,12 +373,9 @@ class MetricPlots:
             ),
         ]:
             if not path.is_file():
-                logger.error(
-                    "%s file does not exist: %s",
-                    description,
-                    path,
-                )
-                raise FileNotFoundError(f"{description} file does not exist: {path}")
+                message = f"{description} file does not exist: {path}"
+                logger.error(message)
+                raise FileNotFoundError(message)
 
         self.input_roots = list(
             dict.fromkeys(
@@ -404,19 +389,14 @@ class MetricPlots:
         )
 
         if not self.input_roots:
-            logger.error(
-                "Input glob did not match any workflow output directories: %s",
-                self.input_glob,
+            message = (
+                f"Input glob did not match any workflow output directories: "
+                f"{self.input_glob}"
             )
-            raise FileNotFoundError(
-                "Input glob did not match any workflow output "
-                f"directories: {self.input_glob}"
-            )
+            logger.error(message)
+            raise FileNotFoundError(message)
 
-        logger.info(
-            "Input glob matched %d workflow root(s).",
-            len(self.input_roots),
-        )
+        logger.info(f"Input glob matched {len(self.input_roots)} workflow root(s).")
 
     def _find_run_roots(
         self,
@@ -487,22 +467,17 @@ class MetricPlots:
 
         if not run_metrics.is_empty():
             if run_metrics.height != 1:
-                logger.error(
-                    "Expected exactly one run-level metrics row for run %s, found %d.",
-                    run_id,
-                    run_metrics.height,
+                message = (
+                    f"Expected exactly one run-level metrics row for run {run_id}, "
+                    f"found {run_metrics.height}."
                 )
-                raise ValueError(
-                    f"Expected exactly one run-level metrics row for run {run_id}."
-                )
+                logger.error(message)
+                raise ValueError(message)
 
             run_values = run_metrics.drop("SAMPLE_ID")
 
             if samples.is_empty():
-                logger.warning(
-                    "No sample rows found for run %s.",
-                    run_id,
-                )
+                logger.warning(f"No sample rows found for run {run_id}.")
             else:
                 samples = samples.join(
                     run_values,
@@ -530,13 +505,9 @@ class MetricPlots:
         ]
 
         if not output_frames:
-            logger.error(
-                "No metric data could be transformed from %s.",
-                metrics_output.path,
-            )
-            raise ValueError(
-                f"No metric data could be transformed from {metrics_output.path}."
-            )
+            message = f"No metric data could be transformed from {metrics_output.path} for run {run_id}."
+            logger.error(message)
+            raise ValueError(message)
 
         result = pl.concat(
             output_frames,
@@ -721,11 +692,11 @@ class MetricPlots:
         )
 
         if conflicts.height:
-            logger.error(
-                "Conflicting duplicate metric values:\n%s",
-                conflicts,
+            message = (
+                f"Conflicting duplicate metric values were detected for run {section}."
             )
-            raise ValueError("Conflicting duplicate metric values were detected.")
+            logger.error(message)
+            raise ValueError(message)
 
         return long_frame.pivot(
             index="SAMPLE_ID",
@@ -759,12 +730,9 @@ class MetricPlots:
             )
 
             if conflicts.height:
-                logger.error(
-                    "Conflicting values detected for metric %s:\n%s",
-                    column,
-                    conflicts,
-                )
-                raise ValueError(f"Conflicting values detected for metric {column}.")
+                message = f"Conflicting values detected for metric {column}."
+                logger.error(message)
+                raise ValueError(message)
 
         return combined.group_by(
             "SAMPLE_ID",
@@ -802,16 +770,18 @@ class MetricPlots:
 
         sample_id_upper = pl.col("SAMPLE_ID").str.to_uppercase()
 
+        dna_id_fallback = sample_id_upper.str.contains(r"^DNA($|_)")
+
+        rna_id_fallback = sample_id_upper.str.contains(r"^RNA($|_)")
+
         return samples.with_columns(
-            pl.when(
-                sample_id_upper.str.contains(r"(^DNA)|(^TVD)|([-_]D)")
-                | (dna_has_value & ~rna_has_value)
-            )
+            pl.when(dna_has_value & ~rna_has_value)
             .then(pl.lit(self.DNA_SAMPLE))
-            .when(
-                sample_id_upper.str.contains(r"(^RNA)|(^TVR)|([-_]R)")
-                | (rna_has_value & ~dna_has_value)
-            )
+            .when(rna_has_value & ~dna_has_value)
+            .then(pl.lit(self.RNA_SAMPLE))
+            .when(dna_id_fallback)
+            .then(pl.lit(self.DNA_SAMPLE))
+            .when(rna_id_fallback)
             .then(pl.lit(self.RNA_SAMPLE))
             .otherwise(pl.lit(self.UNKNOWN_SAMPLE))
             .alias("RECORD_TYPE")
@@ -934,11 +904,11 @@ class MetricPlots:
             run_id: str(n_runs - index).zfill(width)
             for index, run_id in enumerate(self.run_ids)
         }
-        logger.info(
-            "Assigned run indices to %d run(s); latest run %s has index 001.",
-            n_runs,
-            self.run_ids[-1],
+        message = (
+            f"Assigned run indices to {n_runs} run(s); "
+            f"latest run {self.run_ids[-1]} has index 001."
         )
+        logger.info(message)
         return frame.with_columns(
             pl.col(run_column).replace(mapping).alias(self.RUN_INDEX)
         )

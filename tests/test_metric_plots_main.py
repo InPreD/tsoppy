@@ -428,3 +428,78 @@ class TestMetricPlots(unittest.TestCase):
         assert plot_frame["RUN"].to_list() == ["RUN5"]
 
         assert plot_joint_qc["RUN_ID"].to_list() == ["RUN5"]
+
+    def test_add_record_type_uses_metrics_over_sample_id(self):
+        samples = polars.DataFrame(
+            {
+                "SAMPLE_ID": [
+                    "RNA_D001",
+                    "DNA_R001",
+                ],
+                "DNA_METRIC": [
+                    None,
+                    "10",
+                ],
+                "RNA_METRIC": [
+                    "20",
+                    None,
+                ],
+            }
+        )
+
+        metric_plots = self._metric_plots_without_init()
+
+        got = metric_plots._add_record_type(samples)
+
+        assert got["RECORD_TYPE"].to_list() == [
+            "RNA_SAMPLE",
+            "DNA_SAMPLE",
+        ]
+
+    def test_add_record_type_uses_prefix_as_fallback(self):
+        samples = polars.DataFrame(
+            {
+                "SAMPLE_ID": [
+                    "DNA_TEST",
+                    "RNA_TEST",
+                    "UNKNOWN_TEST",
+                ],
+            }
+        )
+
+        metric_plots = self._metric_plots_without_init()
+
+        got = metric_plots._add_record_type(samples)
+
+        assert got["RECORD_TYPE"].to_list() == [
+            "DNA_SAMPLE",
+            "RNA_SAMPLE",
+            "SAMPLE",
+        ]
+
+    def test_add_record_type_ambiguous_metrics_uses_fallback(self):
+        samples = polars.DataFrame(
+            {
+                "SAMPLE_ID": [
+                    "RNA_TEST",
+                    "UNKNOWN_TEST",
+                ],
+                "DNA_METRIC": [
+                    "10",
+                    "10",
+                ],
+                "RNA_METRIC": [
+                    "20",
+                    "20",
+                ],
+            }
+        )
+
+        metric_plots = self._metric_plots_without_init()
+
+        got = metric_plots._add_record_type(samples)
+
+        assert got["RECORD_TYPE"].to_list() == [
+            "RNA_SAMPLE",
+            "SAMPLE",
+        ]

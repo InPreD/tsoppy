@@ -1,66 +1,103 @@
 # Metric plots
 
+<<<<<<< Updated upstream
 The `metric-plots` command extracts quality control (QC) metrics from TSO500 workflow outputs and produces standardized metrics tables together with QC plots.
 
 The command supports both **DRAGEN** and **LocalApp** workflow outputs. Workflow type and workflow version are detected automatically from each workflow output, allowing multiple workflow versions to be processed simultaneously.
+=======
+The `metric-plots` subcommand collects quality-control (QC) metrics from TSO500 workflow outputs, standardizes them, writes consolidated metrics tables, and selects workflow-specific data for Python QC plotting.
 
----
+The command supports **DRAGEN** and **LocalApp** workflow outputs. Workflow type and workflow version are detected from each workflow output.
+>>>>>>> Stashed changes
 
-# Overview
+For implementation details, see [`docs/references/metric_plots_architecture.md`](../references/metric_plots_architecture.md).
 
-The workflow consists of two independent stages:
+> **Current plotting status**
+>
+> The current implementation generates the standardized tables and prepares the in-memory `plot_frame` and `plot_joint_qc` DataFrames. The final call to the Python plotting function is still pending integration in `cli.py`.
 
-1. **Metrics extraction**
-    - Reads workflow outputs
-    - Parses MetricsOutput.tsv
-    - Standardizes metric names
-    - Writes consolidated metrics tables
+## Quick start
 
-2. **Plot generation**
-    - Reads the standardized metrics tables directly in memory
-    - Generates QC plots using the Python plotting module
-    - No temporary plotting TSV files are created
-
-Separating these stages allows the same metrics tables to be reused for additional analyses without rerunning the parser.
-
----
-
-# Input
-
-The command expects an input directory containing workflow result folders.
-
-Supported workflow outputs include
-
-- DRAGEN
-- LocalApp
-
-The input directory may contain
-
-- only DRAGEN runs
-- only LocalApp runs
-- a mixture of both
-
-The workflow type and workflow version are detected automatically.
-
----
-
-# Selecting runs
-
-Run IDs can be supplied in two ways.
-
-## Command line
+Generate metrics tables for three runs:
 
 ```bash
 tsoppy metric-plots \
-    --input-directory /path/to/results \
+    --input-glob 'results/*/*' \
     --run-ids RUN001,RUN002,RUN003
 ```
 
----
+Generate the tables and select the last three DRAGEN runs for plotting:
 
-## Text file
+```bash
+tsoppy metric-plots \
+    --input-glob 'results/*/*' \
+    --run-ids RUN001,RUN002,RUN003 \
+    --plot-workflow dragen \
+    --plot-last-runs 3
+```
 
-One run ID per line
+View all available options with:
+
+```bash
+tsoppy metric-plots --help
+```
+
+## Input layout
+
+`--input-glob` must match workflow output directories whose final directory name is the sequencing run ID.
+
+Example:
+
+```text
+results/
+├── dragen/
+│   ├── RUN001/
+│   ├── RUN002/
+│   └── RUN003/
+└── localapp/
+    ├── RUN001/
+    ├── RUN002/
+    └── RUN003/
+```
+
+Use:
+
+```bash
+--input-glob 'results/*/*'
+```
+
+Quote the glob so that the shell passes it unchanged to `tsoppy`.
+
+The glob must match workflow roots, not `MetricsOutput.tsv` files. A selected run is matched by exact directory name. For example, `RUN01` does not match `RUN010`.
+
+A run may have both a DRAGEN and a LocalApp output. When both are valid and matched by the glob, both are processed.
+
+## Selecting runs
+
+Runs included in the generated metrics tables must be supplied using exactly one of:
+
+- `--run-ids`
+- `--run-id-file`
+
+The two options are mutually exclusive.
+
+### Comma-separated run IDs
+
+```bash
+tsoppy metric-plots \
+    --input-glob 'results/*/*' \
+    --run-ids RUN001,RUN002,RUN003
+```
+
+### Run ID file
+
+```bash
+tsoppy metric-plots \
+    --input-glob 'results/*/*' \
+    --run-id-file run_ids.txt
+```
+
+Example `run_ids.txt`:
 
 ```text
 RUN001
@@ -68,274 +105,284 @@ RUN002
 RUN003
 ```
 
-Run
+Blank lines and lines beginning with `#` are ignored. A line may also contain comma-separated run IDs.
 
-```bash
-tsoppy metric-plots \
-    --input-directory /path/to/results \
-    --run-id-file run_ids.txt
-```
+Duplicate IDs are removed while preserving their first occurrence.
 
----
+## Run order and `RUN_INDEX`
 
-## Combine both
+Run order is significant.
 
-Both options may be supplied simultaneously.
-
-Duplicate run IDs are removed automatically.
-
-```bash
-tsoppy metric-plots \
-    --input-directory results \
-    --run-id-file run_ids.txt \
-    --run-ids RUN005,RUN006
-```
-
----
-
-# Output directory
-
-Output is written to the current working directory by default.
-
-A different directory may be specified using
-
-```bash
---workdir
-```
-
-Example
-
-```bash
-tsoppy metric-plots \
-    --input-directory results \
-    --run-id-file run_ids.txt \
-    --workdir output
-```
-
----
-
-# Output files
-
-The command generates
+The command does not parse dates from run identifiers. The last supplied run is treated as the latest/current run and receives:
 
 ```text
-master_metrics_table.tsv
-
-joint_sequencing_QC_file.tsv
+RUN_INDEX = 001
 ```
 
-These files become the canonical input for downstream QC plotting.
-
----
-
-# master_metrics_table.tsv
-
-This table contains all sample-level QC metrics collected from every processed workflow.
-
-Metadata columns include
+Earlier runs receive increasing values:
 
 ```text
-RUN
-SAMPLE_ID
+RUN001 -> 003
+RUN002 -> 002
+RUN003 -> 001
+```
+
+## Configuration files
+
+The default configuration files are:
+
+```text
+config.yaml
+resources/nomenclature.yaml (to be changed/adjusted)
+```
+
+Alternative paths can be supplied with:
+
+```bash
+--config-yaml /path/to/config.yaml
+--inpred-nomenclature /path/to/nomenclature.yaml
+```
+
+Both files must exist and be readable.
+
+## Workflow detection
+
+Workflow type and version are detected automatically and stored in:
+
+```text
 WORKFLOW_TYPE
 WORKFLOW_VERSION
-RECORD_TYPE
 ```
 
-Metric columns are standardized across workflow versions.
+Users do not provide these values when generating the metrics tables.
 
-Naming convention
+`--plot-workflow` only selects which detected workflow type should be prepared for plotting. Supported values are: `dragen` and `localapp`
 
-| Prefix | Meaning |
-|---------|---------|
-| none | Run-level metric |
-| DNA_ | DNA metric |
-| RNA_ | RNA metric |
+## Selecting runs for plotting
 
-Each processed workflow contributes multiple record types
+When plot selection is requested, `--plot-workflow` is required.
 
-```text
-DNA_SAMPLE
+Choose one of:
 
-RNA_SAMPLE
+- `--plot-last-runs`
+- `--plot-run-ids`
+- `--plot-run-id-file`
 
-LOWER_THRESHOLD
+These three options are mutually exclusive.
 
-UPPER_THRESHOLD
-```
-
-Threshold rows contain the LSL and USL values reported by the originating workflow.
-
-Since workflow type and version are preserved, metrics originating from different workflow versions remain distinguishable.
-
-> Metrics having identical names may represent different calculations in different workflow versions. Comparisons across workflow versions should therefore be interpreted carefully.
-
----
-
-# joint_sequencing_QC_file.tsv
-
-Contains sequencing-level metrics for each processed run.
-
-Examples include
-
-```text
-PCT_PF_READS
-
-PCT_Q30_R1
-
-PCT_Q30_R2
-
-CLUSTER_DENSITY
-
-ESTIMATED_YIELD
-
-CLUSTERS_PASSING_FILTER
-```
-
-This file is intended for sequencing QC reporting.
-
----
-
-# Plot generation
-
-QC plots are generated using the new Python plotting implementation.
-
-The plotting module operates directly on Polars DataFrames produced during metrics extraction.
-
-No intermediate plotting TSV files are written or reread.
-
-This significantly reduces I/O and keeps the plotting pipeline entirely in memory.
-
----
-
-# Plot selection
-
-The plotting module supports two methods for selecting runs.
-
-## Plot the latest runs
+### Last N workflow runs
 
 ```bash
 tsoppy metric-plots \
-    --input-directory results \
+    --input-glob 'results/*/*' \
     --run-id-file run_ids.txt \
-    --plot-last-runs 8
-```
-
-The newest N runs are selected according to their ordering in the generated master metrics table.
-
-All associated records are retained
-
-- DNA_SAMPLE
-- RNA_SAMPLE
-- LOWER_THRESHOLD
-- UPPER_THRESHOLD
-
----
-
-## Plot selected runs
-
-```bash
-tsoppy metric-plots \
-    --input-directory results \
-    --plot-run-ids RUN001,RUN004,RUN010
-```
-
-The options
-
-```text
---plot-last-runs
-
---plot-run-ids
-```
-
-are mutually exclusive.
-
----
-
-# Internal workflow
-
-```
-Workflow outputs
-        │
-        ▼
- MetricsOutput.tsv
-        │
-        ▼
- MetricsOutputTsv
-        │
-        ▼
- MetricPlots
-        │
-        ├──────────────┐
-        │              │
-        ▼              ▼
-master_metrics     joint sequencing QC
-table              table
-        │
-        ▼
- Polars DataFrame
-        │
-        ▼
- Python plotting module
-        │
-        ▼
- QC figures
-```
-
-Responsibilities are intentionally separated.
-
-**MetricsOutputTsv**
-
-- Parses workflow MetricsOutput.tsv files
-- Detects workflow type
-- Detects workflow version
-
-**MetricPlots**
-
-- Converts parsed workflow metrics into standardized tables
-- Produces master metrics table
-- Produces sequencing QC table
-- Creates filtered Polars DataFrames for plotting
-
-**Python plotting module**
-
-- Reads Polars DataFrames
-- Generates QC plots
-- Uses workflow metadata and threshold rows directly from the standardized tables
-
----
-
-# Examples
-
-Generate metrics only
-
-```bash
-tsoppy metric-plots \
-    --input-directory results \
-    --run-id-file run_ids.txt
-```
-
-Generate metrics and plot the latest ten runs
-
-```bash
-tsoppy metric-plots \
-    --input-directory results \
-    --run-id-file run_ids.txt \
+    --plot-workflow dragen \
     --plot-last-runs 10
 ```
 
-Generate metrics and plot specific runs
+The command first filters to DRAGEN, then selects the last ten available DRAGEN runs in the preserved run order.
+
+`--plot-last-runs` must be at least `1`. If fewer than `N` runs are available, all available runs are selected.
+
+### Explicit plot run IDs
 
 ```bash
 tsoppy metric-plots \
-    --input-directory results \
-    --plot-run-ids RUN001,RUN002,RUN003
+    --input-glob 'results/*/*' \
+    --run-ids RUN001,RUN002,RUN003,RUN004 \
+    --plot-workflow localapp \
+    --plot-run-ids RUN002,RUN004
 ```
 
----
+Requested runs that are unavailable for the selected workflow are skipped with a warning.
 
-# Help
+### Plot run ID file
 
 ```bash
-tsoppy metric-plots --help
+tsoppy metric-plots \
+    --input-glob 'results/*/*' \
+    --run-id-file run_ids.txt \
+    --plot-workflow localapp \
+    --plot-run-id-file plot_run_ids.txt
 ```
+
+Example:
+
+```text
+RUN002
+RUN004
+```
+
+Blank lines and comment lines are ignored.
+
+## CLI options
+
+| Option | Requirement | Purpose |
+|---|---|---|
+| `--input-glob` | Required | Match workflow root directories |
+| `--config-yaml` | Optional | Workflow configuration file |
+| `--inpred-nomenclature` | Optional | InPreD nomenclature file |
+| `--run-ids` | Exactly one master selector | Comma-separated run IDs |
+| `--run-id-file` | Exactly one master selector | File containing run IDs |
+| `--plot-workflow` | Required with plot selection | Select `dragen` or `localapp` |
+| `--plot-last-runs` | Optional plot selector | Select the last `N` workflow runs |
+| `--plot-run-ids` | Optional plot selector | Select explicit plot run IDs |
+| `--plot-run-id-file` | Optional plot selector | Select plot runs from a file |
+
+## Generated outputs
+
+The command writes two canonical files to the current working directory:
+
+```text
+master_metrics_table.tsv
+joint_sequencing_QC_file.tsv
+```
+
+There is no `--workdir` or output-directory option. Workflow managers such as Nextflow are expected to manage the process working directory and publish outputs afterwards.
+
+### `master_metrics_table.tsv`
+
+The master table contains standardized sample-level, threshold, and run-level metrics.
+
+Metadata columns are:
+
+| Column | Description |
+|---|---|
+| `RUN_INDEX` | Run-order index; `001` is the last supplied run |
+| `SAMPLE_ID` | Sample or threshold identifier |
+| `RUN` | Sequencing run ID |
+| `WORKFLOW_TYPE` | Detected workflow type |
+| `WORKFLOW_VERSION` | Detected workflow version |
+| `RECORD_TYPE` | Logical row type |
+
+Metric columns follow this naming convention:
+
+| Prefix | Meaning |
+|---|---|
+| none | Run-level or workflow-wide metric |
+| `DNA_` | DNA-specific metric |
+| `RNA_` | RNA-specific metric |
+
+Finalized missing values are represented as `NA`.
+
+Record types include:
+
+```text
+DNA_SAMPLE
+RNA_SAMPLE
+SAMPLE
+LOWER_THRESHOLD
+UPPER_THRESHOLD
+```
+
+Sample type is determined primarily from the presence of DNA- or RNA-specific metric values. Explicit `DNA_` or `RNA_` sample ID prefixes are used only as a fallback.
+
+Threshold rows keep lower and upper specification guidelines associated with the workflow type and version that produced them.
+
+### `joint_sequencing_QC_file.tsv`
+
+The joint QC table contains one row per run and workflow.
+
+Columns are:
+
+```text
+RUN_INDEX
+RUN_ID
+WORKFLOW_TYPE
+WORKFLOW_VERSION
+PCT_PF_READS
+PCT_Q30_R1
+PCT_Q30_R2
+CLUSTER_DENSITY
+ESTIMATED_YIELD
+CLUSTERS_PASSING_FILTER
+```
+
+Metrics unavailable for a workflow are represented as `NA`.
+
+## In-memory plotting data
+
+`select_plot_data()` returns:
+
+```text
+plot_frame
+plot_joint_qc
+```
+
+`plot_frame` contains the selected rows from the master table.
+
+`plot_joint_qc` contains matching sequencing-QC rows.
+
+These DataFrames are intended to be passed directly to the plotting implementation.
+
+## Complete examples
+
+Generate tables only:
+
+```bash
+tsoppy metric-plots \
+    --input-glob '/data/tso500/*/*' \
+    --run-id-file run_ids.txt
+```
+
+Select the last eight DRAGEN runs:
+
+```bash
+tsoppy metric-plots \
+    --input-glob '/data/tso500/*/*' \
+    --run-id-file run_ids.txt \
+    --plot-workflow dragen \
+    --plot-last-runs 8
+```
+
+Select explicit LocalApp runs:
+
+```bash
+tsoppy metric-plots \
+    --input-glob '/data/tso500/*/*' \
+    --run-ids RUN001,RUN002,RUN003,RUN004 \
+    --plot-workflow localapp \
+    --plot-run-ids RUN002,RUN004
+```
+
+Use custom configuration files:
+
+```bash
+tsoppy metric-plots \
+    --input-glob '/data/tso500/*/*' \
+    --config-yaml /data/config.yaml \
+    --inpred-nomenclature /data/nomenclature.yaml \
+    --run-id-file run_ids.txt
+```
+
+## Troubleshooting
+
+### The input glob matches nothing
+
+Check that it points to workflow directories, not directly to metrics files:
+
+```bash
+--input-glob 'results/*/*'
+```
+
+The final directory name must exactly equal the requested run ID.
+
+### A requested plot run is skipped
+
+The run may be part of the master run list but unavailable for the selected workflow. The command logs a warning and continues with available requested runs.
+
+### Plot workflow is missing
+
+When using a plot selector, add:
+
+```bash
+--plot-workflow dragen
+```
+
+or:
+
+```bash
+--plot-workflow localapp
+```
+
+For internal processing and extension guidance, see [`docs/references/metric_plots_architecture.md`](../references/metric_plots_architecture.md).

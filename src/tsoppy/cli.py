@@ -243,17 +243,25 @@ def metric_plots(
             plot_run_ids=plotting_run_ids,
         )
 
-        logger.info(
-            "Prepared %d metric rows and %d joint QC rows for %s plotting.",
-            plot_frame.height,
-            plot_joint_qc.height,
-            plot_workflow.value,
+        plot_frame.write_csv(
+            "plot_metrics_table.tsv",
+            separator="\t",
         )
 
-        # Future:
-        # create_qc_plots(
-        #     metrics=plot_frame,
-        #     joint_qc=plot_joint_qc,
-        #     workflow_type=plot_workflow.value,
-        #     output="metric_plots.pdf",
-        # )
+        plot_joint_qc.write_csv(
+            "plot_joint_sequencing_QC_file.tsv",
+            separator="\t",
+        )
+
+    logger.info(
+        f"Prepared {plot_frame.height} metric rows and "
+        f"{plot_joint_qc.height} joint QC rows for {plot_workflow.value} plotting."
+    )
+
+    # Future:
+    # create_qc_plots(
+    #     metrics=plot_frame,
+    #     joint_qc=plot_joint_qc,
+    #     workflow_type=plot_workflow.value,
+    #     output="metric_plots.pdf",
+    # )
