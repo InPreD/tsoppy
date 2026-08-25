@@ -357,6 +357,35 @@ def prepare_bar_plot_data(
         )
     )
 
+    if spec["x_var"] == "SAMPLE_ID" and {"RUN_INDEX", "SAMPLE_ID"}.issubset(
+        table.columns
+    ):
+        table = table.with_columns(
+            pl.when(pl.col("RUN_INDEX").is_not_null())
+            .then(
+                pl.col("RUN_INDEX").cast(pl.Utf8)
+                + " | "
+                + pl.col("SAMPLE_ID").cast(pl.Utf8)
+            )
+            .otherwise(pl.col("SAMPLE_ID").cast(pl.Utf8))
+            .alias("PLOT_SAMPLE_ID")
+        )
+
+    if spec["fill_var"] in {"RUN", "RUN_ID"} and {
+        "RUN_INDEX",
+        spec["fill_var"],
+    }.issubset(table.columns):
+        table = table.with_columns(
+            pl.when(pl.col("RUN_INDEX").is_not_null())
+            .then(
+                pl.col("RUN_INDEX").cast(pl.Utf8)
+                + " | "
+                + pl.col(spec["fill_var"]).cast(pl.Utf8)
+            )
+            .otherwise(pl.col(spec["fill_var"]).cast(pl.Utf8))
+            .alias("PLOT_RUN")
+        )
+
     return table.to_pandas()
 
 
@@ -398,16 +427,30 @@ def render_bar_plot(
             spec["guideline"],
         )
 
+    plot_x_var = (
+        "PLOT_SAMPLE_ID"
+        if spec["x_var"] == "SAMPLE_ID" and "PLOT_SAMPLE_ID" in plot_data.columns
+        else spec["x_var"]
+    )
+    plot_fill_var = (
+        "PLOT_RUN"
+        if spec["fill_var"] in {"RUN", "RUN_ID"} and "PLOT_RUN" in plot_data.columns
+        else spec["fill_var"]
+    )
+    plot_x_lab = (
+        "Run index | Sample ID" if plot_x_var == "PLOT_SAMPLE_ID" else spec["x_lab"]
+    )
+
     plot = plot_tsoppy_barplot(
         data=plot_data,
-        x_var=spec["x_var"],
+        x_var=plot_x_var,
         y_var=spec["y_var"],
-        fill_var=spec["fill_var"],
+        fill_var=plot_fill_var,
         guide_title=spec.get(
             "guide_title",
             "Run",
         ),
-        x_lab=spec["x_lab"],
+        x_lab=plot_x_lab,
         y_lab=spec["y_lab"],
         cart_ylim=compute_cart_ylim(
             spec,
@@ -480,7 +523,7 @@ def render_cluster_density_scatter(
             [
                 pl.col("CLUSTER_DENSITY").cast(pl.Float64),
                 pl.col("ESTIMATED_YIELD").cast(pl.Float64),
-                (pl.col("RUN_INDEX").cast(pl.Utf8) + " - " + pl.col("RUN_ID")).alias(
+                (pl.col("RUN_INDEX").cast(pl.Utf8) + " | " + pl.col("RUN_ID")).alias(
                     "RUN_LABEL"
                 ),
             ]
@@ -585,6 +628,11 @@ def render_contamination_scatter(
             [
                 pl.col("DNA_CONTAMINATION_SCORE").cast(pl.Float64),
                 pl.col("DNA_CONTAMINATION_P_VALUE").cast(pl.Float64),
+                (
+                    pl.col("RUN_INDEX").cast(pl.Utf8)
+                    + " | "
+                    + pl.col("RUN").cast(pl.Utf8)
+                ).alias("RUN_LABEL"),
             ]
         )
     )
@@ -633,9 +681,11 @@ def render_contamination_scatter(
         plot_table.select(pl.col("DNA_CONTAMINATION_SCORE").max()).item(),
     )
 
+    plot_color_var = "RUN_LABEL" if spec["color_var"] == "RUN" else spec["color_var"]
+
     plot = plot_contamination_scatter(
         data=plot_table.to_pandas(),
-        color_var=spec["color_var"],
+        color_var=plot_color_var,
         label_var=spec["label_var"],
         guide_title=spec.get(
             "guide_title",
@@ -710,6 +760,9 @@ def build_tables(
         )
         logger.error(message)
         raise ValueError(message)
+
+    metrics_table = metrics_table.sort("RUN_INDEX")
+    joint_qc_table = joint_qc_table.sort("RUN_INDEX")
 
     metrics_table = metrics_table.filter(
         pl.col("WORKFLOW_TYPE").str.to_lowercase() == workflow
