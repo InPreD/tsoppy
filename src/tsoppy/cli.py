@@ -5,6 +5,7 @@ import logging
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
+from tsoppy.metric_plots.plotting import generate_qc_plots
 
 import typer
 
@@ -34,8 +35,7 @@ def validate_run_id_file(
 ) -> Path | None:
     """Ensure --run-id-file is not used with --run-ids."""
     if value is not None and ctx.params.get("run_ids") is not None:
-        raise typer.BadParameter(
-            "--run-id-file cannot be used with --run-ids.")
+        raise typer.BadParameter("--run-id-file cannot be used with --run-ids.")
     return value
 
 
@@ -176,17 +176,16 @@ def metric_plots(
     plot_workflow: Annotated[
         WorkflowType | None,
         typer.Option(
-            help="Workflow whose runs will be prepared for plotting.",
+            help="Workflow whose runs will be plotted.",
         ),
     ] = None,
 ):
-    """Create metrics tables and optionally prepare data for plotting."""
+    """Create metrics tables and optionally generate QC plots."""
     logger.info("Creating metrics master table and joint QC.")
 
     # Master run selection is required.
     if run_ids is None and run_id_file is None:
-        raise typer.BadParameter(
-            "Provide exactly one of --run-ids or --run-id-file.")
+        raise typer.BadParameter("Provide exactly one of --run-ids or --run-id-file.")
 
     plot_run_selection_given = plot_run_ids is not None or plot_run_id_file is not None
 
@@ -245,25 +244,16 @@ def metric_plots(
             plot_run_ids=plotting_run_ids,
         )
 
-        plot_frame.write_csv(
-            "plot_metrics_table.tsv",
-            separator="\t",
+        logger.info(
+            f"Prepared {plot_frame.height} metric rows and "
+            f"{plot_joint_qc.height} joint QC rows for {plot_workflow.value} plotting."
         )
 
-        plot_joint_qc.write_csv(
-            "plot_joint_sequencing_QC_file.tsv",
-            separator="\t",
+        output_pdf = Path(f"{plot_workflow.value}_metric_plots.pdf")
+
+        generate_qc_plots(
+            metrics_table=plot_frame,
+            joint_qc_table=plot_joint_qc,
+            workflow=plot_workflow.value,
+            output_pdf=output_pdf,
         )
-
-    logger.info(
-        f"Prepared {plot_frame.height} metric rows and "
-        f"{plot_joint_qc.height} joint QC rows for {plot_workflow.value} plotting."
-    )
-
-    # Future:
-    # create_qc_plots(
-    #     metrics=plot_frame,
-    #     joint_qc=plot_joint_qc,
-    #     workflow_type=plot_workflow.value,
-    #     output="metric_plots.pdf",
-    # )

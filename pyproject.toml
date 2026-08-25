@@ -5,8 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 dependencies = [
     "cyvcf2>=0.32.1",
+    "matplotlib>=3.10.0",
     "msgspec>=0.21.1",
+    "numpy>=2.2.0",
+    "pandas>=2.2.0",
+    "plotnine>=0.14.0",
     "polars>=1.39.3",
+    "pyarrow>=18.0.0",
     "pyyaml>=6.0.3",
     "typer>=0.24.1",
 ]
