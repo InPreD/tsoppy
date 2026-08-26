@@ -360,12 +360,16 @@ def prepare_bar_plot_data(
     if spec["x_var"] == "SAMPLE_ID" and {"RUN_INDEX", "SAMPLE_ID"}.issubset(
         table.columns
     ):
+        max_sample_id_length = table.select(
+            pl.col("SAMPLE_ID").cast(pl.Utf8).str.len_chars().max()
+        ).item()
+
         table = table.with_columns(
             pl.when(pl.col("RUN_INDEX").is_not_null())
             .then(
                 pl.col("RUN_INDEX").cast(pl.Utf8)
                 + " | "
-                + pl.col("SAMPLE_ID").cast(pl.Utf8)
+                + pl.col("SAMPLE_ID").cast(pl.Utf8).str.pad_end(max_sample_id_length)
             )
             .otherwise(pl.col("SAMPLE_ID").cast(pl.Utf8))
             .alias("PLOT_SAMPLE_ID")

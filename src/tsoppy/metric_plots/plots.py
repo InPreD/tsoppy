@@ -87,6 +87,7 @@ def plot_tsoppy_barplot(
                 size=7,
                 ha="right",
                 hjust=1.5,
+                family="monospace",
             ),
             axis_ticks_major_x=element_line(
                 color=AXIS_LINE_COLOR,
@@ -259,6 +260,7 @@ def plot_contamination_scatter(
                 vjust=0.5,
                 hjust=1,
                 size=7,
+                family="monospace",
             ),
             figure_size=fig_size,
             axis_line=element_line(
