@@ -191,7 +191,7 @@ class VariantRecurrenceTable:
     def add_vcf(self, vcf: SmallVariantGenomeVcf, min_read_depth: int = 20):
         sample_type_code = vcf.simple_sample_type_code
         sample_type = self.sample_type_dict[sample_type_code]
-        if not sample_type_code in ["N", "T"]:
+        if sample_type_code not in ["N", "T"]:
             logger.warning(
                 f"{vcf.path} has type {sample_type_code} and cannot be added to variant recurrence table."
             )
@@ -248,12 +248,12 @@ class VariantRecurrenceTable:
                         row[f"{sample_type}_recurrence_summary"]
                     )
                     summary.update(variant.format(allele_frequency_field)[0][0])
-                    self.body = self.body.with_columns(
-                        polars.when(polars.col("variant_id") == variant_id)
-                        .then(str(summary))
-                        .otherwise(polars.col(f"{sample_type}_recurrence_summary"))
-                        .alias(f"{sample_type}_recurrence_summary")
-                    )
+                    # self.body = self.body.with_columns(
+                    #    polars.when(polars.col("variant_id") == variant_id)
+                    #    .then(str(summary))
+                    #    .otherwise(polars.col(f"{sample_type}_recurrence_summary"))
+                    #    .alias(f"{sample_type}_recurrence_summary")
+                    # )
 
                 return
         return
