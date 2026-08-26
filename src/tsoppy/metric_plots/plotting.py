@@ -119,12 +119,14 @@ def validate_plot_specs(plot_specs: dict) -> None:
 
         for workflow in SUPPORTED_WORKFLOWS:
             if workflow not in spec:
-                spec_errors.append(f"Missing workflow routing key: '{workflow}'.")
+                spec_errors.append(
+                    f"Missing workflow routing key: '{workflow}'.")
                 continue
 
             workflow_entry = spec[workflow]
 
-            missing_workflow_fields = _REQUIRED_WORKFLOW_KEYS - set(workflow_entry)
+            missing_workflow_fields = _REQUIRED_WORKFLOW_KEYS - \
+                set(workflow_entry)
 
             if missing_workflow_fields:
                 spec_errors.append(
@@ -163,7 +165,8 @@ def validate_plot_specs(plot_specs: dict) -> None:
         missing_fields = required_fields - set(spec)
 
         if missing_fields:
-            spec_errors.append(f"Missing fields: {', '.join(sorted(missing_fields))}.")
+            spec_errors.append(
+                f"Missing fields: {', '.join(sorted(missing_fields))}.")
 
         if spec_errors:
             message = f"Invalid plot specification '{spec_name}': " + " ".join(
@@ -219,7 +222,8 @@ def build_value_expression(
 
     elif operation == "divide":
         expression = (
-            pl.col(value_spec["column"]).cast(value_spec.get("dtype", pl.Float64))
+            pl.col(value_spec["column"]).cast(
+                value_spec.get("dtype", pl.Float64))
             / value_spec["divisor"]
         )
 
@@ -265,7 +269,8 @@ def get_guideline_value(
     if id_column not in table.columns:
         return None
 
-    filtered_table = table.filter(pl.col(id_column) == guideline_spec["sample_id"])
+    filtered_table = table.filter(
+        pl.col(id_column) == guideline_spec["sample_id"])
 
     if filtered_table.is_empty():
         return None
@@ -319,7 +324,8 @@ def compute_cart_ylim(
             max_value + dynamic_ylim.get("offset", 0),
         )
 
-    raise ValueError(f"Unsupported dynamic y-limit mode: {dynamic_ylim['mode']}")
+    raise ValueError(
+        f"Unsupported dynamic y-limit mode: {dynamic_ylim['mode']}")
 
 
 def prepare_bar_plot_data(
@@ -400,6 +406,18 @@ def save_plot(
     """Render a plotnine plot to the PDF."""
 
     figure = plot.draw()
+
+    page_number = pdf_handle.get_pagecount() + 1
+
+    figure.text(
+        0.985,
+        0.015,
+        f"Page {page_number}",
+        ha="right",
+        va="bottom",
+        fontsize=8,
+    )
+
     pdf_handle.savefig(
         figure,
         bbox_inches="tight",
@@ -678,7 +696,8 @@ def render_contamination_scatter(
         .item()
     )
 
-    usl_contamination_pval = float(pval_result) if pval_result is not None else 0.05
+    usl_contamination_pval = float(
+        pval_result) if pval_result is not None else 0.05
 
     max_contamination_score = max(
         5000,
