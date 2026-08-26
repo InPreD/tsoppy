@@ -118,11 +118,14 @@ class WorkflowOutput:
         nomenclature: InPred nomenclature (InPredNomenclature)
         root: Root path (Path)
         samples: Data section of samplesheet (polars.DataFrame)
+        sample_id_rex: Regular expression for InPreD nomenclature (str)
+        tumor_sample_type_rex: Regular expression to detect tumor sample type (str)
         workflow_type: Detected workflow type (str)
         workflow_version: Detected workflow version (str)
     """
 
     sample_id_rex = r"^(?P<project>\w{3})(?P<patient>\d{4})-(?P<input>\w)(?P<assay>\d{2})-(?P<sample>\w)(?P<preparation>\d)(?P<replicate>\d)-(?P<material>\w)(?P<tumor>\d{2})"
+    tumor_sample_type_rex = r".+\(T\)$"
 
     def __init__(
         self,
@@ -229,7 +232,7 @@ class WorkflowOutput:
         return self.samples["Sample_ID"].to_list()
 
     def sample_meta(self, sample_id: str) -> dict[str:str]:
-        """Parse meta information from sample id and return as dict"""
+        """Parse meta information from sample id and return as dict."""
         match = re.search(self.sample_id_rex, sample_id)
         if not match:
             logger.warning(
@@ -310,6 +313,22 @@ class SmallVariantGenomeVcf(WorkflowOutput):
             )
             raise FileNotFoundError
         self.vcf = cyvcf2.VCF(self.path)
+
+    # this function was based on an old version of the nomenclature.yaml which is outdated now. We need to change how we parse the file to be able to use it here
+    @property
+    def simple_sample_type_code(self) -> str:
+        """Translate sample type code into simple sample type."""
+        sample_match = re.search(self.sample_id_rex, self.sample_id)
+        if sample_match:
+            sample_type_code = sample_match.group("sample")
+            sample_type = self._translate_code("sample_type_code", sample_type_code)
+            type_match = re.search(self.tumor_sample_type_rex, sample_type)
+            if type_match:
+                return "T"
+            else:
+                return sample_type_code
+        else:
+            return "Unknown"
 
 
 class TmbTraceTsv(WorkflowOutput):
