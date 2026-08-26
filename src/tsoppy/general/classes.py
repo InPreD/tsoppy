@@ -430,3 +430,30 @@ class VariantsAnnotatedJson(WorkflowOutput):
         else:
             with open(self.path, "r") as file:
                 self.data = msgspec.json.decode(file.read())
+
+
+# I had started on an implementation of a variant class to handle the uniq variant id we wanted to use, not sure if we still need this or not
+class Variant:
+    id_rex = (
+        r"^(?P<chromosome>[1,2]?[\d,X,Y]):(?P<position>\d+):(?P<ref>\w+)>(?P<alt>\w+)$"
+    )
+
+    def __init__(self, id: str):
+        match = re.search(self.id_rex, id)
+        if not match:
+            logger.error(f"Could not parse variant id {id}.")
+            raise ValueError
+        else:
+            self.id = id
+            self.chromosome = match.group("chromosome")
+            self.position = match.group("position")
+            self.ref = match.group("ref")
+            self.alt = match.group("alt")
+
+    @property
+    def location(self):
+        return f"{self.chromosome}:{self.position}"
+
+    @property
+    def change(self):
+        return f"{self.ref}>{self.alt}"
