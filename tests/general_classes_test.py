@@ -70,7 +70,7 @@ def test_workflowoutput_init(inputs, exception, want):
                 "patient": "0001",
                 "nucleic_acid_input_type": "DNA",
                 "assay_type": "TSO500 DNA",
-                "sample_type": "Primary tumor, naive",
+                "sample_type": "Primary tumor, naive (T)",
                 "library_preparation_attempt": "First try",
                 "biological_replicate": "1",
                 "sample_material": "Archived (FFPE)",

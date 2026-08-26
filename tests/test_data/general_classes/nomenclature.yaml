@@ -30,20 +30,20 @@ sample_type_code:
   code: S
   choices:
     A: "Post Allotransplantation"
-    C: "Cell-line"
-    D: "Distal metastasis, naive"
-    d: "Distal metastasis, post-treatment"
+    C: "Cell-line (T)"
+    D: "Distal metastasis, naive (T)"
+    d: "Distal metastasis, post-treatment (T)"
     E: "Naive"
     e: "Post treatment"
-    L: "Liquid"
-    M: "Metastasis"
+    L: "Liquid (T)"
+    M: "Metastasis (T)"
     N: "Normal/control"
-    P: "Primary tumor, naive"
-    p: "Primary tumor, post-treatment"
-    R: "Regional metastasis, naive"
-    r: "Regional metastasis, post-treatment"
-    T: "Primary tumor"
-    X: "Unknown"
+    P: "Primary tumor, naive (T)"
+    p: "Primary tumor, post-treatment (T)"
+    R: "Regional metastasis, naive (T)"
+    r: "Regional metastasis, post-treatment (T)"
+    T: "Primary tumor (T)"
+    X: "Unknown (T)"
 library_preparation_attempt:
   code: x
   choices:

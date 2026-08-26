@@ -1,0 +1,13 @@
+#[sample_vcf]   /data/Logs_Intermediates/DnaDragenCaller/sample1/sample1_MergedSmallVariants.genome.vcf    N
+#[sample_vcf]   /data/Logs_Intermediates/DnaDragenCaller/sample1/sample1_MergedSmallVariants.genome.vcf    T
+# The recurrence summary values are written in format "X:A+B+C+D=M/N"
+#   - X: sample type, one of "T" = tumor, "N" = normal, "A" = any
+#   - A: number of samples of type X, in which given variant was seen with VAF < 0.01
+#   - B: number of samples of type X, in which given variant was seen with 0.01 <= VAF < 0.05
+#   - C: number of samples of type X, in which given variant was seen with 0.05 <= VAF < 0.35
+#   - D: number of samples of type X, in which given variant was seen with 0.35 <= VAF
+#   - M: number of samples of type X, in which given variant was seen with any VAF
+#   - N: number of investigated samples of type X, in which given variant was callable (i.e., the variant site had coverage >= 20)
+variant_id	tumor_recurrence_summary	normal_recurrence_summary	total_recurrence_summary
+1:100:A>C	T:1+0+0+0=1/1	N:0+0+0+0=0/0	A:1+0+0+0=1/1
+1:100:A>C	T:1+0+0+0=1/1	N:0+0+0+0=0/0	A:1+0+0+0=1/1
