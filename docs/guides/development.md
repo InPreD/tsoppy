@@ -14,9 +14,15 @@ In order for you to use the devcontainer in this repository, you need to have [*
 
 Open VS Code, open a new terminal, navigate to to directory you want to clone the repository into and run `git clone https://github.com/InPreD/tsoppy.git`. Now open the folder you just cloned to enter the local copy of the repository.
 
+### Switch to develop branch
+
+Run `git branch`. If you are in `main`, you can run the command `git switch develop` to get to the `develop` branch.
+
 ### Start devcontainer
 
-Open the [`Command Palette`](https://code.visualstudio.com/api/ux-guidelines/command-palette) and choose `Dev Containers: Rebuild Container`. VS Code will launch the devcontainer which contains all the dependencies you need for developing in this repository. You can add extensions according to your needs and suggest changes to the devcontainer definition if they are relevant to other developers.
+Open [`Extensions`](https://code.visualstudio.com/docs/configure/extensions/extensions) and install `Dev Containers` by Microsoft. Restart VS Code after the installation.
+
+Open the [`Command Palette`](https://code.visualstudio.com/api/ux-guidelines/command-palette) and choose `Dev Containers: Rebuild and Reopen in Container`. VS Code will launch the devcontainer which contains all the dependencies you need for developing in this repository. You can add extensions according to your needs and suggest changes to the devcontainer definition if they are relevant to other developers.
 
 > [!WARNING]
 > If you are using MacOS, you have to define `UID`, `FULLNAME` and `MAIL` and set it to `id -u`, `git config --get user.name` and `git config --get user.email`, respectively, in your shell startup script (e.g. `.profile`, `.bashrc`, `.zshrc`)
