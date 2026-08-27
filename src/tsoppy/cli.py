@@ -34,8 +34,7 @@ def validate_run_id_file(
 ) -> Path | None:
     """Ensure --run-id-file is not used with --run-ids."""
     if value is not None and ctx.params.get("run_ids") is not None:
-        raise typer.BadParameter(
-            "--run-id-file cannot be used with --run-ids.")
+        raise typer.BadParameter("--run-id-file cannot be used with --run-ids.")
     return value
 
 
@@ -185,8 +184,7 @@ def metric_plots(
 
     # Master run selection is required.
     if run_ids is None and run_id_file is None:
-        raise typer.BadParameter(
-            "Provide exactly one of --run-ids or --run-id-file.")
+        raise typer.BadParameter("Provide exactly one of --run-ids or --run-id-file.")
 
     plot_run_selection_given = plot_run_ids is not None or plot_run_id_file is not None
 
