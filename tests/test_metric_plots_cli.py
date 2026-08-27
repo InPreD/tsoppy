@@ -1,10 +1,12 @@
 """CLI integration tests for metric plotting."""
 
 from pathlib import Path
+from unittest import result
 from unittest.mock import MagicMock
 
 import polars as pl
 import pytest
+from click import unstyle
 from typer.testing import CliRunner
 
 import tsoppy.cli as cli_module
@@ -12,6 +14,11 @@ from tsoppy.cli import app
 
 
 runner = CliRunner()
+
+
+def _clean_output(result) -> str:
+    """Remove terminal styling from CLI output."""
+    return unstyle(result.output)
 
 
 def _required_files(
@@ -114,7 +121,7 @@ def test_cli_requires_master_run_selector(
     )
 
     assert result.exit_code != 0
-    assert "--run-ids" in result.output
+    assert "--run-ids" in _clean_output(result)
 
 
 def test_cli_rejects_both_master_run_selectors(
@@ -136,7 +143,7 @@ def test_cli_rejects_both_master_run_selectors(
     )
 
     assert result.exit_code != 0
-    assert "--run-id-file" in result.output
+    assert "--run-id-file" in _clean_output(result)
 
 
 def test_cli_tables_only_does_not_generate_pdf(
@@ -188,7 +195,7 @@ def test_cli_plotting_requires_workflow(
     )
 
     assert result.exit_code != 0
-    assert "--plot-workflow" in result.output
+    assert "--plot-workflow" in _clean_output(result)
 
 
 def test_cli_rejects_last_runs_with_explicit_plot_runs(
@@ -211,7 +218,7 @@ def test_cli_rejects_last_runs_with_explicit_plot_runs(
     )
 
     assert result.exit_code != 0
-    assert "--plot-last-runs" in result.output
+    assert "--plot-last-runs" in _clean_output(result)
 
 
 def test_cli_rejects_both_explicit_plot_run_selectors(
@@ -237,7 +244,7 @@ def test_cli_rejects_both_explicit_plot_run_selectors(
     )
 
     assert result.exit_code != 0
-    assert "--plot-run-id-file" in result.output
+    assert "--plot-run-id-file" in _clean_output(result)
 
 
 def test_cli_plot_last_runs_must_be_positive(
