@@ -1,7 +1,6 @@
 """CLI integration tests for metric plotting."""
 
 from pathlib import Path
-from unittest import result
 from unittest.mock import MagicMock
 
 import polars as pl
