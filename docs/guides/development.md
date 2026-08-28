@@ -14,11 +14,9 @@ In order for you to use the devcontainer in this repository, you need to have [*
 
 Open VS Code, open a new terminal, navigate to to directory you want to clone the repository into and run `git clone https://github.com/InPreD/tsoppy.git`. Now open the folder you just cloned to enter the local copy of the repository.
 
-### Switch to develop branch
+### Start devcontainer
 
 Run `git branch`. If you are in `main`, you can run the command `git switch develop` to get to the `develop` branch.
-
-### Start devcontainer
 
 Open [`Extensions`](https://code.visualstudio.com/docs/configure/extensions/extensions) and install `Dev Containers` by Microsoft. Restart VS Code after the installation.
 
