@@ -881,6 +881,18 @@ PLOT_SPECS = {
             "dtype": pl.Float64,
         },
         "na_filter_columns": ["DNA_PCT_CHIMERIC_READS"],
+        "guideline": {
+            "table": "dna_guideline_table",
+            "sample_id": "USL_Guideline",
+            "value_spec": {
+                "operation": "cast",
+                "column": "DNA_PCT_CHIMERIC_READS",
+                "dtype": pl.Float64,
+            },
+            "python_cast": float,
+            "label_prefix": "USL_Guideline",
+            "ann_y_offset": 0,
+        },
     },
     "DNA_PCT_CONTAMINATION_EST": {
         "localapp": {"plot": True, "index": 21},

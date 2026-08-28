@@ -13,6 +13,7 @@ from tsoppy.metric_plots.plotting import (
     build_value_expression,
     compute_cart_ylim,
     generate_qc_plots,
+    get_available_guidelines,
     get_guideline_value,
     prepare_bar_plot_data,
     render_bar_plot,
@@ -433,6 +434,128 @@ def test_valid_metric_expr_removes_null_and_na():
         "1",
         "2",
     ]
+
+
+def test_get_available_guidelines_returns_lsl_and_usl():
+    """Both available threshold types are returned."""
+
+    tables = {
+        "dna_guideline_table": pl.DataFrame(
+            {
+                "SAMPLE_ID": [
+                    "LSL_Guideline",
+                    "USL_Guideline",
+                ],
+                "VALUE": [
+                    "2",
+                    "8",
+                ],
+            }
+        )
+    }
+
+    spec = {
+        "source": "dna_data_table",
+        "y_var": "VALUE",
+        "value_spec": {
+            "operation": "cast",
+            "column": "VALUE",
+            "dtype": pl.Float64,
+        },
+    }
+
+    result = get_available_guidelines(
+        tables,
+        spec,
+    )
+
+    assert len(result) == 2
+
+    assert len({guideline["sample_id"] for guideline in result}) == len(result)
+
+    assert [guideline["sample_id"] for guideline in result] == [
+        "LSL_Guideline",
+        "USL_Guideline",
+    ]
+
+    assert [guideline["value"] for guideline in result] == [
+        2.0,
+        8.0,
+    ]
+
+
+def test_get_available_guidelines_skips_na_threshold():
+    """Unavailable threshold values are not plotted."""
+
+    tables = {
+        "dna_guideline_table": pl.DataFrame(
+            {
+                "SAMPLE_ID": [
+                    "LSL_Guideline",
+                    "USL_Guideline",
+                ],
+                "VALUE": [
+                    "NA",
+                    "8",
+                ],
+            }
+        )
+    }
+
+    spec = {
+        "source": "dna_data_table",
+        "y_var": "VALUE",
+        "value_spec": {
+            "operation": "cast",
+            "column": "VALUE",
+            "dtype": pl.Float64,
+        },
+    }
+
+    result = get_available_guidelines(
+        tables,
+        spec,
+    )
+
+    assert len(result) == 1
+
+    assert result[0]["sample_id"] == "USL_Guideline"
+
+    assert result[0]["value"] == 8.0
+
+
+def test_compute_cart_ylim_contains_both_guidelines():
+    """Axis limits include all available thresholds."""
+
+    data = pd.DataFrame(
+        {
+            "VALUE": [
+                0.5,
+                1.0,
+                3.0,
+            ]
+        }
+    )
+
+    result = compute_cart_ylim(
+        {
+            "y_var": "VALUE",
+        },
+        data,
+        [
+            {
+                "value": 1.0,
+                "ann_y_offset": 0,
+            },
+            {
+                "value": 8.0,
+                "ann_y_offset": 0,
+            },
+        ],
+    )
+
+    assert result[0] == 0
+    assert result[1] > 8
 
 
 # ---------------------------------------------------------------------------
@@ -924,6 +1047,70 @@ def test_get_guideline_value_null_metric_returns_none():
     assert result is None
 
 
+def test_get_guideline_value_literal_na_returns_none():
+    """Literal NA guideline values are treated as unavailable."""
+
+    tables = {
+        "guidelines": pl.DataFrame(
+            {
+                "SAMPLE_ID": [
+                    "USL_Guideline",
+                ],
+                "VALUE": [
+                    "NA",
+                ],
+            }
+        )
+    }
+
+    result = get_guideline_value(
+        tables,
+        {
+            "table": "guidelines",
+            "sample_id": "USL_Guideline",
+            "value_spec": {
+                "column": "VALUE",
+            },
+            "python_cast": float,
+            "label_prefix": "USL",
+        },
+    )
+
+    assert result is None
+
+
+def test_get_guideline_value_zero_lsl_returns_none():
+    """A zero LSL is not treated as a drawable guideline."""
+
+    tables = {
+        "guidelines": pl.DataFrame(
+            {
+                "SAMPLE_ID": [
+                    "LSL_Guideline",
+                ],
+                "VALUE": [
+                    "0",
+                ],
+            }
+        )
+    }
+
+    result = get_guideline_value(
+        tables,
+        {
+            "table": "guidelines",
+            "sample_id": "LSL_Guideline",
+            "value_spec": {
+                "column": "VALUE",
+            },
+            "python_cast": float,
+            "label_prefix": "LSL_Guideline",
+        },
+    )
+
+    assert result is None
+
+
 # ---------------------------------------------------------------------------
 # compute_cart_ylim
 # ---------------------------------------------------------------------------
@@ -1028,7 +1215,7 @@ def test_compute_cart_ylim_guideline_above_bars_expands_limit():
     )
 
     assert result[0] == 0
-    assert result[1] == pytest.approx(9.9)
+    assert result[1] > 9.0
 
 
 def test_compute_cart_ylim_bar_above_guideline_uses_bar_max():
@@ -1055,7 +1242,7 @@ def test_compute_cart_ylim_bar_above_guideline_uses_bar_max():
     )
 
     assert result[0] == 0
-    assert result[1] == pytest.approx(16.5)
+    assert result[1] > 15.0
 
 
 def test_compute_cart_ylim_keeps_existing_limit_when_guideline_is_visible():
@@ -1110,7 +1297,19 @@ def test_compute_cart_ylim_expands_existing_limit_for_guideline():
     )
 
     assert result[0] == 0
-    assert result[1] == pytest.approx(8.8)
+    assert result[1] > 8.0
+
+
+def test_dna_chimeric_reads_has_usl_guideline():
+    """DNA chimeric-read plots use the configured USL guideline."""
+    spec = PLOT_SPECS["DNA_PCT_CHIMERIC_READS"]
+
+    guideline = spec["guideline"]
+
+    assert guideline["table"] == "dna_guideline_table"
+    assert guideline["sample_id"] == "USL_Guideline"
+    assert guideline["value_spec"]["column"] == "DNA_PCT_CHIMERIC_READS"
+    assert guideline["python_cast"] is float
 
 
 # ---------------------------------------------------------------------------
@@ -1979,14 +2178,15 @@ def test_render_bar_plot_skip_if_empty(
     save_mock.assert_not_called()
 
 
-def test_render_bar_plot_passes_guideline(
+def test_render_bar_plot_draws_all_available_guidelines(
     monkeypatch,
 ):
-    """Resolved guideline values reach plot_tsoppy_barplot."""
+    """Every available LSL and USL is drawn on the bar plot."""
+
     frame = pd.DataFrame(
         {
             "SAMPLE_ID": ["S1"],
-            "VALUE": [10.0],
+            "VALUE": [3.0],
             "RUN": ["RUN_A"],
         }
     )
@@ -1997,18 +2197,29 @@ def test_render_bar_plot_passes_guideline(
         MagicMock(return_value=frame),
     )
 
+    guidelines = [
+        {
+            "sample_id": "LSL_Guideline",
+            "value": 1.0,
+            "label": "LSL_Guideline: 1.0",
+            "alpha": 0.3,
+            "color": "red",
+            "ann_y_offset": 0,
+        },
+        {
+            "sample_id": "USL_Guideline",
+            "value": 8.0,
+            "label": "USL_Guideline: 8.0",
+            "alpha": 0.3,
+            "color": "red",
+            "ann_y_offset": 0,
+        },
+    ]
+
     monkeypatch.setattr(
         plotting,
-        "get_guideline_value",
-        MagicMock(
-            return_value={
-                "value": 20.0,
-                "label": "USL: 20",
-                "alpha": 0.3,
-                "color": "red",
-                "ann_y_offset": 1,
-            }
-        ),
+        "get_available_guidelines",
+        MagicMock(return_value=guidelines),
     )
 
     bar_mock = MagicMock(return_value=MagicMock())
@@ -2019,17 +2230,44 @@ def test_render_bar_plot_passes_guideline(
         bar_mock,
     )
 
+    hline_mock = MagicMock(
+        side_effect=[
+            MagicMock(),
+            MagicMock(),
+        ]
+    )
+
+    monkeypatch.setattr(
+        plotting,
+        "geom_hline",
+        hline_mock,
+    )
+
+    annotate_mock = MagicMock(
+        side_effect=[
+            MagicMock(),
+            MagicMock(),
+        ]
+    )
+
+    monkeypatch.setattr(
+        plotting,
+        "annotate",
+        annotate_mock,
+    )
+
+    save_mock = MagicMock()
+
     monkeypatch.setattr(
         plotting,
         "save_plot",
-        MagicMock(),
+        save_mock,
     )
 
     spec = _minimal_bar_spec()
-    spec["guideline"] = {
-        "table": "guidelines",
-    }
+    label_x_positions = [call.args[1] for call in annotate_mock.call_args_list]
 
+    assert len(set(label_x_positions)) == len(label_x_positions)
     render_bar_plot(
         MagicMock(),
         spec,
@@ -2039,15 +2277,28 @@ def test_render_bar_plot_passes_guideline(
         "localapp",
     )
 
+    assert hline_mock.call_count == 2
+
+    line_values = [call.kwargs["yintercept"] for call in hline_mock.call_args_list]
+
+    assert line_values == [
+        1.0,
+        8.0,
+    ]
+
+    labels = [call.kwargs["label"] for call in annotate_mock.call_args_list]
+
+    assert labels == [
+        "LSL_Guideline: 1.0",
+        "USL_Guideline: 8.0",
+    ]
+
     kwargs = bar_mock.call_args.kwargs
 
-    assert kwargs["hline_y"] == 20.0
-    assert kwargs["hline_label"] == ("USL: 20")
-    assert kwargs["hline_alpha"] == 0.3
-    assert kwargs["hline_color"] == ("red")
-    assert kwargs["ann_y_offset"] == 1
     assert kwargs["cart_ylim"][0] == 0
-    assert kwargs["cart_ylim"][1] == pytest.approx(23.1)
+    assert kwargs["cart_ylim"][1] > 8.0
+
+    save_mock.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

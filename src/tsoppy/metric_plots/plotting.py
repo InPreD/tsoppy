@@ -2,14 +2,16 @@ import logging
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import polars as pl
 import pandas as pd
+import polars as pl
 from matplotlib.backends.backend_pdf import PdfPages
 from plotnine import (
     aes,
+    annotate,
     coord_cartesian,
     element_line,
     element_text,
+    geom_hline,
     geom_point,
     geom_text,
     ggplot,
@@ -27,6 +29,9 @@ from plotnine import (
 
 from .plots import (
     AXIS_LINE_COLOR,
+    HV_LINE_ALPHA,
+    HV_LINE_COLOR,
+    HV_LINE_SIZE,
     TABLEAU_20,
     plot_contamination_scatter,
     plot_tsoppy_barplot,
@@ -253,9 +258,9 @@ def get_guideline_value(
 ) -> dict | None:
     """Extract one guideline value and its plotting parameters."""
 
-    table = tables[guideline_spec["table"]]
+    table = tables.get(guideline_spec["table"])
 
-    if table.is_empty():
+    if table is None or table.is_empty():
         return None
 
     id_column = guideline_spec.get(
@@ -275,16 +280,38 @@ def get_guideline_value(
 
     try:
         value = filtered_table.select(expression).head(1).item()
-    except pl.exceptions.ColumnNotFoundError:
+
+    except (
+        pl.exceptions.ColumnNotFoundError,
+        pl.exceptions.InvalidOperationError,
+        pl.exceptions.ComputeError,
+    ):
         return None
 
     if value is None:
         return None
 
+    if isinstance(value, str):
+        normalized_value = value.strip().upper()
+
+        if normalized_value in {
+            "",
+            "NA",
+            "N/A",
+            "NULL",
+            "NONE",
+        }:
+            return None
+
     python_cast = guideline_spec.get("python_cast")
 
     if python_cast is not None:
-        value = python_cast(value)
+        try:
+            value = python_cast(value)
+        except TypeError, ValueError:
+            return None
+    if guideline_spec.get("sample_id") == "LSL_Guideline" and float(value) == 0.0:
+        return None
 
     return {
         "value": value,
@@ -301,12 +328,136 @@ def get_guideline_value(
     }
 
 
+def get_available_guidelines(
+    tables: dict,
+    spec: dict,
+) -> list[dict]:
+    """Return each available LSL and USL guideline exactly once."""
+
+    source_config = {
+        "joint_qc_table": (
+            "joint_qc_guideline_table",
+            "RUN_ID",
+        ),
+        "dna_data_table": (
+            "dna_guideline_table",
+            "SAMPLE_ID",
+        ),
+        "rna_data_table": (
+            "rna_guideline_table",
+            "SAMPLE_ID",
+        ),
+        "data_table": (
+            "guideline_table",
+            "SAMPLE_ID",
+        ),
+        "merged_tables": (
+            "guideline_table",
+            "SAMPLE_ID",
+        ),
+    }
+
+    explicit_specs = []
+
+    explicit_guideline = spec.get("guideline")
+
+    if isinstance(
+        explicit_guideline,
+        dict,
+    ):
+        explicit_specs.append(explicit_guideline)
+
+    extra_guidelines = spec.get(
+        "guidelines",
+        [],
+    )
+
+    if extra_guidelines:
+        explicit_specs.extend(extra_guidelines)
+
+    explicit_by_sample_id = {
+        guideline_spec["sample_id"]: guideline_spec
+        for guideline_spec in explicit_specs
+        if guideline_spec.get("sample_id") is not None
+    }
+
+    guidelines = []
+    handled_sample_ids = set()
+
+    auto_source = source_config.get(spec["source"])
+
+    if auto_source is not None:
+        table_name, id_column = auto_source
+
+        if table_name in tables:
+            for sample_id in (
+                "LSL_Guideline",
+                "USL_Guideline",
+            ):
+                guideline_spec = {
+                    "table": table_name,
+                    "id_column": id_column,
+                    "sample_id": sample_id,
+                    "value_spec": spec["value_spec"],
+                    "python_cast": float,
+                    "label_prefix": (sample_id),
+                }
+
+                explicit_override = explicit_by_sample_id.get(sample_id)
+
+                if explicit_override is not None:
+                    guideline_spec.update(explicit_override)
+
+                guideline = get_guideline_value(
+                    tables,
+                    guideline_spec,
+                )
+
+                if guideline is None:
+                    continue
+
+                guideline["sample_id"] = sample_id
+
+                guidelines.append(guideline)
+
+                handled_sample_ids.add(sample_id)
+
+    # Preserve explicitly configured guidelines
+    # that were not already handled above.
+    # This includes custom values such as
+    # "Internal Guideline".
+    for guideline_spec in explicit_specs:
+        sample_id = guideline_spec.get("sample_id")
+
+        if sample_id is None:
+            continue
+
+        if sample_id in handled_sample_ids:
+            continue
+
+        guideline = get_guideline_value(
+            tables,
+            guideline_spec,
+        )
+
+        if guideline is None:
+            continue
+
+        guideline["sample_id"] = sample_id
+
+        guidelines.append(guideline)
+
+        handled_sample_ids.add(sample_id)
+
+    return guidelines
+
+
 def compute_cart_ylim(
     spec: dict,
     plot_data,
-    guideline: dict | None = None,
+    guidelines: list[dict] | dict | None = None,
 ) -> tuple | None:
-    """Resolve y-axis limits while ensuring guidelines remain visible."""
+    """Resolve y-limits while keeping every guideline visible."""
 
     dynamic_ylim = spec.get("cart_ylim_dynamic")
 
@@ -317,55 +468,108 @@ def compute_cart_ylim(
         max_value = plot_data[dynamic_ylim["column"]].max()
 
         cart_ylim = (
-            dynamic_ylim.get("lower", 0),
-            max_value + dynamic_ylim.get("offset", 0),
+            dynamic_ylim.get(
+                "lower",
+                0,
+            ),
+            max_value
+            + dynamic_ylim.get(
+                "offset",
+                0,
+            ),
         )
 
     else:
         raise ValueError(f"Unsupported dynamic y-limit mode: {dynamic_ylim['mode']}")
 
-    if guideline is None:
+    if guidelines is None:
+        return cart_ylim
+
+    if isinstance(
+        guidelines,
+        dict,
+    ):
+        guidelines = [guidelines]
+
+    if not guidelines:
         return cart_ylim
 
     y_values = pd.to_numeric(
         plot_data[spec["y_var"]],
         errors="coerce",
     )
-    bar_max = y_values.max()
 
-    guideline_value = float(guideline["value"])
-    annotation_offset = max(
-        float(guideline.get("ann_y_offset", 0)),
+    finite_values = y_values.dropna().tolist()
+
+    required_values = [
         0.0,
-    )
+    ]
 
-    guideline_top = guideline_value + annotation_offset
+    required_values.extend(float(value) for value in finite_values)
 
-    required_upper = guideline_top
+    for guideline in guidelines:
+        guideline_value = float(guideline["value"])
 
-    if pd.notna(bar_max):
-        required_upper = max(
-            float(bar_max),
-            guideline_top,
+        annotation_offset = float(
+            guideline.get(
+                "ann_y_offset",
+                0,
+            )
+            or 0
         )
 
+        required_values.append(guideline_value)
+
+        required_values.append(guideline_value + annotation_offset)
+
+    required_lower = min(required_values)
+    required_upper = max(required_values)
+
     if cart_ylim is None:
-        lower_limit = 0
-        current_upper = None
+        lower_limit = min(
+            0.0,
+            required_lower,
+        )
+        upper_limit = required_upper
     else:
-        lower_limit, current_upper = cart_ylim
+        lower_limit, upper_limit = cart_ylim
 
-    if current_upper is not None and current_upper >= required_upper:
-        return cart_ylim
+        if lower_limit is None:
+            lower_limit = min(
+                0.0,
+                required_lower,
+            )
+        else:
+            lower_limit = min(
+                float(lower_limit),
+                required_lower,
+            )
 
-    padding = max(
-        abs(required_upper) * 0.10,
-        0.1,
+        if upper_limit is None:
+            upper_limit = required_upper
+        else:
+            upper_limit = max(
+                float(upper_limit),
+                required_upper,
+            )
+
+    span = max(
+        upper_limit - lower_limit,
+        abs(upper_limit),
+        1.0,
     )
+
+    padding = span * 0.08
+
+    if required_upper >= upper_limit:
+        upper_limit += padding
+
+    if required_lower <= lower_limit and required_lower < 0:
+        lower_limit -= padding
 
     return (
         lower_limit,
-        required_upper + padding,
+        upper_limit,
     )
 
 
@@ -482,13 +686,10 @@ def render_bar_plot(
     if spec.get("skip_if_empty") and plot_data.empty:
         return
 
-    guideline = None
-
-    if spec.get("guideline") is not None:
-        guideline = get_guideline_value(
-            tables,
-            spec["guideline"],
-        )
+    guidelines = get_available_guidelines(
+        tables,
+        spec,
+    )
 
     plot_x_var = (
         "PLOT_SAMPLE_ID"
@@ -518,7 +719,7 @@ def render_bar_plot(
         cart_ylim=compute_cart_ylim(
             spec,
             plot_data,
-            guideline,
+            guidelines,
         ),
         title=resolve_plot_title(spec, workflow),
         x_lab_angle=spec.get(
@@ -533,13 +734,31 @@ def render_bar_plot(
             "alpha_value",
             0.8,
         ),
-        hline_y=(None if guideline is None else guideline["value"]),
-        hline_alpha=(None if guideline is None else guideline["alpha"]),
-        hline_color=(None if guideline is None else guideline["color"]),
-        hline_label=("" if guideline is None else guideline["label"]),
-        ann_y_offset=(0 if guideline is None else guideline["ann_y_offset"]),
-        y_tick_step=spec.get("y_tick_step"),
     )
+    for guideline_index, guideline in enumerate(guidelines):
+        line_alpha = HV_LINE_ALPHA if guideline["alpha"] is None else guideline["alpha"]
+
+        line_color = HV_LINE_COLOR if guideline["color"] is None else guideline["color"]
+
+        label_x = len(plot_data) + 0.9 + guideline_index * 0.6
+
+        plot = (
+            plot
+            + geom_hline(
+                yintercept=guideline["value"],
+                alpha=line_alpha,
+                color=line_color,
+                size=HV_LINE_SIZE,
+            )
+            + annotate(
+                "text",
+                label_x,
+                guideline["value"] + guideline["ann_y_offset"],
+                label=guideline["label"],
+                angle=90,
+                size=12,
+            )
+        )
 
     overlay_labels = spec.get("overlay_labels")
 
@@ -878,13 +1097,9 @@ def build_tables(
         pl.col("SAMPLE_ID") == "Internal Guideline"
     )
 
-    dna_guideline_table = guideline_table.filter(
-        pl.col("DNA_CONTAMINATION_SCORE").is_not_null()
-    )
+    dna_guideline_table = guideline_table
 
-    rna_guideline_table = guideline_table.filter(
-        pl.col("RNA_MEDIAN_CV_GENE_500X").is_not_null()
-    )
+    rna_guideline_table = guideline_table
 
     data_table = metrics_table.filter(
         ~pl.col("RECORD_TYPE").is_in(
