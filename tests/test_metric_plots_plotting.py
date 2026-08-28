@@ -1004,6 +1004,115 @@ def test_compute_cart_ylim_rejects_unknown_dynamic_mode():
         )
 
 
+def test_compute_cart_ylim_guideline_above_bars_expands_limit():
+    """Guidelines above all bars remain visible."""
+    data = pd.DataFrame(
+        {
+            "VALUE": [
+                1.0,
+                2.0,
+                3.0,
+            ]
+        }
+    )
+
+    result = compute_cart_ylim(
+        {
+            "y_var": "VALUE",
+        },
+        data,
+        {
+            "value": 8.0,
+            "ann_y_offset": 1.0,
+        },
+    )
+
+    assert result[0] == 0
+    assert result[1] == pytest.approx(9.9)
+
+
+def test_compute_cart_ylim_bar_above_guideline_uses_bar_max():
+    """Bars above the guideline determine the visible upper range."""
+    data = pd.DataFrame(
+        {
+            "VALUE": [
+                3.0,
+                10.0,
+                15.0,
+            ]
+        }
+    )
+
+    result = compute_cart_ylim(
+        {
+            "y_var": "VALUE",
+        },
+        data,
+        {
+            "value": 8.0,
+            "ann_y_offset": 0,
+        },
+    )
+
+    assert result[0] == 0
+    assert result[1] == pytest.approx(16.5)
+
+
+def test_compute_cart_ylim_keeps_existing_limit_when_guideline_is_visible():
+    """Configured limits remain unchanged when they already show the guideline."""
+    data = pd.DataFrame(
+        {
+            "VALUE": [
+                1.0,
+                2.0,
+                3.0,
+            ]
+        }
+    )
+
+    result = compute_cart_ylim(
+        {
+            "y_var": "VALUE",
+            "cart_ylim": (0, 20),
+        },
+        data,
+        {
+            "value": 8.0,
+            "ann_y_offset": 1.0,
+        },
+    )
+
+    assert result == (0, 20)
+
+
+def test_compute_cart_ylim_expands_existing_limit_for_guideline():
+    """Configured limits expand when a guideline would otherwise be clipped."""
+    data = pd.DataFrame(
+        {
+            "VALUE": [
+                1.0,
+                2.0,
+                3.0,
+            ]
+        }
+    )
+
+    result = compute_cart_ylim(
+        {
+            "y_var": "VALUE",
+            "cart_ylim": (0, 5),
+        },
+        data,
+        {
+            "value": 8.0,
+            "ann_y_offset": 0,
+        },
+    )
+
+    assert result[0] == 0
+    assert result[1] == pytest.approx(8.8)
+
+
 # ---------------------------------------------------------------------------
 # prepare_bar_plot_data
 # ---------------------------------------------------------------------------
@@ -1937,6 +2046,8 @@ def test_render_bar_plot_passes_guideline(
     assert kwargs["hline_alpha"] == 0.3
     assert kwargs["hline_color"] == ("red")
     assert kwargs["ann_y_offset"] == 1
+    assert kwargs["cart_ylim"][0] == 0
+    assert kwargs["cart_ylim"][1] == pytest.approx(23.1)
 
 
 # ---------------------------------------------------------------------------

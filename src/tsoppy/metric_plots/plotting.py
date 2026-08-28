@@ -3,6 +3,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import polars as pl
+import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 from plotnine import (
     aes,
@@ -303,23 +304,69 @@ def get_guideline_value(
 def compute_cart_ylim(
     spec: dict,
     plot_data,
+    guideline: dict | None = None,
 ) -> tuple | None:
-    """Resolve static or data-driven y-axis limits."""
+    """Resolve y-axis limits while ensuring guidelines remain visible."""
 
     dynamic_ylim = spec.get("cart_ylim_dynamic")
 
     if dynamic_ylim is None:
-        return spec.get("cart_ylim")
+        cart_ylim = spec.get("cart_ylim")
 
-    if dynamic_ylim["mode"] == "max_plus":
+    elif dynamic_ylim["mode"] == "max_plus":
         max_value = plot_data[dynamic_ylim["column"]].max()
 
-        return (
+        cart_ylim = (
             dynamic_ylim.get("lower", 0),
             max_value + dynamic_ylim.get("offset", 0),
         )
 
-    raise ValueError(f"Unsupported dynamic y-limit mode: {dynamic_ylim['mode']}")
+    else:
+        raise ValueError(f"Unsupported dynamic y-limit mode: {dynamic_ylim['mode']}")
+
+    if guideline is None:
+        return cart_ylim
+
+    y_values = pd.to_numeric(
+        plot_data[spec["y_var"]],
+        errors="coerce",
+    )
+    bar_max = y_values.max()
+
+    guideline_value = float(guideline["value"])
+    annotation_offset = max(
+        float(guideline.get("ann_y_offset", 0)),
+        0.0,
+    )
+
+    guideline_top = guideline_value + annotation_offset
+
+    required_upper = guideline_top
+
+    if pd.notna(bar_max):
+        required_upper = max(
+            float(bar_max),
+            guideline_top,
+        )
+
+    if cart_ylim is None:
+        lower_limit = 0
+        current_upper = None
+    else:
+        lower_limit, current_upper = cart_ylim
+
+    if current_upper is not None and current_upper >= required_upper:
+        return cart_ylim
+
+    padding = max(
+        abs(required_upper) * 0.10,
+        0.1,
+    )
+
+    return (
+        lower_limit,
+        required_upper + padding,
+    )
 
 
 def prepare_bar_plot_data(
@@ -471,6 +518,7 @@ def render_bar_plot(
         cart_ylim=compute_cart_ylim(
             spec,
             plot_data,
+            guideline,
         ),
         title=resolve_plot_title(spec, workflow),
         x_lab_angle=spec.get(
