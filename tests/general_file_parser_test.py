@@ -5,11 +5,11 @@ import polars
 from pytest import mark, raises
 
 from tsoppy.general.file_parser import (
-    sectionIdx,
-    _parse_section_sep_val,
     _get_section_idx,
     _handle_row_with_nulls,
     _parse_headers,
+    _parse_section_sep_val,
+    sectionIdx,
 )
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI

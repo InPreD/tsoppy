@@ -219,7 +219,7 @@ joint_sequencing_QC_file.tsv
 
 When plotting is requested with --plot-workflow, it also writes a workflow-specific PDF:
 
-dragen_metric_plots.pdf or localapp_metric_plots.pdf
+`dragen_metric_plots.pdf` or `localapp_metric_plots.pdf`
 
 There is no --workdir or output-directory option. Workflow managers such as Nextflow are expected to manage the process working directory and publish outputs afterwards.
 ### `master_metrics_table.tsv`
