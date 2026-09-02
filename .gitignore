@@ -29,10 +29,3 @@ docker-compose.yml
 *.swp
 *.tmp
 
-# Local metric-plots test data
-tests/test_data/metric_plots_main/local_data/
-
-# Generated metric-plots CLI output
-*.pdf
-/*.tsv
-

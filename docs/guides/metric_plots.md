@@ -105,9 +105,13 @@ Duplicate IDs are removed while preserving their first occurrence.
 
 ## Run order and `RUN_INDEX`
 
-Run order is determined by the order of the supplied run IDs, not by the order in which directories are returned by `--input-glob`.
+Run order is determined by the resolved run ID order, not by the order in which directories are returned by `--input-glob`.
 
-The command does not parse dates from run identifiers. The last supplied run is treated as the latest/current run and receives:
+For `--run-ids`, the comma-separated order is preserved. For `--run-id-file`, run IDs are processed in file order. If neither option is supplied, all run IDs matched by `--input-glob` are used and sorted lexicographically.
+
+Duplicate run IDs are removed while preserving their first occurrence.
+
+The command does not parse dates from run identifiers. The last run in the resolved order is treated as the latest/current run and receives:
 
 ```text
 RUN_INDEX = 001
@@ -121,17 +125,17 @@ RUN002 -> 002
 RUN003 -> 001
 ```
 
-For `--run-ids`, the comma-separated order is preserved. For `--run-id-file`, run IDs are processed in file order. Duplicate run IDs are removed while preserving their first occurrence.
-
 ## Workflow selection
 
 `--plot-workflow` selects which workflow type should be prepared for plotting. Supported values are: `dragen` and `localapp`.
 
 ## Selecting runs for plotting
 
-When plot selection is requested, `--plot-workflow` is required.
+`--plot-workflow` is required to create plots.
 
-Choose one of:
+If `--plot-workflow` is provided without a plot run selector, the last 10 available runs for that workflow are selected by default.
+
+To override the default selection, use one of:
 
 - `--plot-last-runs`
 - `--plot-run-ids`
@@ -206,15 +210,18 @@ The plot selectors `--plot-run-ids`, `--plot-run-id-file`, and `--plot-last-runs
 
 ## Generated outputs
 
-The command writes two canonical files to the current working directory:
+The command always writes two canonical files to the current working directory:
 
 ```text
 master_metrics_table.tsv
 joint_sequencing_QC_file.tsv
 ```
 
-There is no `--workdir` or output-directory option. Workflow managers such as Nextflow are expected to manage the process working directory and publish outputs afterwards.
+When plotting is requested with --plot-workflow, it also writes a workflow-specific PDF:
 
+dragen_metric_plots.pdf or localapp_metric_plots.pdf
+
+There is no --workdir or output-directory option. Workflow managers such as Nextflow are expected to manage the process working directory and publish outputs afterwards.
 ### `master_metrics_table.tsv`
 
 The master table contains standardized sample-level, threshold, and run-level metrics.
@@ -223,7 +230,7 @@ Metadata columns are:
 
 | Column | Description |
 |---|---|
-| `RUN_INDEX` | Run-order index; `001` is the last supplied run |
+| `RUN_INDEX` | Run-order index; `001` is the last run in the resolved run order |
 | `SAMPLE_ID` | Sample or threshold identifier |
 | `RUN` | Sequencing run ID |
 | `WORKFLOW_TYPE` | Detected workflow type |
@@ -250,7 +257,7 @@ LOWER_THRESHOLD
 UPPER_THRESHOLD
 ```
 
-Sample type is determined primarily from the presence of DNA- or RNA-specific metric values. Explicit `DNA_` or `RNA_` sample ID prefixes are used only as a fallback.
+Sample type is determined from `Sample_Type` in the workflow SampleSheet. Metrics samples are matched to the SampleSheet using `Pair_ID` when available, otherwise `Sample_ID`. `DNA` and `RNA` values are assigned `DNA_SAMPLE` and `RNA_SAMPLE`, respectively. Samples without an unambiguous supported SampleSheet classification are assigned `SAMPLE`.
 
 Threshold rows keep lower and upper specification guidelines associated with the workflow type and version that produced them.
 

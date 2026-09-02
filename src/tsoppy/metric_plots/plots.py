@@ -141,21 +141,6 @@ def Plot_bar_metric(
                 breaks=y_breaks,
             )
 
-        if upper_lim is not None and np.isfinite(upper_lim):
-            upper_tick = upper_lim + y_tick_step
-
-            y_breaks = list(
-                np.arange(
-                    0,
-                    upper_tick,
-                    y_tick_step,
-                ).round(decimals=10)
-            )
-
-            plot = plot + scale_y_continuous(
-                breaks=y_breaks,
-            )
-
     if hline_y is not None:
         plot = (
             plot
