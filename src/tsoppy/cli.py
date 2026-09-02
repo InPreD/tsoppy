@@ -5,14 +5,16 @@ import logging
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
-from tsoppy.metric_plots.plotting import generate_qc_plots
 
 import typer
 
 from tsoppy.metric_plots.main import MetricPlots
+from tsoppy.metric_plots.plotting import generate_qc_plots
 
 
 class WorkflowType(str, Enum):
+    """Supported workflow types for metric plotting."""
+
     DRAGEN = "dragen"
     LOCALAPP = "localapp"
 
@@ -35,7 +37,9 @@ def validate_run_id_file(
 ) -> Path | None:
     """Ensure --run-id-file is not used with --run-ids."""
     if value is not None and ctx.params.get("run_ids") is not None:
-        raise typer.BadParameter("--run-id-file cannot be used with --run-ids.")
+        message = "--run-id-file cannot be used with --run-ids."
+        logger.error(message)
+        raise typer.BadParameter(message)
     return value
 
 
@@ -45,9 +49,9 @@ def validate_plot_run_id_file(
 ) -> Path | None:
     """Ensure --plot-run-id-file is not used with --plot-run-ids."""
     if value is not None and ctx.params.get("plot_run_ids") is not None:
-        raise typer.BadParameter(
-            "--plot-run-id-file cannot be used with --plot-run-ids."
-        )
+        message = "--plot-run-id-file cannot be used with --plot-run-ids."
+        logger.error(message)
+        raise typer.BadParameter(message)
     return value
 
 
@@ -85,11 +89,22 @@ def metric_plots(
         str,
         typer.Option(
             help=(
-                "Glob pattern matching workflow output directories"
-                "whose final directory name is the sequencing run ID."
+                "Glob pattern matching workflow output directories "
+                "whose final directory name is the sequencing run ID. "
                 "Example:"
                 " 'results/*/*' "
             ),
+        ),
+    ],
+    inpred_nomenclature: Annotated[
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+            help="InPreD nomenclature YAML.",
         ),
     ],
     config_yaml: Annotated[
@@ -103,23 +118,14 @@ def metric_plots(
             help="Workflow configuration YAML.",
         ),
     ] = Path("config.yaml"),
-    inpred_nomenclature: Annotated[
-        Path,
-        typer.Option(
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
-            resolve_path=True,
-            help="InPreD nomenclature YAML.",
-        ),
-    ] = Path("tests/test_data/metric_plots_main/nomenclature.yaml"),
     run_ids: Annotated[
         str | None,
         typer.Option(
             help=(
-                "Comma-separated list of run IDs to include in the generated master metrics "
-                "table. Mutually exclusive with --run-id-file."
+                "Comma-separated run IDs to include in the generated master metrics "
+                "table. If neither --run-ids nor --run-id-file is provided, all runs "
+                "matched by --input-glob are included. Mutually exclusive with "
+                "--run-id-file."
             ),
         ),
     ] = None,
@@ -133,8 +139,10 @@ def metric_plots(
             resolve_path=True,
             callback=validate_run_id_file,
             help=(
-                "Text file containing run IDs for generation of the master metrics table, "
-                "one per line. Mutually exclusive with --run-ids."
+                "Text file containing run IDs for generation of the master metrics "
+                "table, one per line. If neither --run-id-file nor --run-ids is "
+                "provided, all runs matched by --input-glob are included. "
+                "Mutually exclusive with --run-ids."
             ),
         ),
     ] = None,
@@ -176,32 +184,37 @@ def metric_plots(
     plot_workflow: Annotated[
         WorkflowType | None,
         typer.Option(
-            help="Workflow whose runs will be plotted.",
+            help=(
+                "Workflow whose runs will be plotted. If no plot run selector is "
+                "provided, the last 10 runs for this workflow are plotted."
+            ),
         ),
     ] = None,
 ):
     """Create metrics tables and optionally generate QC plots."""
     logger.info("Creating metrics master table and joint QC.")
 
-    # Master run selection is required.
-    if run_ids is None and run_id_file is None:
-        raise typer.BadParameter("Provide exactly one of --run-ids or --run-id-file.")
-
     plot_run_selection_given = plot_run_ids is not None or plot_run_id_file is not None
 
-    prepare_plot_frames = plot_last_runs is not None or plot_run_selection_given
+    prepare_plot_frames = (
+        plot_workflow is not None
+        or plot_last_runs is not None
+        or plot_run_selection_given
+    )
 
     # --plot-last-runs is a separate selection mode.
     if plot_last_runs is not None and plot_run_selection_given:
-        raise typer.BadParameter(
+        message = (
             "--plot-last-runs cannot be combined with "
             "--plot-run-ids or --plot-run-id-file."
         )
+        logger.error(message)
+        raise typer.BadParameter(message)
 
     if prepare_plot_frames and plot_workflow is None:
-        raise typer.BadParameter(
-            "--plot-workflow is required when plotting is requested."
-        )
+        message = "--plot-workflow is required when plotting is requested."
+        logger.error(message)
+        raise typer.BadParameter(message)
 
     metric_plotter = MetricPlots(
         config_yaml=config_yaml,
@@ -233,8 +246,13 @@ def metric_plots(
         if plotting_run_ids is not None:
             plotting_run_ids = list(dict.fromkeys(plotting_run_ids))
 
-        # plot_workflow cannot be None here because it was validated above.
-        assert plot_workflow is not None
+        if plot_workflow is None:
+            message = (
+                "Internal error: --plot-workflow was not resolved before "
+                "plot selection despite passing the earlier validation."
+            )
+            logger.error(message)
+            raise RuntimeError(message)
 
         plot_frame, plot_joint_qc = metric_plotter.select_plot_data(
             master=master,

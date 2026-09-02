@@ -25,21 +25,14 @@ docker-compose.yml
 .RData
 .Rproj.user/
 
-# Legacy metric-plots input data
-tests/test_data/metric_plots_main/in/
-
-# Local metric-plots integration inputs
-tests/test_data/metric_plots_main/input/
-
-# Generated outputs
-**/out/
-*.pdf
-*.zip
-./*.tsv
-
 # Temporary files
 *.swp
 *.tmp
 
-./test_metrics_plots_cli.sh
-./scripts/test_metrics_plots_cli.sh
+# Local metric-plots test data
+tests/test_data/metric_plots_main/local_data/
+
+# Generated metric-plots CLI output
+*.pdf
+/*.tsv
+

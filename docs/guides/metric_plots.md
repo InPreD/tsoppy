@@ -6,10 +6,6 @@ The command supports both **DRAGEN** and **LocalApp** workflow outputs. Workflow
 
 For implementation details, see [`docs/references/metric_plots_architecture.md`](../references/metric_plots_architecture.md).
 
-> **Current plotting status**
->
-> The current implementation generates the standardized tables and prepares the in-memory `plot_frame` and `plot_joint_qc` DataFrames. The final call to the Python plotting function is still pending integration in `cli.py`.
-
 ## Quick start
 
 Generate metrics tables for three runs:
@@ -17,15 +13,17 @@ Generate metrics tables for three runs:
 ```bash
 tsoppy metric-plots \
     --input-glob 'results/*/*' \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
     --run-ids RUN001,RUN002,RUN003
 ```
 
-Generate the tables and select the last three DRAGEN runs for plotting:
+Generate tables for five runs and plot the last three DRAGEN runs among them:
 
 ```bash
 tsoppy metric-plots \
     --input-glob 'results/*/*' \
-    --run-ids RUN001,RUN002,RUN003 \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
+    --run-ids RUN001,RUN002,RUN003,RUN004,RUN005 \
     --plot-workflow dragen \
     --plot-last-runs 3
 ```
@@ -62,7 +60,7 @@ Use:
 
 Quote the glob so that the shell passes it unchanged to `tsoppy`.
 
-The glob must match workflow roots, not `MetricsOutput.tsv` files. A selected run is matched by exact directory name. For example, `RUN01` does not match `RUN010`.
+The glob must match workflow root directories, not `MetricsOutput.tsv` files. A specific run can be selected by pointing the glob at its workflow root directory, e.g. `results/localapp/RUN01`. Matching is by exact directory name, so `RUN01` does not match `RUN010`.
 
 A run may have both a DRAGEN and a LocalApp output. When both are valid and matched by the glob, both are processed.
 
@@ -80,6 +78,7 @@ The two options are mutually exclusive.
 ```bash
 tsoppy metric-plots \
     --input-glob 'results/*/*' \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
     --run-ids RUN001,RUN002,RUN003
 ```
 
@@ -88,6 +87,7 @@ tsoppy metric-plots \
 ```bash
 tsoppy metric-plots \
     --input-glob 'results/*/*' \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
     --run-id-file run_ids.txt
 ```
 
@@ -105,7 +105,7 @@ Duplicate IDs are removed while preserving their first occurrence.
 
 ## Run order and `RUN_INDEX`
 
-Run order is significant.
+Run order is determined by the order of the supplied run IDs, not by the order in which directories are returned by `--input-glob`.
 
 The command does not parse dates from run identifiers. The last supplied run is treated as the latest/current run and receives:
 
@@ -121,36 +121,11 @@ RUN002 -> 002
 RUN003 -> 001
 ```
 
-## Configuration files
+For `--run-ids`, the comma-separated order is preserved. For `--run-id-file`, run IDs are processed in file order. Duplicate run IDs are removed while preserving their first occurrence.
 
-The default configuration files are:
+## Workflow selection
 
-```text
-config.yaml
-resources/nomenclature.yaml (to be changed/adjusted)
-```
-
-Alternative paths can be supplied with:
-
-```bash
---config-yaml /path/to/config.yaml
---inpred-nomenclature /path/to/nomenclature.yaml
-```
-
-Both files must exist and be readable.
-
-## Workflow detection
-
-Workflow type and version are detected automatically and stored in:
-
-```text
-WORKFLOW_TYPE
-WORKFLOW_VERSION
-```
-
-Users do not provide these values when generating the metrics tables.
-
-`--plot-workflow` only selects which detected workflow type should be prepared for plotting. Supported values are: `dragen` and `localapp`
+`--plot-workflow` selects which workflow type should be prepared for plotting. Supported values are: `dragen` and `localapp`.
 
 ## Selecting runs for plotting
 
@@ -169,6 +144,7 @@ These three options are mutually exclusive.
 ```bash
 tsoppy metric-plots \
     --input-glob 'results/*/*' \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
     --run-id-file run_ids.txt \
     --plot-workflow dragen \
     --plot-last-runs 10
@@ -183,6 +159,7 @@ The command first filters to DRAGEN, then selects the last ten available DRAGEN 
 ```bash
 tsoppy metric-plots \
     --input-glob 'results/*/*' \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
     --run-ids RUN001,RUN002,RUN003,RUN004 \
     --plot-workflow localapp \
     --plot-run-ids RUN002,RUN004
@@ -195,6 +172,7 @@ Requested runs that are unavailable for the selected workflow are skipped with a
 ```bash
 tsoppy metric-plots \
     --input-glob 'results/*/*' \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
     --run-id-file run_ids.txt \
     --plot-workflow localapp \
     --plot-run-id-file plot_run_ids.txt
@@ -213,15 +191,18 @@ Blank lines and comment lines are ignored.
 
 | Option | Requirement | Purpose |
 |---|---|---|
-| `--input-glob` | Required | Match workflow root directories |
-| `--config-yaml` | Optional | Workflow configuration file |
-| `--inpred-nomenclature` | Optional | InPreD nomenclature file |
-| `--run-ids` | Exactly one master selector | Comma-separated run IDs |
-| `--run-id-file` | Exactly one master selector | File containing run IDs |
-| `--plot-workflow` | Required with plot selection | Select `dragen` or `localapp` |
-| `--plot-last-runs` | Optional plot selector | Select the last `N` workflow runs |
-| `--plot-run-ids` | Optional plot selector | Select explicit plot run IDs |
-| `--plot-run-id-file` | Optional plot selector | Select plot runs from a file |
+| `--input-glob` | Required | Glob pattern matching workflow output directories whose final directory name is the sequencing run ID |
+| `--inpred-nomenclature` | Required | InPreD nomenclature YAML |
+| `--config-yaml` | Optional; default: `config.yaml` | Workflow configuration YAML |
+| `--run-ids` | Exactly one of `--run-ids` or `--run-id-file` | Comma-separated run IDs to include in the generated master metrics table |
+| `--run-id-file` | Exactly one of `--run-ids` or `--run-id-file` | Text file containing run IDs for generation of the master metrics table |
+| `--plot-run-ids` | Optional plot selector | Comma-separated run IDs to include in the plot |
+| `--plot-run-id-file` | Optional plot selector | Text file containing run IDs to select for plotting |
+| `--plot-last-runs` | Optional plot selector; integer ≥ 1 | Plot the most recent `N` runs for the selected workflow |
+| `--plot-workflow` | Required when plotting is requested | Workflow to plot: `dragen` or `localapp` |
+| `--help` | Optional | Show the command help and exit |
+
+The plot selectors `--plot-run-ids`, `--plot-run-id-file`, and `--plot-last-runs` are mutually exclusive.
 
 ## Generated outputs
 
@@ -307,7 +288,7 @@ plot_joint_qc
 
 `plot_joint_qc` contains matching sequencing-QC rows.
 
-These DataFrames are intended to be passed directly to the plotting implementation.
+These DataFrames are passed directly to `generate_qc_plots()`, which renders them to the output PDF.
 
 ## Complete examples
 
@@ -316,6 +297,7 @@ Generate tables only:
 ```bash
 tsoppy metric-plots \
     --input-glob '/data/tso500/*/*' \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
     --run-id-file run_ids.txt
 ```
 
@@ -324,6 +306,7 @@ Select the last eight DRAGEN runs:
 ```bash
 tsoppy metric-plots \
     --input-glob '/data/tso500/*/*' \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
     --run-id-file run_ids.txt \
     --plot-workflow dragen \
     --plot-last-runs 8
@@ -334,6 +317,7 @@ Select explicit LocalApp runs:
 ```bash
 tsoppy metric-plots \
     --input-glob '/data/tso500/*/*' \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
     --run-ids RUN001,RUN002,RUN003,RUN004 \
     --plot-workflow localapp \
     --plot-run-ids RUN002,RUN004
@@ -344,8 +328,8 @@ Use custom configuration files:
 ```bash
 tsoppy metric-plots \
     --input-glob '/data/tso500/*/*' \
+    --inpred-nomenclature /path/to/nomenclature.yaml \
     --config-yaml /data/config.yaml \
-    --inpred-nomenclature /data/nomenclature.yaml \
     --run-id-file run_ids.txt
 ```
 

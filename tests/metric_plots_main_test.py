@@ -194,6 +194,65 @@ class TestMetricPlots(unittest.TestCase):
 
         assert got.equals(expected)
 
+    def test_no_run_selector_uses_all_runs_from_input_glob(self):
+        """Use all glob-matched run IDs when no run selector is provided."""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for run_id in [
+                "RUN003",
+                "RUN001",
+                "RUN002",
+            ]:
+                os.mkdir(path.join(tmpdir, run_id))
+
+            metric_plots = MetricPlots(
+                config_yaml=config_yaml,
+                inpred_nomenclature=inpred_nomenclature,
+                input_glob=path.join(tmpdir, "*"),
+            )
+
+            assert metric_plots.run_ids == [
+                "RUN001",
+                "RUN002",
+                "RUN003",
+            ]
+
+    def test_select_plot_data_defaults_to_last_ten_runs(self):
+        """Select the last ten workflow runs when no plot selector is provided."""
+
+        run_ids = [f"RUN{i:02d}" for i in range(1, 13)]
+
+        master = polars.DataFrame(
+            {
+                "SAMPLE_ID": [f"S{i:02d}" for i in range(1, 13)],
+                "RUN": run_ids,
+                "WORKFLOW_TYPE": ["dragen"] * 12,
+                "WORKFLOW_VERSION": ["2.6.2.4"] * 12,
+                "RECORD_TYPE": ["DNA_SAMPLE"] * 12,
+            }
+        )
+
+        joint_qc = polars.DataFrame(
+            {
+                "RUN_ID": run_ids,
+                "WORKFLOW_TYPE": ["dragen"] * 12,
+                "WORKFLOW_VERSION": ["2.6.2.4"] * 12,
+            }
+        )
+
+        metric_plots = self._metric_plots_without_init()
+
+        got, got_joint_qc = metric_plots.select_plot_data(
+            master=master,
+            joint_qc=joint_qc,
+            workflow_type="dragen",
+        )
+
+        expected_runs = [f"RUN{i:02d}" for i in range(3, 13)]
+
+        assert got["RUN"].to_list() == expected_runs
+        assert got_joint_qc["RUN_ID"].to_list() == expected_runs
+
     def test_select_plot_data_joint_qc_last_runs(self):
         master = self._master_frame()
         joint_qc = self._joint_qc_frame()
@@ -429,77 +488,191 @@ class TestMetricPlots(unittest.TestCase):
 
         assert plot_joint_qc["RUN_ID"].to_list() == ["RUN5"]
 
-    def test_add_record_type_uses_metrics_over_sample_id(self):
+    def test_add_record_type_uses_samplesheet_sample_type(self):
+        """RECORD_TYPE comes from the sample sheet, not metric content or SAMPLE_ID text."""
         samples = polars.DataFrame(
             {
                 "SAMPLE_ID": [
-                    "RNA_D001",
-                    "DNA_R001",
+                    "RNA_LOOKING_ID",
+                    "DNA_LOOKING_ID",
                 ],
                 "DNA_METRIC": [
-                    None,
                     "10",
+                    None,
                 ],
                 "RNA_METRIC": [
-                    "20",
                     None,
+                    "20",
                 ],
             }
         )
 
-        metric_plots = self._metric_plots_without_init()
-
-        got = metric_plots._add_record_type(samples)
-
-        assert got["RECORD_TYPE"].to_list() == [
-            "RNA_SAMPLE",
-            "DNA_SAMPLE",
-        ]
-
-    def test_add_record_type_uses_prefix_as_fallback(self):
-        samples = polars.DataFrame(
+        samplesheet = polars.DataFrame(
             {
-                "SAMPLE_ID": [
-                    "DNA_TEST",
-                    "RNA_TEST",
-                    "UNKNOWN_TEST",
+                "Sample_ID": [
+                    "RNA_LOOKING_ID",
+                    "DNA_LOOKING_ID",
+                ],
+                "Pair_ID": [
+                    "RNA_LOOKING_ID",
+                    "DNA_LOOKING_ID",
+                ],
+                "Sample_Type": [
+                    "DNA",
+                    "RNA",
                 ],
             }
         )
 
         metric_plots = self._metric_plots_without_init()
 
-        got = metric_plots._add_record_type(samples)
+        got = metric_plots._add_record_type(samples, samplesheet)
 
         assert got["RECORD_TYPE"].to_list() == [
             "DNA_SAMPLE",
             "RNA_SAMPLE",
-            "SAMPLE",
         ]
 
-    def test_add_record_type_ambiguous_metrics_uses_fallback(self):
+    def test_add_record_type_prefers_pair_id_over_sample_id(self):
+        """The metrics output keys samples by Pair_ID, so the lookup joins on it."""
+        samples = polars.DataFrame(
+            {
+                "SAMPLE_ID": ["PAIR01"],
+            }
+        )
+
+        samplesheet = polars.DataFrame(
+            {
+                "Sample_ID": ["SAMPLE01"],
+                "Pair_ID": ["PAIR01"],
+                "Sample_Type": ["RNA"],
+            }
+        )
+
+        metric_plots = self._metric_plots_without_init()
+
+        got = metric_plots._add_record_type(samples, samplesheet)
+
+        assert got["RECORD_TYPE"].to_list() == ["RNA_SAMPLE"]
+
+    def test_add_record_type_falls_back_to_sample_id_without_pair_id_column(self):
+        samples = polars.DataFrame(
+            {
+                "SAMPLE_ID": ["SAMPLE01"],
+            }
+        )
+
+        samplesheet = polars.DataFrame(
+            {
+                "Sample_ID": ["SAMPLE01"],
+                "Sample_Type": ["DNA"],
+            }
+        )
+
+        metric_plots = self._metric_plots_without_init()
+
+        got = metric_plots._add_record_type(samples, samplesheet)
+
+        assert got["RECORD_TYPE"].to_list() == ["DNA_SAMPLE"]
+
+    def test_add_record_type_unmatched_sample_falls_back_to_unknown(self):
+        samples = polars.DataFrame(
+            {
+                "SAMPLE_ID": ["NOT_IN_SAMPLESHEET"],
+            }
+        )
+
+        samplesheet = polars.DataFrame(
+            {
+                "Sample_ID": ["OTHER_SAMPLE"],
+                "Pair_ID": ["OTHER_SAMPLE"],
+                "Sample_Type": ["DNA"],
+            }
+        )
+
+        metric_plots = self._metric_plots_without_init()
+
+        got = metric_plots._add_record_type(samples, samplesheet)
+
+        assert got["RECORD_TYPE"].to_list() == ["SAMPLE"]
+
+    def test_add_record_type_missing_sample_type_column_falls_back_to_unknown(self):
+        samples = polars.DataFrame(
+            {
+                "SAMPLE_ID": ["SAMPLE01"],
+            }
+        )
+
+        samplesheet = polars.DataFrame(
+            {
+                "Sample_ID": ["SAMPLE01"],
+                "Pair_ID": ["SAMPLE01"],
+            }
+        )
+
+        metric_plots = self._metric_plots_without_init()
+
+        got = metric_plots._add_record_type(samples, samplesheet)
+
+        assert got["RECORD_TYPE"].to_list() == ["SAMPLE"]
+
+    def test_add_record_type_ambiguous_samplesheet_uses_fallback(self):
+        """A Pair_ID shared by a DNA and an RNA sample cannot be classified unambiguously."""
         samples = polars.DataFrame(
             {
                 "SAMPLE_ID": [
-                    "RNA_TEST",
-                    "UNKNOWN_TEST",
+                    "SHARED_PAIR",
+                    "SOLO_PAIR",
                 ],
-                "DNA_METRIC": [
-                    "10",
-                    "10",
+            }
+        )
+
+        samplesheet = polars.DataFrame(
+            {
+                "Sample_ID": [
+                    "Patient01_D",
+                    "Patient01_R",
+                    "Patient02",
                 ],
-                "RNA_METRIC": [
-                    "20",
-                    "20",
+                "Pair_ID": [
+                    "SHARED_PAIR",
+                    "SHARED_PAIR",
+                    "SOLO_PAIR",
+                ],
+                "Sample_Type": [
+                    "DNA",
+                    "RNA",
+                    "RNA",
                 ],
             }
         )
 
         metric_plots = self._metric_plots_without_init()
 
-        got = metric_plots._add_record_type(samples)
+        got = metric_plots._add_record_type(samples, samplesheet)
 
         assert got["RECORD_TYPE"].to_list() == [
-            "RNA_SAMPLE",
             "SAMPLE",
+            "RNA_SAMPLE",
         ]
+
+    def test_add_record_type_sample_type_is_case_and_whitespace_insensitive(self):
+        samples = polars.DataFrame(
+            {
+                "SAMPLE_ID": ["SAMPLE01"],
+            }
+        )
+
+        samplesheet = polars.DataFrame(
+            {
+                "Sample_ID": ["SAMPLE01"],
+                "Pair_ID": ["SAMPLE01"],
+                "Sample_Type": [" dna "],
+            }
+        )
+
+        metric_plots = self._metric_plots_without_init()
+
+        got = metric_plots._add_record_type(samples, samplesheet)
+
+        assert got["RECORD_TYPE"].to_list() == ["DNA_SAMPLE"]

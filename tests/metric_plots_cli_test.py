@@ -110,17 +110,24 @@ def _mock_metric_plotter(
     }
 
 
-def test_cli_requires_master_run_selector(
+def test_cli_omits_master_run_selector_defers_to_input_glob(
+    monkeypatch,
     tmp_path,
 ):
-    """Exactly one master run-selection mode is required."""
+    """Omitting both master run selectors is valid and defers to --input-glob."""
+    mocks = _mock_metric_plotter(monkeypatch)
+
     result = runner.invoke(
         app,
         _base_args(tmp_path),
     )
 
-    assert result.exit_code != 0
-    assert "--run-ids" in _clean_output(result)
+    assert result.exit_code == 0, result.output
+
+    constructor_kwargs = mocks["constructor"].call_args.kwargs
+
+    assert constructor_kwargs["run_ids"] is None
+    assert constructor_kwargs["run_id_file"] is None
 
 
 def test_cli_rejects_both_master_run_selectors(

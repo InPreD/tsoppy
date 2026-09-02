@@ -1,8 +1,9 @@
+"""Prepare and render workflow-specific metric QC plots."""
+
 import logging
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import polars as pl
 from matplotlib.backends.backend_pdf import PdfPages
 from plotnine import (
@@ -27,17 +28,16 @@ from plotnine import (
     ylab,
 )
 
-from .plots import (
+from tsoppy.metric_plots.plots import (
     AXIS_LINE_COLOR,
     HV_LINE_ALPHA,
     HV_LINE_COLOR,
     HV_LINE_SIZE,
     TABLEAU_20,
+    plot_bar_metric,
     plot_contamination_scatter,
-    plot_tsoppy_barplot,
 )
-from .specs.plot_specs_workflows import PLOT_SPECS
-
+from tsoppy.metric_plots.specs.plot_specs_workflows import PLOT_SPECS
 
 logger = logging.getLogger(__name__)
 
@@ -494,12 +494,17 @@ def compute_cart_ylim(
     if not guidelines:
         return cart_ylim
 
-    y_values = pd.to_numeric(
-        plot_data[spec["y_var"]],
-        errors="coerce",
+    y_values = plot_data.select(
+        pl.col(spec["y_var"]).cast(pl.Float64, strict=False).alias("_y_value")
     )
 
-    finite_values = y_values.dropna().tolist()
+    finite_values = (
+        y_values.filter(
+            pl.col("_y_value").is_not_null() & pl.col("_y_value").is_finite()
+        )
+        .get_column("_y_value")
+        .to_list()
+    )
 
     required_values = [
         0.0,
@@ -576,7 +581,7 @@ def compute_cart_ylim(
 def prepare_bar_plot_data(
     table: pl.DataFrame,
     spec: dict,
-):
+) -> pl.DataFrame:
     """Prepare one table for a bar plot."""
 
     filters = []
@@ -641,7 +646,7 @@ def prepare_bar_plot_data(
             .alias("PLOT_RUN")
         )
 
-    return table.to_pandas()
+    return table
 
 
 def save_plot(
@@ -683,7 +688,7 @@ def render_bar_plot(
         spec,
     )
 
-    if spec.get("skip_if_empty") and plot_data.empty:
+    if spec.get("skip_if_empty") and plot_data.is_empty():
         return
 
     guidelines = get_available_guidelines(
@@ -705,7 +710,7 @@ def render_bar_plot(
         "Run index | Sample ID" if plot_x_var == "PLOT_SAMPLE_ID" else spec["x_lab"]
     )
 
-    plot = plot_tsoppy_barplot(
+    plot = plot_bar_metric(
         data=plot_data,
         x_var=plot_x_var,
         y_var=spec["y_var"],
@@ -740,7 +745,7 @@ def render_bar_plot(
 
         line_color = HV_LINE_COLOR if guideline["color"] is None else guideline["color"]
 
-        label_x = len(plot_data) + 0.9 + guideline_index * 0.6
+        label_x = plot_data.height + 0.9 + guideline_index * 0.6
 
         plot = (
             plot
@@ -816,11 +821,9 @@ def render_cluster_density_scatter(
     if spec.get("skip_if_empty") and plot_table.is_empty():
         return
 
-    plot_data = plot_table.to_pandas()
-
     plot = (
         ggplot(
-            plot_data,
+            plot_table,
             aes(
                 x="CLUSTER_DENSITY",
                 y="ESTIMATED_YIELD",
@@ -967,7 +970,7 @@ def render_contamination_scatter(
     plot_color_var = "RUN_LABEL" if spec["color_var"] == "RUN" else spec["color_var"]
 
     plot = plot_contamination_scatter(
-        data=plot_table.to_pandas(),
+        data=plot_table,
         color_var=plot_color_var,
         label_var=spec["label_var"],
         guide_title=spec.get(

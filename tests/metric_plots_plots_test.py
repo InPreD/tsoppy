@@ -2,7 +2,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+import polars as pl
 import pytest
 from plotnine import ggplot
 
@@ -11,13 +11,13 @@ from tsoppy.metric_plots.plots import (
     HV_LINE_COLOR,
     TABLEAU_20,
     plot_contamination_scatter,
-    plot_tsoppy_barplot,
+    plot_bar_metric,
 )
 
 
-def _bar_data() -> pd.DataFrame:
+def _bar_data() -> pl.DataFrame:
     """Return representative bar-plot input."""
-    return pd.DataFrame(
+    return pl.DataFrame(
         {
             "PLOT_SAMPLE_ID": [
                 "001 | SAMPLE_A",
@@ -38,9 +38,9 @@ def _bar_data() -> pd.DataFrame:
     )
 
 
-def _contamination_data() -> pd.DataFrame:
+def _contamination_data() -> pl.DataFrame:
     """Return representative contamination-plot input."""
-    return pd.DataFrame(
+    return pl.DataFrame(
         {
             "DNA_CONTAMINATION_SCORE": [
                 100.0,
@@ -72,14 +72,14 @@ def _contamination_data() -> pd.DataFrame:
 
 
 def _basic_bar_plot(
-    data: pd.DataFrame | None = None,
+    data: pl.DataFrame | None = None,
     **kwargs,
 ):
     """Create a standard test bar plot."""
     if data is None:
         data = _bar_data()
 
-    return plot_tsoppy_barplot(
+    return plot_bar_metric(
         data=data,
         x_var="PLOT_SAMPLE_ID",
         y_var="VALUE",
@@ -93,7 +93,7 @@ def _basic_bar_plot(
 
 
 def _basic_contamination_plot(
-    data: pd.DataFrame | None = None,
+    data: pl.DataFrame | None = None,
     **kwargs,
 ):
     """Create a standard test contamination plot."""
@@ -114,18 +114,18 @@ def _basic_contamination_plot(
 
 
 # ---------------------------------------------------------------------------
-# plot_tsoppy_barplot
+# plot_bar_metric
 # ---------------------------------------------------------------------------
 
 
-def test_plot_tsoppy_barplot_returns_ggplot():
+def test_plot_bar_metric_returns_ggplot():
     """Bar plotting helper returns a plotnine ggplot object."""
     plot = _basic_bar_plot()
 
     assert isinstance(plot, ggplot)
 
 
-def test_plot_tsoppy_barplot_draws():
+def test_plot_bar_metric_draws():
     """A representative bar plot renders successfully."""
     plot = _basic_bar_plot()
 
@@ -137,7 +137,7 @@ def test_plot_tsoppy_barplot_draws():
     plt.close(figure)
 
 
-def test_plot_tsoppy_barplot_preserves_x_category_order():
+def test_plot_bar_metric_preserves_x_category_order():
     """Sample categories retain their input ordering."""
     data = _bar_data()
 
@@ -145,10 +145,12 @@ def test_plot_tsoppy_barplot_preserves_x_category_order():
 
     x_scale = plot.scales.get_scales("x")
 
-    assert list(x_scale.limits) == data["PLOT_SAMPLE_ID"].drop_duplicates().tolist()
+    assert list(x_scale.limits) == (
+        data.get_column("PLOT_SAMPLE_ID").unique(maintain_order=True).to_list()
+    )
 
 
-def test_plot_tsoppy_barplot_preserves_fill_category_order():
+def test_plot_bar_metric_preserves_fill_category_order():
     """Run legend categories retain their first-occurrence order."""
     data = _bar_data()
 
@@ -156,17 +158,19 @@ def test_plot_tsoppy_barplot_preserves_fill_category_order():
 
     fill_scale = plot.scales.get_scales("fill")
 
-    assert list(fill_scale.limits) == data["PLOT_RUN"].drop_duplicates().tolist()
+    assert list(fill_scale.limits) == (
+        data.get_column("PLOT_RUN").unique(maintain_order=True).to_list()
+    )
 
 
-def test_plot_tsoppy_barplot_without_guideline_has_one_layer():
+def test_plot_bar_metric_without_guideline_has_one_layer():
     """Basic bar plot contains only the bar layer."""
     plot = _basic_bar_plot()
 
     assert len(plot.layers) == 1
 
 
-def test_plot_tsoppy_barplot_adds_guideline_layers():
+def test_plot_bar_metric_adds_guideline_layers():
     """Horizontal guideline adds line and text annotation layers."""
     plot = _basic_bar_plot(
         hline_y=25.0,
@@ -181,7 +185,7 @@ def test_plot_tsoppy_barplot_adds_guideline_layers():
     plt.close(figure)
 
 
-def test_plot_tsoppy_barplot_guideline_accepts_custom_style():
+def test_plot_bar_metric_guideline_accepts_custom_style():
     """Guideline rendering accepts configured styling parameters."""
     plot = _basic_bar_plot(
         hline_y=25.0,
@@ -199,7 +203,7 @@ def test_plot_tsoppy_barplot_guideline_accepts_custom_style():
     plt.close(figure)
 
 
-def test_plot_tsoppy_barplot_guideline_none_style_uses_defaults():
+def test_plot_bar_metric_guideline_none_style_uses_defaults():
     """None alpha/color values fall back to module guideline defaults."""
     plot = _basic_bar_plot(
         hline_y=25.0,
@@ -217,7 +221,7 @@ def test_plot_tsoppy_barplot_guideline_none_style_uses_defaults():
     plt.close(figure)
 
 
-def test_plot_tsoppy_barplot_adds_requested_y_breaks():
+def test_plot_bar_metric_adds_requested_y_breaks():
     """Positive y_tick_step creates explicit y-axis breaks."""
     plot = _basic_bar_plot(
         y_tick_step=10,
@@ -233,7 +237,7 @@ def test_plot_tsoppy_barplot_adds_requested_y_breaks():
     ]
 
 
-def test_plot_tsoppy_barplot_y_breaks_use_cartesian_upper_limit():
+def test_plot_bar_metric_y_breaks_use_cartesian_upper_limit():
     """Configured upper plotting limit controls generated ticks."""
     plot = _basic_bar_plot(
         cart_ylim=(0, 50),
@@ -260,7 +264,7 @@ def test_plot_tsoppy_barplot_y_breaks_use_cartesian_upper_limit():
         -1,
     ],
 )
-def test_plot_tsoppy_barplot_non_positive_tick_step_adds_no_y_scale(
+def test_plot_bar_metric_non_positive_tick_step_adds_no_y_scale(
     tick_step,
 ):
     """Missing or non-positive tick spacing does not add a y scale."""
@@ -271,9 +275,9 @@ def test_plot_tsoppy_barplot_non_positive_tick_step_adds_no_y_scale(
     assert plot.scales.get_scales("y") is None
 
 
-def test_plot_tsoppy_barplot_nan_max_does_not_fail_tick_generation():
+def test_plot_bar_metric_nan_max_does_not_fail_tick_generation():
     """All-missing numeric data does not create invalid y-axis breaks."""
-    data = pd.DataFrame(
+    data = pl.DataFrame(
         {
             "PLOT_SAMPLE_ID": [
                 "001 | SAMPLE_A",
@@ -295,9 +299,9 @@ def test_plot_tsoppy_barplot_nan_max_does_not_fail_tick_generation():
     assert isinstance(plot, ggplot)
 
 
-def test_plot_tsoppy_barplot_single_sample_draws():
+def test_plot_bar_metric_single_sample_draws():
     """Bar plotting also works with only one sample."""
-    data = pd.DataFrame(
+    data = pl.DataFrame(
         {
             "PLOT_SAMPLE_ID": [
                 "001 | SAMPLE_A",
@@ -320,9 +324,9 @@ def test_plot_tsoppy_barplot_single_sample_draws():
     plt.close(figure)
 
 
-def test_plot_tsoppy_barplot_many_runs_draws():
+def test_plot_bar_metric_many_runs_draws():
     """Multiple run categories can be rendered."""
-    data = pd.DataFrame(
+    data = pl.DataFrame(
         {
             "PLOT_SAMPLE_ID": [
                 f"{index:03d} | SAMPLE_{index}" for index in range(1, 9)
@@ -440,17 +444,23 @@ def test_plot_contamination_scatter_preserves_run_order():
 
     color_scale = plot.scales.get_scales("color")
 
-    assert list(color_scale.limits) == data["RUN_LABEL"].drop_duplicates().tolist()
+    assert list(color_scale.limits) == (
+        data.get_column("RUN_LABEL").unique(maintain_order=True).to_list()
+    )
 
 
 def test_plot_contamination_scatter_large_score_range_draws():
     """Contamination scores above 5000 can be plotted."""
-    data = _contamination_data().copy()
-
-    data.loc[
-        2,
-        "DNA_CONTAMINATION_SCORE",
-    ] = 7200.0
+    data = _contamination_data().with_columns(
+        pl.Series(
+            "DNA_CONTAMINATION_SCORE",
+            [
+                100.0,
+                750.0,
+                7200.0,
+            ],
+        )
+    )
 
     plot = plot_contamination_scatter(
         data=data,
@@ -472,7 +482,7 @@ def test_plot_contamination_scatter_large_score_range_draws():
 
 def test_plot_contamination_scatter_single_sample_draws():
     """Contamination scatter supports a single sample."""
-    data = pd.DataFrame(
+    data = pl.DataFrame(
         {
             "DNA_CONTAMINATION_SCORE": [
                 100.0,

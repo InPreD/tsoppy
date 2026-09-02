@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from glob import glob
+from pathlib import Path
+
 import polars as pl
 
 from tsoppy.general.classes import MetricsOutputTsv, WorkflowOutput
-
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,18 @@ class MetricPlots:
     RNA_SAMPLE = "RNA_SAMPLE"
     UNKNOWN_SAMPLE = "SAMPLE"
 
+    SAMPLESHEET_SAMPLE_ID_COL = "Sample_ID"
+    PAIR_ID_COL = "Pair_ID"
+    SAMPLE_TYPE_COL = "Sample_Type"
+    SAMPLESHEET_DNA_VALUE = "DNA"
+    SAMPLESHEET_RNA_VALUE = "RNA"
+
     RUN_INDEX = "RUN_INDEX"
+
+    MASTER_METRICS_TABLE_PATH = Path("master_metrics_table.tsv")
+    JOINT_QC_TABLE_PATH = Path("joint_sequencing_QC_file.tsv")
+
+    DEFAULT_PLOT_LAST_RUNS = 10
 
     IGNORED_SECTIONS = {
         "Header",
@@ -150,8 +161,8 @@ class MetricPlots:
 
         joint_qc = self._create_joint_qc(master)
 
-        master_path = Path("master_metrics_table.tsv")
-        joint_qc_path = Path("joint_sequencing_QC_file.tsv")
+        master_path = self.MASTER_METRICS_TABLE_PATH
+        joint_qc_path = self.JOINT_QC_TABLE_PATH
 
         master.write_csv(
             master_path,
@@ -210,7 +221,7 @@ class MetricPlots:
             ]
 
         else:
-            selected_runs = available_runs
+            selected_runs = available_runs[-self.DEFAULT_PLOT_LAST_RUNS :]
 
         logger.info(
             "Selected %d %s run(s) for plotting.",
@@ -232,9 +243,7 @@ class MetricPlots:
         run_ids: str | list[str] | None,
         run_id_file: Path | None,
     ) -> list[str]:
-        """Read run IDs from CLI values or a run ID file."""
-
-        message = "No run IDs were provided. Use run_ids or run_id_file."
+        """Resolve run IDs from CLI input, file input, or the input glob."""
 
         if run_ids is not None:
             selected_run_ids = self._parse_run_id_input(run_ids)
@@ -243,13 +252,25 @@ class MetricPlots:
             selected_run_ids = self._read_run_id_file(run_id_file)
 
         else:
-            logger.error(message)
-            raise ValueError(message)
+            input_roots = self._glob_input_roots()
+
+            selected_run_ids = sorted({root.name for root in input_roots})
+
+            if not selected_run_ids:
+                raise FileNotFoundError(
+                    "Input glob did not match any workflow output directories: "
+                    f"{self.input_glob}"
+                )
+
+            logger.info(
+                "No run IDs provided; using all %d run ID(s) matched by input glob.",
+                len(selected_run_ids),
+            )
 
         unique_run_ids = list(dict.fromkeys(selected_run_ids))
 
         if not unique_run_ids:
-            raise ValueError(message)
+            raise ValueError("No run IDs could be resolved.")
 
         logger.info(
             "Selected %d unique run ID(s).",
@@ -357,6 +378,22 @@ class MetricPlots:
 
         return outputs
 
+    def _glob_input_roots(
+        self,
+    ) -> list[Path]:
+        """Return unique workflow roots matched by the input glob."""
+
+        return list(
+            dict.fromkeys(
+                Path(match)
+                for match in glob(
+                    self.input_glob,
+                    recursive=True,
+                )
+                if Path(match).is_dir()
+            )
+        )
+
     def _validate_inputs(
         self,
     ) -> None:
@@ -377,16 +414,7 @@ class MetricPlots:
                 logger.error(message)
                 raise FileNotFoundError(message)
 
-        self.input_roots = list(
-            dict.fromkeys(
-                Path(match)
-                for match in glob(
-                    self.input_glob,
-                    recursive=True,
-                )
-                if Path(match).is_dir()
-            )
-        )
+        self.input_roots = self._glob_input_roots()
 
         if not self.input_roots:
             message = (
@@ -485,7 +513,7 @@ class MetricPlots:
                 )
 
         if not samples.is_empty():
-            samples = self._add_record_type(samples)
+            samples = self._add_record_type(samples, metrics_output.samples)
 
         if not thresholds.is_empty():
             thresholds = thresholds.with_columns(
@@ -747,45 +775,88 @@ class MetricPlots:
     def _add_record_type(
         self,
         samples: pl.DataFrame,
+        samplesheet: pl.DataFrame,
     ) -> pl.DataFrame:
-        """Classify sample rows as DNA, RNA, or unknown."""
-        dna_columns = [
-            column for column in samples.columns if column.startswith("DNA_")
-        ]
-        rna_columns = [
-            column for column in samples.columns if column.startswith("RNA_")
-        ]
+        """Classify sample rows as DNA, RNA, or unknown using the sample sheet's Sample_Type.
 
-        dna_has_value = (
-            pl.any_horizontal([pl.col(column).is_not_null() for column in dna_columns])
-            if dna_columns
-            else pl.lit(False)
+        SAMPLE_ID values in the metrics output correspond to Pair_ID in the sample
+        sheet, so the lookup joins on Pair_ID when available and falls back to
+        Sample_ID otherwise. Metric content and SAMPLE_ID text are not used for
+        classification: analysis is performed based on the sample sheet, so it is
+        the authoritative source for sample type.
+        """
+        if self.SAMPLE_TYPE_COL not in samplesheet.columns:
+            logger.warning(
+                "Sample sheet has no %s column; samples cannot be classified.",
+                self.SAMPLE_TYPE_COL,
+            )
+            return samples.with_columns(
+                pl.lit(self.UNKNOWN_SAMPLE).alias("RECORD_TYPE")
+            )
+
+        id_column = (
+            self.PAIR_ID_COL
+            if self.PAIR_ID_COL in samplesheet.columns
+            else self.SAMPLESHEET_SAMPLE_ID_COL
         )
 
-        rna_has_value = (
-            pl.any_horizontal([pl.col(column).is_not_null() for column in rna_columns])
-            if rna_columns
-            else pl.lit(False)
+        sample_types = samplesheet.select(
+            pl.col(id_column).alias("SAMPLE_ID"),
+            pl.col(self.SAMPLE_TYPE_COL)
+            .cast(pl.Utf8)
+            .str.strip_chars()
+            .str.to_uppercase()
+            .alias("_SAMPLE_TYPE"),
+        ).unique()
+
+        ambiguous_ids = (
+            sample_types.group_by("SAMPLE_ID")
+            .agg(pl.col("_SAMPLE_TYPE").n_unique().alias("_N_TYPES"))
+            .filter(pl.col("_N_TYPES") > 1)
+            .get_column("SAMPLE_ID")
+            .to_list()
         )
 
-        sample_id_upper = pl.col("SAMPLE_ID").str.to_uppercase()
+        if ambiguous_ids:
+            logger.warning(
+                "Ambiguous %s in sample sheet for: %s. Classified as %s.",
+                id_column,
+                ", ".join(ambiguous_ids),
+                self.UNKNOWN_SAMPLE,
+            )
+            sample_types = sample_types.filter(
+                ~pl.col("SAMPLE_ID").is_in(ambiguous_ids)
+            )
 
-        dna_id_fallback = sample_id_upper.str.contains(r"^DNA($|_)")
+        joined = samples.join(
+            sample_types,
+            on="SAMPLE_ID",
+            how="left",
+        )
 
-        rna_id_fallback = sample_id_upper.str.contains(r"^RNA($|_)")
+        unmatched_ids = (
+            joined.filter(pl.col("_SAMPLE_TYPE").is_null())
+            .get_column("SAMPLE_ID")
+            .unique()
+            .to_list()
+        )
 
-        return samples.with_columns(
-            pl.when(dna_has_value & ~rna_has_value)
+        if unmatched_ids:
+            logger.warning(
+                "No sample sheet %s found for: %s. Classified as %s.",
+                self.SAMPLE_TYPE_COL,
+                ", ".join(unmatched_ids),
+                self.UNKNOWN_SAMPLE,
+            )
+
+        return joined.with_columns(
+            pl.when(pl.col("_SAMPLE_TYPE") == self.SAMPLESHEET_DNA_VALUE)
             .then(pl.lit(self.DNA_SAMPLE))
-            .when(rna_has_value & ~dna_has_value)
-            .then(pl.lit(self.RNA_SAMPLE))
-            .when(dna_id_fallback)
-            .then(pl.lit(self.DNA_SAMPLE))
-            .when(rna_id_fallback)
+            .when(pl.col("_SAMPLE_TYPE") == self.SAMPLESHEET_RNA_VALUE)
             .then(pl.lit(self.RNA_SAMPLE))
             .otherwise(pl.lit(self.UNKNOWN_SAMPLE))
             .alias("RECORD_TYPE")
-        )
+        ).drop("_SAMPLE_TYPE")
 
     def _finalize_frame(
         self,

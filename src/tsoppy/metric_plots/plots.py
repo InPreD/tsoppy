@@ -1,5 +1,7 @@
+"""Low-level Plotnine helpers for metric QC plots."""
+
 import numpy as np
-import pandas as pd
+import polars as pl
 from plotnine import (
     aes,
     annotate,
@@ -26,11 +28,16 @@ from plotnine import (
     ylab,
 )
 
+# Shared styling for plot axes and lines.
 AXIS_LINE_COLOR = "#888686"
+
+# Styling for the horizontal/vertical guideline markers (LSL/USL) drawn on plots.
 HV_LINE_COLOR = "#e00202"
 HV_LINE_SIZE = 1
 HV_LINE_ALPHA = 0.75
 
+# Categorical palette (Tableau 20, first 10 colors) used to fill/color
+# series such as runs or samples across all QC plots.
 TABLEAU_20 = [
     "#4E79A7",
     "#F28E2B",
@@ -45,8 +52,8 @@ TABLEAU_20 = [
 ]
 
 
-def plot_tsoppy_barplot(
-    data: pd.DataFrame | None = None,
+def plot_bar_metric(
+    data: pl.DataFrame | None = None,
     x_var: str | None = None,
     y_var: str | None = None,
     fill_var: str | None = None,
@@ -66,14 +73,14 @@ def plot_tsoppy_barplot(
     ann_y_offset: float = 0.0,
     y_tick_step: int | float | None = None,
 ) -> ggplot:
-    """Create a reusable TSOPPI QC bar plot."""
+    """Create a reusable QC metric bar plot."""
 
     plot = (
         ggplot(data, aes(x=x_var, y=y_var))
         + geom_col(aes(fill=fill_var), alpha=alpha_value)
         + scale_fill_manual(
             values=TABLEAU_20,
-            limits=data[fill_var].drop_duplicates().tolist(),
+            limits=(data.get_column(fill_var).unique(maintain_order=True).to_list()),
         )
         + guides(fill=guide_legend(guide_title))
         + xlab(x_lab)
@@ -102,27 +109,41 @@ def plot_tsoppy_barplot(
             ),
         )
         + scale_x_discrete(
-            limits=data[x_var].drop_duplicates().tolist(),
-            breaks=data[x_var].drop_duplicates().tolist(),
+            limits=(data.get_column(x_var).unique(maintain_order=True).to_list()),
+            breaks=(data.get_column(x_var).unique(maintain_order=True).to_list()),
             expand=(0.05, 0, 0.1, 0),
         )
     )
 
     if y_tick_step is not None and y_tick_step > 0:
-        y_series = pd.to_numeric(
-            data[y_var],
-            errors="coerce",
-        )
-        data_max = y_series.max()
+        data_max = data.select(
+            pl.col(y_var).cast(pl.Float64, strict=False).max()
+        ).item()
 
         upper_lim = (
             cart_ylim[1]
-            if cart_ylim is not None and cart_ylim[1] is not None
+            if (cart_ylim is not None and cart_ylim[1] is not None)
             else data_max
         )
 
-        if pd.notna(upper_lim):
+        if upper_lim is not None and np.isfinite(upper_lim):
             upper_tick = upper_lim + y_tick_step
+
+            y_breaks = list(
+                np.arange(
+                    0,
+                    upper_tick,
+                    y_tick_step,
+                ).round(decimals=10)
+            )
+
+            plot = plot + scale_y_continuous(
+                breaks=y_breaks,
+            )
+
+        if upper_lim is not None and np.isfinite(upper_lim):
+            upper_tick = upper_lim + y_tick_step
+
             y_breaks = list(
                 np.arange(
                     0,
@@ -158,7 +179,7 @@ def plot_tsoppy_barplot(
 
 
 def plot_contamination_scatter(
-    data: pd.DataFrame | None = None,
+    data: pl.DataFrame | None = None,
     color_var: str | None = None,
     label_var: str | None = None,
     guide_title: str = "Run",
@@ -194,7 +215,7 @@ def plot_contamination_scatter(
         )
         + scale_color_manual(
             values=selected_colors,
-            limits=data[color_var].drop_duplicates().tolist(),
+            limits=(data.get_column(color_var).unique(maintain_order=True).to_list()),
         )
         + guides(color=guide_legend(guide_title))
         + xlab("Contamination score")

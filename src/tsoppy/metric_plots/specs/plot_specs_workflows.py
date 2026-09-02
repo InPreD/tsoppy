@@ -1,5 +1,6 @@
-import polars as pl
+"""Per-workflow declarative plot specifications consumed by the plotting module."""
 
+import polars as pl
 
 # PLOT_SPECS structure
 # ====================
@@ -136,6 +137,7 @@ PLOT_SPECS = {
             "column": "PCT_PF_READS",
             "dtype": pl.Float64,
         },
+        "na_filter_columns": ["PCT_PF_READS"],
         "cart_ylim": (0, 104),
         "guideline": {
             "table": "joint_qc_guideline_table",
@@ -172,6 +174,7 @@ PLOT_SPECS = {
             "column": "PCT_Q30_R1",
             "dtype": pl.Float64,
         },
+        "na_filter_columns": ["PCT_Q30_R1"],
         "cart_ylim": (0, 104),
         "guideline": {
             "table": "joint_qc_guideline_table",
@@ -208,6 +211,7 @@ PLOT_SPECS = {
             "column": "PCT_Q30_R2",
             "dtype": pl.Float64,
         },
+        "na_filter_columns": ["PCT_Q30_R2"],
         "cart_ylim": (0, 104),
         "guideline": {
             "table": "joint_qc_guideline_table",

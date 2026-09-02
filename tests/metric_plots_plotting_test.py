@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pandas as pd
 import polars as pl
 import pytest
 
@@ -527,7 +526,7 @@ def test_get_available_guidelines_skips_na_threshold():
 def test_compute_cart_ylim_contains_both_guidelines():
     """Axis limits include all available thresholds."""
 
-    data = pd.DataFrame(
+    data = pl.DataFrame(
         {
             "VALUE": [
                 0.5,
@@ -1118,7 +1117,7 @@ def test_get_guideline_value_zero_lsl_returns_none():
 
 def test_compute_cart_ylim_returns_static_limits():
     """Static axis limits are returned unchanged."""
-    data = pd.DataFrame({"VALUE": [1, 2, 3]})
+    data = pl.DataFrame({"VALUE": [1, 2, 3]})
 
     assert compute_cart_ylim(
         {
@@ -1130,14 +1129,14 @@ def test_compute_cart_ylim_returns_static_limits():
 
 def test_compute_cart_ylim_returns_none_without_configuration():
     """Missing axis-limit configuration returns None."""
-    data = pd.DataFrame({"VALUE": [1, 2]})
+    data = pl.DataFrame({"VALUE": [1, 2]})
 
     assert compute_cart_ylim({}, data) is None
 
 
 def test_compute_cart_ylim_dynamic_max_plus():
     """Dynamic limits use data maximum plus configured offset."""
-    data = pd.DataFrame({"VALUE": [10, 20, 15]})
+    data = pl.DataFrame({"VALUE": [10, 20, 15]})
 
     result = compute_cart_ylim(
         {
@@ -1155,7 +1154,7 @@ def test_compute_cart_ylim_dynamic_max_plus():
 
 def test_compute_cart_ylim_dynamic_custom_lower():
     """Dynamic limits support a custom lower bound."""
-    data = pd.DataFrame({"VALUE": [10, 20]})
+    data = pl.DataFrame({"VALUE": [10, 20]})
 
     result = compute_cart_ylim(
         {
@@ -1174,7 +1173,7 @@ def test_compute_cart_ylim_dynamic_custom_lower():
 
 def test_compute_cart_ylim_rejects_unknown_dynamic_mode():
     """Unsupported dynamic limit modes raise ValueError."""
-    data = pd.DataFrame({"VALUE": [1, 2]})
+    data = pl.DataFrame({"VALUE": [1, 2]})
 
     with pytest.raises(
         ValueError,
@@ -1193,7 +1192,7 @@ def test_compute_cart_ylim_rejects_unknown_dynamic_mode():
 
 def test_compute_cart_ylim_guideline_above_bars_expands_limit():
     """Guidelines above all bars remain visible."""
-    data = pd.DataFrame(
+    data = pl.DataFrame(
         {
             "VALUE": [
                 1.0,
@@ -1220,7 +1219,7 @@ def test_compute_cart_ylim_guideline_above_bars_expands_limit():
 
 def test_compute_cart_ylim_bar_above_guideline_uses_bar_max():
     """Bars above the guideline determine the visible upper range."""
-    data = pd.DataFrame(
+    data = pl.DataFrame(
         {
             "VALUE": [
                 3.0,
@@ -1247,7 +1246,7 @@ def test_compute_cart_ylim_bar_above_guideline_uses_bar_max():
 
 def test_compute_cart_ylim_keeps_existing_limit_when_guideline_is_visible():
     """Configured limits remain unchanged when they already show the guideline."""
-    data = pd.DataFrame(
+    data = pl.DataFrame(
         {
             "VALUE": [
                 1.0,
@@ -1274,7 +1273,7 @@ def test_compute_cart_ylim_keeps_existing_limit_when_guideline_is_visible():
 
 def test_compute_cart_ylim_expands_existing_limit_for_guideline():
     """Configured limits expand when a guideline would otherwise be clipped."""
-    data = pd.DataFrame(
+    data = pl.DataFrame(
         {
             "VALUE": [
                 1.0,
@@ -1333,7 +1332,7 @@ def test_run_index_sample_id_generation_and_padding():
         _minimal_bar_spec(),
     )
 
-    labels = plot_data["PLOT_SAMPLE_ID"].tolist()
+    labels = plot_data["PLOT_SAMPLE_ID"].to_list()
 
     assert labels[0].rstrip() == "001 | S1"
     assert labels[1].rstrip() == "002 | LONG_SAMPLE"
@@ -1356,8 +1355,8 @@ def test_prepare_bar_plot_data_preserves_original_sample_id():
         _minimal_bar_spec(),
     )
 
-    assert result["SAMPLE_ID"].tolist() == ["SAMPLE_A"]
-    assert result["PLOT_SAMPLE_ID"].tolist() == [
+    assert result["SAMPLE_ID"].to_list() == ["SAMPLE_A"]
+    assert result["PLOT_SAMPLE_ID"].to_list() == [
         "001 | SAMPLE_A",
     ]
 
@@ -1378,7 +1377,7 @@ def test_prepare_bar_plot_data_creates_run_legend():
         _minimal_bar_spec(),
     )
 
-    assert result["PLOT_RUN"].tolist() == [
+    assert result["PLOT_RUN"].to_list() == [
         "001 | RUN_A",
         "002 | RUN_B",
     ]
@@ -1410,7 +1409,7 @@ def test_run_index_run_id_legend_generation():
         spec,
     )
 
-    assert plot_data["PLOT_RUN"].tolist() == [
+    assert plot_data["PLOT_RUN"].to_list() == [
         "001 | RUN_A",
         "002 | RUN_B",
     ]
@@ -1431,7 +1430,7 @@ def test_prepare_bar_plot_data_casts_value_column():
         _minimal_bar_spec(),
     )
 
-    assert result["VALUE"].tolist() == [
+    assert result["VALUE"].to_list() == [
         1.5,
         2.5,
     ]
@@ -1455,7 +1454,7 @@ def test_prepare_bar_plot_data_filters_na_values():
         spec,
     )
 
-    assert result["SAMPLE_ID"].tolist() == [
+    assert result["SAMPLE_ID"].to_list() == [
         "S1",
         "S4",
     ]
@@ -1497,7 +1496,7 @@ def test_prepare_bar_plot_data_applies_multiple_filters():
         spec,
     )
 
-    assert result["SAMPLE_ID"].tolist() == [
+    assert result["SAMPLE_ID"].to_list() == [
         "KEEP_A",
     ]
 
@@ -1521,11 +1520,13 @@ def test_prepare_bar_plot_data_handles_null_run_index():
         _minimal_bar_spec(),
     )
 
-    assert result["PLOT_SAMPLE_ID"].iloc[0].rstrip() == "GUIDELINE"
-    assert result["PLOT_SAMPLE_ID"].iloc[1].rstrip() == "001 | SAMPLE"
+    assert result.get_column("PLOT_SAMPLE_ID")[0].rstrip() == "GUIDELINE"
 
-    assert result["PLOT_RUN"].iloc[0] == "GUIDELINE"
-    assert result["PLOT_RUN"].iloc[1] == "001 | RUN_A"
+    assert result.get_column("PLOT_SAMPLE_ID")[1].rstrip() == "001 | SAMPLE"
+
+    assert result.get_column("PLOT_RUN")[0] == "GUIDELINE"
+
+    assert result.get_column("PLOT_RUN")[1] == "001 | RUN_A"
 
 
 # ---------------------------------------------------------------------------
@@ -2078,7 +2079,7 @@ def test_render_bar_plot_calls_plot_function_and_save(
     monkeypatch,
 ):
     """Bar rendering passes prepared data to the plotting helper."""
-    frame = pd.DataFrame(
+    frame = pl.DataFrame(
         {
             "SAMPLE_ID": ["S1"],
             "PLOT_SAMPLE_ID": ["001 | S1"],
@@ -2100,7 +2101,7 @@ def test_render_bar_plot_calls_plot_function_and_save(
 
     monkeypatch.setattr(
         plotting,
-        "plot_tsoppy_barplot",
+        "plot_bar_metric",
         bar_mock,
     )
 
@@ -2143,14 +2144,14 @@ def test_render_bar_plot_skip_if_empty(
     monkeypatch.setattr(
         plotting,
         "prepare_bar_plot_data",
-        MagicMock(return_value=pd.DataFrame()),
+        MagicMock(return_value=pl.DataFrame()),
     )
 
     bar_mock = MagicMock()
 
     monkeypatch.setattr(
         plotting,
-        "plot_tsoppy_barplot",
+        "plot_bar_metric",
         bar_mock,
     )
 
@@ -2183,7 +2184,7 @@ def test_render_bar_plot_draws_all_available_guidelines(
 ):
     """Every available LSL and USL is drawn on the bar plot."""
 
-    frame = pd.DataFrame(
+    frame = pl.DataFrame(
         {
             "SAMPLE_ID": ["S1"],
             "VALUE": [3.0],
@@ -2226,7 +2227,7 @@ def test_render_bar_plot_draws_all_available_guidelines(
 
     monkeypatch.setattr(
         plotting,
-        "plot_tsoppy_barplot",
+        "plot_bar_metric",
         bar_mock,
     )
 

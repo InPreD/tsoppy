@@ -15,7 +15,7 @@ The implementation separates four concerns:
 
 The central rule is:
 
-> Parse workflow-specific data once, normalize it once, and let downstream consumers operate on the standardized representation.
+**Parse workflow-specific data once, normalize it once, and let downstream consumers operate on the standardized representation.**
 
 
 ### CLI
@@ -67,7 +67,7 @@ select_plot_data()
 
 The plotting layer consumes standardized Polars DataFrames. It should not search workflow directories, parse raw workflow files, infer sample type, or recreate run ordering.
 
-The current CLI prepares plotting DataFrames, while the final plotting call remains pending integration.
+The CLI prepares the plotting DataFrames via `select_plot_data()` and passes them directly to `generate_qc_plots()`.
 
 ## Constructor and invariants
 
@@ -121,34 +121,24 @@ Processing fails when a requested run has no valid workflow output.
 
 `generate_metrics_tables()` follows this sequence:
 
-```text
-resolve run IDs
-      │
-validate files and input glob
-      │
-load MetricsOutputTsv objects
-      │
-transform each workflow output
-      │
-combine normalized frames
-      │
-assign RUN_INDEX
-      │
-finalize master schema
-      │
-derive joint QC
-      │
-write canonical outputs
-      │
-return master, joint_qc
+```mermaid
+%%{init: {'flowchart': {'defaultRenderer': 'diagre-wrapper'}} }%%
+flowchart
+    A(resolve run IDs) ---> B(validate files and input glob)
+    B ---> C(load MetricsOutputTsv objects)
+    C ---> D(transform each workflow output)
+    D ---> E(combine normalized frames)
+    E ---> F(assign RUN_INDEX)
+    F ---> G(finalize master schema)
+    G ---> H(derive joint QC)
+    H ---> I(write canonical outputs)
+    I ---> J(return master, joint_qc)
 ```
 
 The method writes:
 
-```text
-master_metrics_table.tsv
-joint_sequencing_QC_file.tsv
-```
+- `master_metrics_table.tsv`
+- `joint_sequencing_QC_file.tsv`
 
 and returns the same data as Polars DataFrames so plotting can continue without rereading them.
 
@@ -227,24 +217,20 @@ When sample rows exist, run-level values are cross-joined onto them so later agg
 
 ## Record classification
 
-`_add_record_type()` classifies sample rows using metric content first.
+`_add_record_type()` classifies sample rows using the `Sample_Type` column from the sample sheet, which is the authoritative source for whether a sample is DNA or RNA — the analysis itself is run based on the sample sheet, so metric content and `SAMPLE_ID` text are not used for classification.
 
-- DNA-specific metrics only: `DNA_SAMPLE`
-- RNA-specific metrics only: `RNA_SAMPLE`
+`SAMPLE_ID` values in the metrics output correspond to `Pair_ID` in the sample sheet, so the lookup joins on `Pair_ID` when that column is present and falls back to `Sample_ID` otherwise.
 
-When metric content is ambiguous, explicit prefixes are used as a fallback:
-
-```text
-DNA_
-RNA_
-```
-
+- `Sample_Type` is `DNA`: `DNA_SAMPLE`
+- `Sample_Type` is `RNA`: `RNA_SAMPLE`
 
 Unresolved rows receive:
 
 ```text
 SAMPLE
 ```
+
+This includes samples with no matching sample sheet row, a sample sheet with no `Sample_Type` column, and `Pair_ID` values that map to more than one distinct `Sample_Type` (e.g. a DNA/RNA sample pair sharing one `Pair_ID`) — all logged as warnings rather than guessed.
 
 This allows non-InPreD sample IDs to remain usable.
 
@@ -432,13 +418,14 @@ Consume `plot_frame` and `plot_joint_qc`. Do not parse raw workflow files or rec
 
 ## Architecture summary
 
-```text
-CLI                -> validation and orchestration
-WorkflowOutput     -> workflow discovery
-MetricsOutputTsv   -> metrics-file parsing
-MetricPlots        -> normalization and table generation
-select_plot_data() -> plotting-data selection
-plotting module    -> visualization
+```mermaid
+%%{init: {'flowchart': {'defaultRenderer': 'diagre-wrapper'}} }%%
+flowchart TD
+    CLI(CLI: validation and orchestration) --> WorkflowOutput(WorkflowOutput: workflow discovery)
+    WorkflowOutput --> MetricsOutputTsv(MetricsOutputTsv: metrics-file parsing)
+    MetricsOutputTsv --> MetricPlots(MetricPlots: normalization and table generation)
+    MetricPlots --> SelectPlotData(select_plot_data: plotting-data selection)
+    SelectPlotData --> PlottingModule(plotting module: visualization)
 ```
 
 For end-user commands and output descriptions, see [`docs/guides/metric_plots.md`](../guides/metric_plots.md).
