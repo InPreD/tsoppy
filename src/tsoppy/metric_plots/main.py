@@ -131,6 +131,19 @@ class MetricPlots:
 
         self.input_roots: list[Path] = []
 
+    def __eq__(self, other):
+        """Assess if two instances of this class are equal."""
+        if not isinstance(other, MetricPlots):
+            return False
+        attr_to_compare = [
+            "config_yaml",
+            "inpred_nomenclature",
+            "input_glob",
+            "run_ids",
+            "input_roots",
+        ]
+        return all(vars(self).get(k) == vars(other).get(k) for k in attr_to_compare)
+
     def generate_metrics_tables(
         self,
     ) -> tuple[

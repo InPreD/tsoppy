@@ -18,7 +18,7 @@ import polars as pl
 #    plot_kind
 #        Renderer selector: "bar", "cluster_density_scatter", or "contamination_scatter".
 #    source
-#        Key of the prepared table returned by build_tables().
+#        Key of the prepared table returned by _build_tables().
 #    requires_samples
 #        Optional sample gate: "dna", "rna", or None.
 #    title
@@ -52,7 +52,7 @@ import polars as pl
 #
 # 3. guideline fields
 #    table
-#        Key of the guideline table returned by build_tables().
+#        Key of the guideline table returned by _build_tables().
 #    sample_id
 #        Identifier value used to select the guideline row.
 #    id_column

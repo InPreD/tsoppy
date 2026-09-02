@@ -10,8 +10,8 @@ from tsoppy.metric_plots.plots import (
     HV_LINE_ALPHA,
     HV_LINE_COLOR,
     TABLEAU_20,
-    plot_contamination_scatter,
-    plot_bar_metric,
+    Plot_bar_metric,
+    Plot_contamination_scatter,
 )
 
 
@@ -79,7 +79,7 @@ def _basic_bar_plot(
     if data is None:
         data = _bar_data()
 
-    return plot_bar_metric(
+    return Plot_bar_metric(
         data=data,
         x_var="PLOT_SAMPLE_ID",
         y_var="VALUE",
@@ -100,7 +100,7 @@ def _basic_contamination_plot(
     if data is None:
         data = _contamination_data()
 
-    return plot_contamination_scatter(
+    return Plot_contamination_scatter(
         data=data,
         color_var="RUN_LABEL",
         label_var=None,
@@ -114,7 +114,7 @@ def _basic_contamination_plot(
 
 
 # ---------------------------------------------------------------------------
-# plot_bar_metric
+# Plot_bar_metric
 # ---------------------------------------------------------------------------
 
 
@@ -346,7 +346,7 @@ def test_plot_bar_metric_many_runs_draws():
 
 
 # ---------------------------------------------------------------------------
-# plot_contamination_scatter
+# Plot_contamination_scatter
 # ---------------------------------------------------------------------------
 
 
@@ -378,7 +378,7 @@ def test_plot_contamination_scatter_without_labels_has_six_layers():
 
 def test_plot_contamination_scatter_with_labels_adds_layer():
     """Sample-label rendering adds one geom_text layer."""
-    plot = plot_contamination_scatter(
+    plot = Plot_contamination_scatter(
         data=_contamination_data(),
         color_var="highlighted_run",
         label_var="contamination_label",
@@ -404,7 +404,7 @@ def test_plot_contamination_scatter_with_labels_adds_layer():
 
 def test_plot_contamination_scatter_custom_colors_draw():
     """Explicit run-color mappings are supported."""
-    plot = plot_contamination_scatter(
+    plot = Plot_contamination_scatter(
         data=_contamination_data(),
         color_var="highlighted_run",
         label_var=None,
@@ -462,7 +462,7 @@ def test_plot_contamination_scatter_large_score_range_draws():
         )
     )
 
-    plot = plot_contamination_scatter(
+    plot = Plot_contamination_scatter(
         data=data,
         color_var="RUN_LABEL",
         label_var=None,
@@ -496,7 +496,7 @@ def test_plot_contamination_scatter_single_sample_draws():
         }
     )
 
-    plot = plot_contamination_scatter(
+    plot = Plot_contamination_scatter(
         data=data,
         color_var="RUN_LABEL",
         label_var=None,
@@ -527,7 +527,7 @@ def test_plot_contamination_scatter_guideline_values_draw(
     pvalue_limit,
 ):
     """Different contamination guideline combinations render."""
-    plot = plot_contamination_scatter(
+    plot = Plot_contamination_scatter(
         data=_contamination_data(),
         color_var="RUN_LABEL",
         label_var=None,

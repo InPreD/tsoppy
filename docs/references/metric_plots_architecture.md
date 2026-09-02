@@ -67,7 +67,7 @@ select_plot_data()
 
 The plotting layer consumes standardized Polars DataFrames. It should not search workflow directories, parse raw workflow files, infer sample type, or recreate run ordering.
 
-The CLI prepares the plotting DataFrames via `select_plot_data()` and passes them directly to `generate_qc_plots()`.
+The CLI prepares the plotting DataFrames via `select_plot_data()` and passes them directly to `Generate_qc_plots()`.
 
 ## Constructor and invariants
 

@@ -66,12 +66,12 @@ A run may have both a DRAGEN and a LocalApp output. When both are valid and matc
 
 ## Selecting runs
 
-Runs included in the generated metrics tables must be supplied using exactly one of:
+Runs included in the generated metrics tables can be supplied using at most one of:
 
 - `--run-ids`
 - `--run-id-file`
 
-The two options are mutually exclusive.
+The two options are mutually exclusive. If neither is provided, all runs matched by `--input-glob` are included.
 
 ### Comma-separated run IDs
 
@@ -194,8 +194,8 @@ Blank lines and comment lines are ignored.
 | `--input-glob` | Required | Glob pattern matching workflow output directories whose final directory name is the sequencing run ID |
 | `--inpred-nomenclature` | Required | InPreD nomenclature YAML |
 | `--config-yaml` | Optional; default: `config.yaml` | Workflow configuration YAML |
-| `--run-ids` | Exactly one of `--run-ids` or `--run-id-file` | Comma-separated run IDs to include in the generated master metrics table |
-| `--run-id-file` | Exactly one of `--run-ids` or `--run-id-file` | Text file containing run IDs for generation of the master metrics table |
+| `--run-ids` | Optional; at most one of `--run-ids` or `--run-id-file`; defaults to all runs matched by `--input-glob` | Comma-separated run IDs to include in the generated master metrics table |
+| `--run-id-file` | Optional; at most one of `--run-ids` or `--run-id-file`; defaults to all runs matched by `--input-glob` | Text file containing run IDs for generation of the master metrics table |
 | `--plot-run-ids` | Optional plot selector | Comma-separated run IDs to include in the plot |
 | `--plot-run-id-file` | Optional plot selector | Text file containing run IDs to select for plotting |
 | `--plot-last-runs` | Optional plot selector; integer ≥ 1 | Plot the most recent `N` runs for the selected workflow |
@@ -288,7 +288,7 @@ plot_joint_qc
 
 `plot_joint_qc` contains matching sequencing-QC rows.
 
-These DataFrames are passed directly to `generate_qc_plots()`, which renders them to the output PDF.
+These DataFrames are passed directly to `Generate_qc_plots()`, which renders them to the output PDF.
 
 ## Complete examples
 

@@ -10,9 +10,8 @@ import tsoppy.cli as cli_module
 import tsoppy.metric_plots.plotting as plotting
 from tsoppy.cli import app
 from tsoppy.metric_plots.plotting import (
-    generate_qc_plots,
+    Generate_qc_plots,
 )
-
 
 runner = CliRunner()
 
@@ -20,7 +19,7 @@ runner = CliRunner()
 def _metrics_frame(
     workflow: str,
 ) -> pl.DataFrame:
-    """Return the minimum metrics frame required by build_tables."""
+    """Return the minimum metrics frame required by _build_tables."""
     return pl.DataFrame(
         {
             "SAMPLE_ID": [
@@ -132,7 +131,7 @@ def test_generate_qc_plots_creates_real_pdf(
 
     output = tmp_path / f"{workflow}_metric_plots.pdf"
 
-    generate_qc_plots(
+    Generate_qc_plots(
         metrics_table=_metrics_frame(workflow),
         joint_qc_table=_joint_qc_frame(workflow),
         workflow=workflow,

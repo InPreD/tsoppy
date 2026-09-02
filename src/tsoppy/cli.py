@@ -9,7 +9,7 @@ from typing import Annotated
 import typer
 
 from tsoppy.metric_plots.main import MetricPlots
-from tsoppy.metric_plots.plotting import generate_qc_plots
+from tsoppy.metric_plots.plotting import Generate_qc_plots
 
 
 class WorkflowType(str, Enum):
@@ -269,7 +269,7 @@ def metric_plots(
 
         output_pdf = Path(f"{plot_workflow.value}_metric_plots.pdf")
 
-        generate_qc_plots(
+        Generate_qc_plots(
             metrics_table=plot_frame,
             joint_qc_table=plot_joint_qc,
             workflow=plot_workflow.value,

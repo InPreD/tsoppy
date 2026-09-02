@@ -7,8 +7,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 import tsoppy.metric_plots.plotting as plotting
 from tsoppy.metric_plots.plotting import (
-    render_cluster_density_scatter,
-    render_contamination_scatter,
+    _render_cluster_density_scatter,
+    _render_contamination_scatter,
 )
 
 
@@ -123,11 +123,11 @@ def test_cluster_density_renderer_skips_empty_filtered_data(
 
     monkeypatch.setattr(
         plotting,
-        "save_plot",
+        "_save_plot",
         save_mock,
     )
 
-    render_cluster_density_scatter(
+    _render_cluster_density_scatter(
         MagicMock(),
         {
             "source": "joint_qc_table",
@@ -150,7 +150,7 @@ def test_cluster_density_renderer_creates_real_pdf(
     output = tmp_path / "cluster_density.pdf"
 
     with PdfPages(output) as pdf_handle:
-        render_cluster_density_scatter(
+        _render_cluster_density_scatter(
             pdf_handle,
             {
                 "source": "joint_qc_table",
@@ -193,11 +193,11 @@ def test_contamination_renderer_skips_empty_filtered_data(
 
     monkeypatch.setattr(
         plotting,
-        "save_plot",
+        "_save_plot",
         save_mock,
     )
 
-    render_contamination_scatter(
+    _render_contamination_scatter(
         MagicMock(),
         {
             "source": "dna_data_table",
@@ -229,16 +229,16 @@ def test_contamination_renderer_uses_guideline_values(
 
     monkeypatch.setattr(
         plotting,
-        "plot_contamination_scatter",
+        "Plot_contamination_scatter",
         plot_mock,
     )
     monkeypatch.setattr(
         plotting,
-        "save_plot",
+        "_save_plot",
         save_mock,
     )
 
-    render_contamination_scatter(
+    _render_contamination_scatter(
         MagicMock(),
         {
             "source": "dna_data_table",
@@ -273,16 +273,16 @@ def test_contamination_renderer_uses_default_values_for_na_guidelines(
 
     monkeypatch.setattr(
         plotting,
-        "plot_contamination_scatter",
+        "Plot_contamination_scatter",
         plot_mock,
     )
     monkeypatch.setattr(
         plotting,
-        "save_plot",
+        "_save_plot",
         MagicMock(),
     )
 
-    render_contamination_scatter(
+    _render_contamination_scatter(
         MagicMock(),
         {
             "source": "dna_data_table",
@@ -317,16 +317,16 @@ def test_contamination_renderer_expands_score_axis_above_5000(
 
     monkeypatch.setattr(
         plotting,
-        "plot_contamination_scatter",
+        "Plot_contamination_scatter",
         plot_mock,
     )
     monkeypatch.setattr(
         plotting,
-        "save_plot",
+        "_save_plot",
         MagicMock(),
     )
 
-    render_contamination_scatter(
+    _render_contamination_scatter(
         MagicMock(),
         {
             "source": "dna_data_table",
@@ -356,16 +356,16 @@ def test_contamination_renderer_preserves_non_run_color_variable(
 
     monkeypatch.setattr(
         plotting,
-        "plot_contamination_scatter",
+        "Plot_contamination_scatter",
         plot_mock,
     )
     monkeypatch.setattr(
         plotting,
-        "save_plot",
+        "_save_plot",
         MagicMock(),
     )
 
-    render_contamination_scatter(
+    _render_contamination_scatter(
         MagicMock(),
         {
             "source": "dna_data_table",
@@ -403,7 +403,7 @@ def test_contamination_renderer_creates_real_pdf(
     output = tmp_path / "contamination.pdf"
 
     with PdfPages(output) as pdf_handle:
-        render_contamination_scatter(
+        _render_contamination_scatter(
             pdf_handle,
             {
                 "source": "dna_data_table",

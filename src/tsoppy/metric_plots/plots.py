@@ -52,7 +52,7 @@ TABLEAU_20 = [
 ]
 
 
-def plot_bar_metric(
+def Plot_bar_metric(
     data: pl.DataFrame | None = None,
     x_var: str | None = None,
     y_var: str | None = None,
@@ -178,7 +178,7 @@ def plot_bar_metric(
     return plot
 
 
-def plot_contamination_scatter(
+def Plot_contamination_scatter(
     data: pl.DataFrame | None = None,
     color_var: str | None = None,
     label_var: str | None = None,

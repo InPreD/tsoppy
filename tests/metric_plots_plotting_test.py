@@ -7,20 +7,20 @@ import pytest
 
 import tsoppy.metric_plots.plotting as plotting
 from tsoppy.metric_plots.plotting import (
-    build_filter_expression,
-    build_tables,
-    build_value_expression,
-    compute_cart_ylim,
-    generate_qc_plots,
-    get_available_guidelines,
-    get_guideline_value,
-    prepare_bar_plot_data,
-    render_bar_plot,
-    render_plot,
-    resolve_plot_title,
-    save_plot,
-    valid_metric_expr,
-    validate_plot_specs,
+    Generate_qc_plots,
+    _build_filter_expression,
+    _build_tables,
+    _build_value_expression,
+    _compute_cart_ylim,
+    _get_available_guidelines,
+    _get_guideline_value,
+    _prepare_bar_plot_data,
+    _render_bar_plot,
+    _render_plot,
+    _resolve_plot_title,
+    _save_plot,
+    _valid_metric_expr,
+    _validate_plot_specs,
 )
 from tsoppy.metric_plots.specs.plot_specs_workflows import PLOT_SPECS
 
@@ -197,7 +197,7 @@ def _minimal_bar_spec(
 
 
 # ---------------------------------------------------------------------------
-# resolve_plot_title
+# _resolve_plot_title
 # ---------------------------------------------------------------------------
 
 
@@ -205,8 +205,8 @@ def test_resolve_plot_title_shared_title():
     """Shared plot titles are returned unchanged."""
     spec = {"title": "Shared title"}
 
-    assert resolve_plot_title(spec, "dragen") == "Shared title"
-    assert resolve_plot_title(spec, "localapp") == "Shared title"
+    assert _resolve_plot_title(spec, "dragen") == "Shared title"
+    assert _resolve_plot_title(spec, "localapp") == "Shared title"
 
 
 def test_resolve_plot_title_workflow_specific():
@@ -218,33 +218,33 @@ def test_resolve_plot_title_workflow_specific():
         }
     }
 
-    assert resolve_plot_title(spec, "dragen") == "Dragen title"
-    assert resolve_plot_title(spec, "localapp") == "LocalApp title"
+    assert _resolve_plot_title(spec, "dragen") == "Dragen title"
+    assert _resolve_plot_title(spec, "localapp") == "LocalApp title"
 
 
 def test_workflow_specific_title_resolution_production_specs():
     """Production workflow-specific titles resolve correctly."""
     q30_spec = PLOT_SPECS["PCT_Q30_R1"]
 
-    assert resolve_plot_title(
+    assert _resolve_plot_title(
         q30_spec,
         "localapp",
     ).startswith("[LocalApp")
 
-    assert resolve_plot_title(
+    assert _resolve_plot_title(
         q30_spec,
         "dragen",
     ).startswith("[Dragen")
 
 
 # ---------------------------------------------------------------------------
-# validate_plot_specs
+# _validate_plot_specs
 # ---------------------------------------------------------------------------
 
 
 def test_current_plot_specs_validate():
     """The production plot specification set is structurally valid."""
-    validate_plot_specs(PLOT_SPECS)
+    _validate_plot_specs(PLOT_SPECS)
 
 
 def test_duplicate_plot_indices_are_rejected():
@@ -258,7 +258,7 @@ def test_duplicate_plot_indices_are_rejected():
         KeyError,
         match="duplicate plot index 1",
     ):
-        validate_plot_specs(duplicate_specs)
+        _validate_plot_specs(duplicate_specs)
 
 
 def test_zero_plot_indices_may_repeat():
@@ -275,7 +275,7 @@ def test_zero_plot_indices_may_repeat():
         "index": 0,
     }
 
-    validate_plot_specs(
+    _validate_plot_specs(
         {
             "FIRST": first,
             "SECOND": second,
@@ -292,7 +292,7 @@ def test_missing_workflow_key_is_rejected():
         KeyError,
         match="Missing workflow routing key",
     ):
-        validate_plot_specs({"TEST": spec})
+        _validate_plot_specs({"TEST": spec})
 
 
 def test_missing_workflow_plot_field_is_rejected():
@@ -304,7 +304,7 @@ def test_missing_workflow_plot_field_is_rejected():
         KeyError,
         match="missing fields",
     ):
-        validate_plot_specs({"TEST": spec})
+        _validate_plot_specs({"TEST": spec})
 
 
 def test_missing_workflow_index_field_is_rejected():
@@ -316,7 +316,7 @@ def test_missing_workflow_index_field_is_rejected():
         KeyError,
         match="missing fields",
     ):
-        validate_plot_specs({"TEST": spec})
+        _validate_plot_specs({"TEST": spec})
 
 
 def test_non_boolean_plot_flag_is_rejected():
@@ -328,7 +328,7 @@ def test_non_boolean_plot_flag_is_rejected():
         KeyError,
         match="'plot' must be bool",
     ):
-        validate_plot_specs({"TEST": spec})
+        _validate_plot_specs({"TEST": spec})
 
 
 @pytest.mark.parametrize(
@@ -349,7 +349,7 @@ def test_invalid_plot_index_is_rejected(invalid_index):
         KeyError,
         match="'index' must be",
     ):
-        validate_plot_specs({"TEST": spec})
+        _validate_plot_specs({"TEST": spec})
 
 
 def test_unknown_plot_kind_is_rejected():
@@ -361,7 +361,7 @@ def test_unknown_plot_kind_is_rejected():
         KeyError,
         match="not recognized",
     ):
-        validate_plot_specs({"TEST": spec})
+        _validate_plot_specs({"TEST": spec})
 
 
 def test_missing_common_plot_field_is_rejected():
@@ -373,7 +373,7 @@ def test_missing_common_plot_field_is_rejected():
         KeyError,
         match="Missing fields",
     ):
-        validate_plot_specs({"TEST": spec})
+        _validate_plot_specs({"TEST": spec})
 
 
 def test_missing_bar_specific_field_is_rejected():
@@ -385,11 +385,11 @@ def test_missing_bar_specific_field_is_rejected():
         KeyError,
         match="value_spec",
     ):
-        validate_plot_specs({"TEST": spec})
+        _validate_plot_specs({"TEST": spec})
 
 
 # ---------------------------------------------------------------------------
-# valid_metric_expr
+# _valid_metric_expr
 # ---------------------------------------------------------------------------
 
 
@@ -405,7 +405,7 @@ def test_valid_metric_expr_keeps_valid_values():
         }
     )
 
-    result = frame.filter(valid_metric_expr("VALUE"))
+    result = frame.filter(_valid_metric_expr("VALUE"))
 
     assert result["VALUE"].to_list() == [
         "1",
@@ -427,7 +427,7 @@ def test_valid_metric_expr_removes_null_and_na():
         }
     )
 
-    result = frame.filter(valid_metric_expr("VALUE"))
+    result = frame.filter(_valid_metric_expr("VALUE"))
 
     assert result["VALUE"].to_list() == [
         "1",
@@ -463,7 +463,7 @@ def test_get_available_guidelines_returns_lsl_and_usl():
         },
     }
 
-    result = get_available_guidelines(
+    result = _get_available_guidelines(
         tables,
         spec,
     )
@@ -511,7 +511,7 @@ def test_get_available_guidelines_skips_na_threshold():
         },
     }
 
-    result = get_available_guidelines(
+    result = _get_available_guidelines(
         tables,
         spec,
     )
@@ -536,7 +536,7 @@ def test_compute_cart_ylim_contains_both_guidelines():
         }
     )
 
-    result = compute_cart_ylim(
+    result = _compute_cart_ylim(
         {
             "y_var": "VALUE",
         },
@@ -558,7 +558,7 @@ def test_compute_cart_ylim_contains_both_guidelines():
 
 
 # ---------------------------------------------------------------------------
-# build_filter_expression
+# _build_filter_expression
 # ---------------------------------------------------------------------------
 
 
@@ -575,7 +575,7 @@ def test_build_filter_expression_contains():
     )
 
     result = frame.filter(
-        build_filter_expression(
+        _build_filter_expression(
             {
                 "column": "NAME",
                 "contains": "DNA",
@@ -602,7 +602,7 @@ def test_build_filter_expression_equals():
     )
 
     result = frame.filter(
-        build_filter_expression(
+        _build_filter_expression(
             {
                 "column": "TYPE",
                 "equals": "DNA",
@@ -629,7 +629,7 @@ def test_build_filter_expression_not_equals():
     )
 
     result = frame.filter(
-        build_filter_expression(
+        _build_filter_expression(
             {
                 "column": "TYPE",
                 "not_equals": "RNA",
@@ -649,7 +649,7 @@ def test_build_filter_expression_rejects_unknown_operation():
         ValueError,
         match="Unsupported filter specification",
     ):
-        build_filter_expression(
+        _build_filter_expression(
             {
                 "column": "TYPE",
                 "startswith": "DNA",
@@ -658,7 +658,7 @@ def test_build_filter_expression_rejects_unknown_operation():
 
 
 # ---------------------------------------------------------------------------
-# build_value_expression
+# _build_value_expression
 # ---------------------------------------------------------------------------
 
 
@@ -667,7 +667,7 @@ def test_build_value_expression_cast():
     frame = pl.DataFrame({"VALUE": ["1.5", "2.5"]})
 
     result = frame.select(
-        build_value_expression(
+        _build_value_expression(
             {
                 "operation": "cast",
                 "column": "VALUE",
@@ -688,7 +688,7 @@ def test_build_value_expression_cast_without_dtype():
     frame = pl.DataFrame({"VALUE": ["1", "2"]})
 
     result = frame.select(
-        build_value_expression(
+        _build_value_expression(
             {
                 "operation": "cast",
                 "column": "VALUE",
@@ -708,7 +708,7 @@ def test_build_value_expression_default_operation_is_cast():
     frame = pl.DataFrame({"VALUE": ["1", "2"]})
 
     result = frame.select(
-        build_value_expression(
+        _build_value_expression(
             {
                 "column": "VALUE",
                 "dtype": pl.Int64,
@@ -728,7 +728,7 @@ def test_build_value_expression_divide():
     frame = pl.DataFrame({"VALUE": ["10", "20"]})
 
     result = frame.select(
-        build_value_expression(
+        _build_value_expression(
             {
                 "operation": "divide",
                 "column": "VALUE",
@@ -755,7 +755,7 @@ def test_build_value_expression_ratio():
     )
 
     result = frame.select(
-        build_value_expression(
+        _build_value_expression(
             {
                 "operation": "ratio",
                 "numerator": "NUM",
@@ -782,7 +782,7 @@ def test_build_value_expression_ratio_with_numerator_divisor():
     )
 
     result = frame.select(
-        build_value_expression(
+        _build_value_expression(
             {
                 "operation": "ratio",
                 "numerator": "NUM",
@@ -806,7 +806,7 @@ def test_build_value_expression_rejects_unknown_operation():
         ValueError,
         match="Unsupported value operation",
     ):
-        build_value_expression(
+        _build_value_expression(
             {
                 "operation": "multiply",
                 "column": "VALUE",
@@ -815,7 +815,7 @@ def test_build_value_expression_rejects_unknown_operation():
 
 
 # ---------------------------------------------------------------------------
-# get_guideline_value
+# _get_guideline_value
 # ---------------------------------------------------------------------------
 
 
@@ -830,7 +830,7 @@ def test_get_guideline_value_returns_guideline():
         )
     }
 
-    result = get_guideline_value(
+    result = _get_guideline_value(
         tables,
         {
             "table": "guidelines",
@@ -868,7 +868,7 @@ def test_get_guideline_value_supports_explicit_label():
         )
     }
 
-    result = get_guideline_value(
+    result = _get_guideline_value(
         tables,
         {
             "table": "guidelines",
@@ -896,7 +896,7 @@ def test_get_guideline_value_supports_custom_id_column():
         )
     }
 
-    result = get_guideline_value(
+    result = _get_guideline_value(
         tables,
         {
             "table": "guidelines",
@@ -924,7 +924,7 @@ def test_get_guideline_value_empty_table_returns_none():
         )
     }
 
-    result = get_guideline_value(
+    result = _get_guideline_value(
         tables,
         {
             "table": "guidelines",
@@ -950,7 +950,7 @@ def test_get_guideline_value_missing_id_column_returns_none():
         )
     }
 
-    result = get_guideline_value(
+    result = _get_guideline_value(
         tables,
         {
             "table": "guidelines",
@@ -976,7 +976,7 @@ def test_get_guideline_value_missing_sample_returns_none():
         )
     }
 
-    result = get_guideline_value(
+    result = _get_guideline_value(
         tables,
         {
             "table": "guidelines",
@@ -1001,7 +1001,7 @@ def test_get_guideline_value_missing_metric_column_returns_none():
         )
     }
 
-    result = get_guideline_value(
+    result = _get_guideline_value(
         tables,
         {
             "table": "guidelines",
@@ -1031,7 +1031,7 @@ def test_get_guideline_value_null_metric_returns_none():
         )
     }
 
-    result = get_guideline_value(
+    result = _get_guideline_value(
         tables,
         {
             "table": "guidelines",
@@ -1062,7 +1062,7 @@ def test_get_guideline_value_literal_na_returns_none():
         )
     }
 
-    result = get_guideline_value(
+    result = _get_guideline_value(
         tables,
         {
             "table": "guidelines",
@@ -1094,7 +1094,7 @@ def test_get_guideline_value_zero_lsl_returns_none():
         )
     }
 
-    result = get_guideline_value(
+    result = _get_guideline_value(
         tables,
         {
             "table": "guidelines",
@@ -1111,7 +1111,7 @@ def test_get_guideline_value_zero_lsl_returns_none():
 
 
 # ---------------------------------------------------------------------------
-# compute_cart_ylim
+# _compute_cart_ylim
 # ---------------------------------------------------------------------------
 
 
@@ -1119,7 +1119,7 @@ def test_compute_cart_ylim_returns_static_limits():
     """Static axis limits are returned unchanged."""
     data = pl.DataFrame({"VALUE": [1, 2, 3]})
 
-    assert compute_cart_ylim(
+    assert _compute_cart_ylim(
         {
             "cart_ylim": (0, 10),
         },
@@ -1131,14 +1131,14 @@ def test_compute_cart_ylim_returns_none_without_configuration():
     """Missing axis-limit configuration returns None."""
     data = pl.DataFrame({"VALUE": [1, 2]})
 
-    assert compute_cart_ylim({}, data) is None
+    assert _compute_cart_ylim({}, data) is None
 
 
 def test_compute_cart_ylim_dynamic_max_plus():
     """Dynamic limits use data maximum plus configured offset."""
     data = pl.DataFrame({"VALUE": [10, 20, 15]})
 
-    result = compute_cart_ylim(
+    result = _compute_cart_ylim(
         {
             "cart_ylim_dynamic": {
                 "mode": "max_plus",
@@ -1156,7 +1156,7 @@ def test_compute_cart_ylim_dynamic_custom_lower():
     """Dynamic limits support a custom lower bound."""
     data = pl.DataFrame({"VALUE": [10, 20]})
 
-    result = compute_cart_ylim(
+    result = _compute_cart_ylim(
         {
             "cart_ylim_dynamic": {
                 "mode": "max_plus",
@@ -1179,7 +1179,7 @@ def test_compute_cart_ylim_rejects_unknown_dynamic_mode():
         ValueError,
         match="Unsupported dynamic y-limit mode",
     ):
-        compute_cart_ylim(
+        _compute_cart_ylim(
             {
                 "cart_ylim_dynamic": {
                     "mode": "unknown",
@@ -1202,7 +1202,7 @@ def test_compute_cart_ylim_guideline_above_bars_expands_limit():
         }
     )
 
-    result = compute_cart_ylim(
+    result = _compute_cart_ylim(
         {
             "y_var": "VALUE",
         },
@@ -1229,7 +1229,7 @@ def test_compute_cart_ylim_bar_above_guideline_uses_bar_max():
         }
     )
 
-    result = compute_cart_ylim(
+    result = _compute_cart_ylim(
         {
             "y_var": "VALUE",
         },
@@ -1256,7 +1256,7 @@ def test_compute_cart_ylim_keeps_existing_limit_when_guideline_is_visible():
         }
     )
 
-    result = compute_cart_ylim(
+    result = _compute_cart_ylim(
         {
             "y_var": "VALUE",
             "cart_ylim": (0, 20),
@@ -1283,7 +1283,7 @@ def test_compute_cart_ylim_expands_existing_limit_for_guideline():
         }
     )
 
-    result = compute_cart_ylim(
+    result = _compute_cart_ylim(
         {
             "y_var": "VALUE",
             "cart_ylim": (0, 5),
@@ -1312,7 +1312,7 @@ def test_dna_chimeric_reads_has_usl_guideline():
 
 
 # ---------------------------------------------------------------------------
-# prepare_bar_plot_data
+# _prepare_bar_plot_data
 # ---------------------------------------------------------------------------
 
 
@@ -1327,7 +1327,7 @@ def test_run_index_sample_id_generation_and_padding():
         }
     )
 
-    plot_data = prepare_bar_plot_data(
+    plot_data = _prepare_bar_plot_data(
         table,
         _minimal_bar_spec(),
     )
@@ -1350,7 +1350,7 @@ def test_prepare_bar_plot_data_preserves_original_sample_id():
         }
     )
 
-    result = prepare_bar_plot_data(
+    result = _prepare_bar_plot_data(
         table,
         _minimal_bar_spec(),
     )
@@ -1372,7 +1372,7 @@ def test_prepare_bar_plot_data_creates_run_legend():
         }
     )
 
-    result = prepare_bar_plot_data(
+    result = _prepare_bar_plot_data(
         table,
         _minimal_bar_spec(),
     )
@@ -1404,7 +1404,7 @@ def test_run_index_run_id_legend_generation():
         },
     }
 
-    plot_data = prepare_bar_plot_data(
+    plot_data = _prepare_bar_plot_data(
         table,
         spec,
     )
@@ -1425,7 +1425,7 @@ def test_prepare_bar_plot_data_casts_value_column():
         }
     )
 
-    result = prepare_bar_plot_data(
+    result = _prepare_bar_plot_data(
         table,
         _minimal_bar_spec(),
     )
@@ -1449,7 +1449,7 @@ def test_prepare_bar_plot_data_filters_na_values():
         }
     )
 
-    result = prepare_bar_plot_data(
+    result = _prepare_bar_plot_data(
         table,
         spec,
     )
@@ -1491,7 +1491,7 @@ def test_prepare_bar_plot_data_applies_multiple_filters():
         }
     )
 
-    result = prepare_bar_plot_data(
+    result = _prepare_bar_plot_data(
         table,
         spec,
     )
@@ -1515,7 +1515,7 @@ def test_prepare_bar_plot_data_handles_null_run_index():
         },
     )
 
-    result = prepare_bar_plot_data(
+    result = _prepare_bar_plot_data(
         table,
         _minimal_bar_spec(),
     )
@@ -1530,13 +1530,13 @@ def test_prepare_bar_plot_data_handles_null_run_index():
 
 
 # ---------------------------------------------------------------------------
-# build_tables
+# _build_tables
 # ---------------------------------------------------------------------------
 
 
 def test_latest_run_uses_minimum_numeric_run_index():
     """Latest highlighted run is minimum numeric RUN_INDEX."""
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=_metrics_frame(),
         workflow="dragen",
@@ -1570,7 +1570,7 @@ def test_latest_run_comparison_is_numeric_not_lexical():
         .alias("RUN_INDEX")
     )
 
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=metrics,
         workflow="dragen",
@@ -1588,7 +1588,7 @@ def test_latest_run_comparison_is_numeric_not_lexical():
 
 def test_record_type_controls_dna_rna_selection():
     """DNA/RNA plotting tables are selected from RECORD_TYPE."""
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=_metrics_frame(),
         workflow="dragen",
@@ -1620,7 +1620,7 @@ def test_build_tables_filters_workflow_case_insensitively():
         ]
     )
 
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=joint,
         metrics_table=metrics,
         workflow="DRAGEN",
@@ -1637,7 +1637,7 @@ def test_build_tables_filters_workflow_case_insensitively():
 
 def test_build_tables_strips_workflow_whitespace():
     """Workflow input is normalized before matching."""
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=_metrics_frame(),
         workflow="  DRAGEN  ",
@@ -1652,7 +1652,7 @@ def test_build_tables_rejects_unknown_workflow():
         ValueError,
         match="Unsupported workflow",
     ):
-        build_tables(
+        _build_tables(
             joint_qc_table=_joint_qc_frame(),
             metrics_table=_metrics_frame(),
             workflow="unknown",
@@ -1665,7 +1665,7 @@ def test_build_tables_rejects_empty_selected_workflow():
         ValueError,
         match="No metrics rows available",
     ):
-        build_tables(
+        _build_tables(
             joint_qc_table=_joint_qc_frame(),
             metrics_table=_metrics_frame(),
             workflow="localapp",
@@ -1674,7 +1674,7 @@ def test_build_tables_rejects_empty_selected_workflow():
 
 def test_build_tables_extracts_threshold_guidelines():
     """LSL and USL threshold rows are separated."""
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=_metrics_frame(),
         workflow="dragen",
@@ -1688,7 +1688,7 @@ def test_build_tables_extracts_threshold_guidelines():
 
 def test_build_tables_extracts_internal_guideline():
     """Internal guideline row is stored separately."""
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=_metrics_frame(),
         workflow="dragen",
@@ -1701,7 +1701,7 @@ def test_build_tables_extracts_internal_guideline():
 
 def test_build_tables_extracts_joint_qc_guidelines():
     """Run-level guideline rows are separated."""
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=_metrics_frame(),
         workflow="dragen",
@@ -1716,7 +1716,7 @@ def test_build_tables_extracts_joint_qc_guidelines():
 
 def test_build_tables_removes_threshold_rows_from_data_table():
     """Threshold rows are excluded from regular sample data."""
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=_metrics_frame(),
         workflow="dragen",
@@ -1730,7 +1730,7 @@ def test_build_tables_removes_threshold_rows_from_data_table():
 
 def test_build_tables_sets_contamination_label_only_for_latest_run():
     """Only latest-run DNA samples receive contamination labels."""
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=_metrics_frame(),
         workflow="dragen",
@@ -1755,7 +1755,7 @@ def test_build_tables_sets_contamination_label_only_for_latest_run():
 
 def test_build_tables_returns_sample_counts():
     """DNA and RNA sample counts reflect selected rows."""
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=_metrics_frame(),
         workflow="dragen",
@@ -1767,7 +1767,7 @@ def test_build_tables_returns_sample_counts():
 
 def test_build_tables_sorts_metrics_by_run_index():
     """Metrics are sorted by RUN_INDEX."""
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=_joint_qc_frame(),
         metrics_table=_metrics_frame(),
         workflow="dragen",
@@ -1872,14 +1872,14 @@ def test_all_disabled_plot_indices_are_zero():
 
 
 # ---------------------------------------------------------------------------
-# save_plot
+# _save_plot
 # ---------------------------------------------------------------------------
 
 
 def test_save_plot_draws_saves_numbers_and_closes(
     monkeypatch,
 ):
-    """save_plot draws, numbers, saves and closes the figure."""
+    """_save_plot draws, numbers, saves and closes the figure."""
     figure = MagicMock()
 
     plot = MagicMock()
@@ -1896,7 +1896,7 @@ def test_save_plot_draws_saves_numbers_and_closes(
         close_mock,
     )
 
-    save_plot(
+    _save_plot(
         pdf_handle,
         plot,
     )
@@ -1938,7 +1938,7 @@ def test_save_plot_first_page_number_is_one(
         MagicMock(),
     )
 
-    save_plot(
+    _save_plot(
         pdf_handle,
         plot,
     )
@@ -1947,19 +1947,19 @@ def test_save_plot_first_page_number_is_one(
 
 
 # ---------------------------------------------------------------------------
-# render_plot dispatch
+# _render_plot dispatch
 # ---------------------------------------------------------------------------
 
 
 def test_render_plot_dispatches_bar(
     monkeypatch,
 ):
-    """Bar specifications use render_bar_plot."""
+    """Bar specifications use _render_bar_plot."""
     renderer = MagicMock()
 
     monkeypatch.setattr(
         plotting,
-        "render_bar_plot",
+        "_render_bar_plot",
         renderer,
     )
 
@@ -1969,7 +1969,7 @@ def test_render_plot_dispatches_bar(
         "plot_kind": "bar",
     }
 
-    render_plot(
+    _render_plot(
         pdf,
         "TEST",
         spec,
@@ -1993,7 +1993,7 @@ def test_render_plot_dispatches_cluster_density(
 
     monkeypatch.setattr(
         plotting,
-        "render_cluster_density_scatter",
+        "_render_cluster_density_scatter",
         renderer,
     )
 
@@ -2003,7 +2003,7 @@ def test_render_plot_dispatches_cluster_density(
         "plot_kind": "cluster_density_scatter",
     }
 
-    render_plot(
+    _render_plot(
         pdf,
         "TEST",
         spec,
@@ -2027,7 +2027,7 @@ def test_render_plot_dispatches_contamination(
 
     monkeypatch.setattr(
         plotting,
-        "render_contamination_scatter",
+        "_render_contamination_scatter",
         renderer,
     )
 
@@ -2037,7 +2037,7 @@ def test_render_plot_dispatches_contamination(
         "plot_kind": "contamination_scatter",
     }
 
-    render_plot(
+    _render_plot(
         pdf,
         "TEST",
         spec,
@@ -2059,7 +2059,7 @@ def test_render_plot_rejects_unknown_kind():
         ValueError,
         match="Unsupported plot kind",
     ):
-        render_plot(
+        _render_plot(
             MagicMock(),
             "BROKEN",
             {
@@ -2071,7 +2071,7 @@ def test_render_plot_rejects_unknown_kind():
 
 
 # ---------------------------------------------------------------------------
-# render_bar_plot
+# _render_bar_plot
 # ---------------------------------------------------------------------------
 
 
@@ -2091,7 +2091,7 @@ def test_render_bar_plot_calls_plot_function_and_save(
 
     monkeypatch.setattr(
         plotting,
-        "prepare_bar_plot_data",
+        "_prepare_bar_plot_data",
         MagicMock(return_value=frame),
     )
 
@@ -2101,7 +2101,7 @@ def test_render_bar_plot_calls_plot_function_and_save(
 
     monkeypatch.setattr(
         plotting,
-        "plot_bar_metric",
+        "Plot_bar_metric",
         bar_mock,
     )
 
@@ -2109,13 +2109,13 @@ def test_render_bar_plot_calls_plot_function_and_save(
 
     monkeypatch.setattr(
         plotting,
-        "save_plot",
+        "_save_plot",
         save_mock,
     )
 
     spec = _minimal_bar_spec()
 
-    render_bar_plot(
+    _render_bar_plot(
         MagicMock(),
         spec,
         {
@@ -2143,7 +2143,7 @@ def test_render_bar_plot_skip_if_empty(
     """Empty prepared bar data is skipped when configured."""
     monkeypatch.setattr(
         plotting,
-        "prepare_bar_plot_data",
+        "_prepare_bar_plot_data",
         MagicMock(return_value=pl.DataFrame()),
     )
 
@@ -2151,7 +2151,7 @@ def test_render_bar_plot_skip_if_empty(
 
     monkeypatch.setattr(
         plotting,
-        "plot_bar_metric",
+        "Plot_bar_metric",
         bar_mock,
     )
 
@@ -2159,14 +2159,14 @@ def test_render_bar_plot_skip_if_empty(
 
     monkeypatch.setattr(
         plotting,
-        "save_plot",
+        "_save_plot",
         save_mock,
     )
 
     spec = _minimal_bar_spec()
     spec["skip_if_empty"] = True
 
-    render_bar_plot(
+    _render_bar_plot(
         MagicMock(),
         spec,
         {
@@ -2194,7 +2194,7 @@ def test_render_bar_plot_draws_all_available_guidelines(
 
     monkeypatch.setattr(
         plotting,
-        "prepare_bar_plot_data",
+        "_prepare_bar_plot_data",
         MagicMock(return_value=frame),
     )
 
@@ -2219,7 +2219,7 @@ def test_render_bar_plot_draws_all_available_guidelines(
 
     monkeypatch.setattr(
         plotting,
-        "get_available_guidelines",
+        "_get_available_guidelines",
         MagicMock(return_value=guidelines),
     )
 
@@ -2227,7 +2227,7 @@ def test_render_bar_plot_draws_all_available_guidelines(
 
     monkeypatch.setattr(
         plotting,
-        "plot_bar_metric",
+        "Plot_bar_metric",
         bar_mock,
     )
 
@@ -2261,7 +2261,7 @@ def test_render_bar_plot_draws_all_available_guidelines(
 
     monkeypatch.setattr(
         plotting,
-        "save_plot",
+        "_save_plot",
         save_mock,
     )
 
@@ -2269,7 +2269,7 @@ def test_render_bar_plot_draws_all_available_guidelines(
     label_x_positions = [call.args[1] for call in annotate_mock.call_args_list]
 
     assert len(set(label_x_positions)) == len(label_x_positions)
-    render_bar_plot(
+    _render_bar_plot(
         MagicMock(),
         spec,
         {
@@ -2303,7 +2303,7 @@ def test_render_bar_plot_draws_all_available_guidelines(
 
 
 # ---------------------------------------------------------------------------
-# generate_qc_plots orchestration
+# Generate_qc_plots orchestration
 # ---------------------------------------------------------------------------
 
 
@@ -2315,7 +2315,7 @@ def test_generate_qc_plots_rejects_unknown_workflow(
         ValueError,
         match="Unsupported workflow",
     ):
-        generate_qc_plots(
+        Generate_qc_plots(
             metrics_table=_metrics_frame(),
             joint_qc_table=_joint_qc_frame(),
             workflow="unknown",
@@ -2332,7 +2332,7 @@ def test_generate_qc_plots_normalizes_workflow(
 
     monkeypatch.setattr(
         plotting,
-        "validate_plot_specs",
+        "_validate_plot_specs",
         validate_mock,
     )
 
@@ -2345,7 +2345,7 @@ def test_generate_qc_plots_normalizes_workflow(
 
     monkeypatch.setattr(
         plotting,
-        "build_tables",
+        "_build_tables",
         build_mock,
     )
 
@@ -2364,7 +2364,7 @@ def test_generate_qc_plots_normalizes_workflow(
         MagicMock(return_value=fake_pdf),
     )
 
-    generate_qc_plots(
+    Generate_qc_plots(
         metrics_table=_metrics_frame(),
         joint_qc_table=_joint_qc_frame(),
         workflow="  DRAGEN  ",
@@ -2381,13 +2381,13 @@ def test_generate_qc_plots_renders_enabled_specs_in_index_order(
     """Enabled plots are rendered in configured index order."""
     monkeypatch.setattr(
         plotting,
-        "validate_plot_specs",
+        "_validate_plot_specs",
         MagicMock(),
     )
 
     monkeypatch.setattr(
         plotting,
-        "build_tables",
+        "_build_tables",
         MagicMock(
             return_value={
                 "dna_sample_count": 1,
@@ -2442,7 +2442,7 @@ def test_generate_qc_plots_renders_enabled_specs_in_index_order(
 
     monkeypatch.setattr(
         plotting,
-        "render_plot",
+        "_render_plot",
         fake_render,
     )
 
@@ -2455,7 +2455,7 @@ def test_generate_qc_plots_renders_enabled_specs_in_index_order(
         MagicMock(return_value=fake_pdf),
     )
 
-    generate_qc_plots(
+    Generate_qc_plots(
         metrics_table=_metrics_frame(),
         joint_qc_table=_joint_qc_frame(),
         workflow="dragen",
@@ -2476,13 +2476,13 @@ def test_generate_qc_plots_skips_dna_plot_without_dna_samples(
     """DNA-only plots are skipped when no DNA samples exist."""
     monkeypatch.setattr(
         plotting,
-        "validate_plot_specs",
+        "_validate_plot_specs",
         MagicMock(),
     )
 
     monkeypatch.setattr(
         plotting,
-        "build_tables",
+        "_build_tables",
         MagicMock(
             return_value={
                 "dna_sample_count": 0,
@@ -2516,7 +2516,7 @@ def test_generate_qc_plots_skips_dna_plot_without_dna_samples(
 
     monkeypatch.setattr(
         plotting,
-        "render_plot",
+        "_render_plot",
         render_mock,
     )
 
@@ -2529,7 +2529,7 @@ def test_generate_qc_plots_skips_dna_plot_without_dna_samples(
         MagicMock(return_value=fake_pdf),
     )
 
-    generate_qc_plots(
+    Generate_qc_plots(
         metrics_table=_metrics_frame(),
         joint_qc_table=_joint_qc_frame(),
         workflow="dragen",
@@ -2548,13 +2548,13 @@ def test_generate_qc_plots_skips_rna_plot_without_rna_samples(
     """RNA-only plots are skipped when no RNA samples exist."""
     monkeypatch.setattr(
         plotting,
-        "validate_plot_specs",
+        "_validate_plot_specs",
         MagicMock(),
     )
 
     monkeypatch.setattr(
         plotting,
-        "build_tables",
+        "_build_tables",
         MagicMock(
             return_value={
                 "dna_sample_count": 1,
@@ -2588,7 +2588,7 @@ def test_generate_qc_plots_skips_rna_plot_without_rna_samples(
 
     monkeypatch.setattr(
         plotting,
-        "render_plot",
+        "_render_plot",
         render_mock,
     )
 
@@ -2601,7 +2601,7 @@ def test_generate_qc_plots_skips_rna_plot_without_rna_samples(
         MagicMock(return_value=fake_pdf),
     )
 
-    generate_qc_plots(
+    Generate_qc_plots(
         metrics_table=_metrics_frame(),
         joint_qc_table=_joint_qc_frame(),
         workflow="dragen",
@@ -2620,13 +2620,13 @@ def test_generate_qc_plots_renders_run_plot_without_samples(
     """Run-level plots do not require DNA or RNA samples."""
     monkeypatch.setattr(
         plotting,
-        "validate_plot_specs",
+        "_validate_plot_specs",
         MagicMock(),
     )
 
     monkeypatch.setattr(
         plotting,
-        "build_tables",
+        "_build_tables",
         MagicMock(
             return_value={
                 "dna_sample_count": 0,
@@ -2653,7 +2653,7 @@ def test_generate_qc_plots_renders_run_plot_without_samples(
 
     monkeypatch.setattr(
         plotting,
-        "render_plot",
+        "_render_plot",
         render_mock,
     )
 
@@ -2666,7 +2666,7 @@ def test_generate_qc_plots_renders_run_plot_without_samples(
         MagicMock(return_value=fake_pdf),
     )
 
-    generate_qc_plots(
+    Generate_qc_plots(
         metrics_table=_metrics_frame(),
         joint_qc_table=_joint_qc_frame(),
         workflow="dragen",

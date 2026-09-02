@@ -26,6 +26,9 @@ dev = ["isort==8.0.1", "pytest==9.0.2", "ruff==0.15.6"]
 lint = ["ruff==0.15.6"]
 test = ["pytest==9.0.2", "pytest-emoji==0.2.0", "pytest-md==0.2.0"]
 
+[tool.isort]
+profile = "black"
+
 [tool.setuptools-git-versioning]
 enabled = true
 template = "{tag}"

@@ -34,8 +34,8 @@ from tsoppy.metric_plots.plots import (
     HV_LINE_COLOR,
     HV_LINE_SIZE,
     TABLEAU_20,
-    plot_bar_metric,
-    plot_contamination_scatter,
+    Plot_bar_metric,
+    Plot_contamination_scatter,
 )
 from tsoppy.metric_plots.specs.plot_specs_workflows import PLOT_SPECS
 
@@ -76,7 +76,7 @@ _REQUIRED_WORKFLOW_KEYS = {
 }
 
 
-def resolve_plot_title(spec: dict, workflow: str) -> str:
+def _resolve_plot_title(spec: dict, workflow: str) -> str:
     """Return the workflow-specific or shared plot title."""
     title = spec["title"]
 
@@ -86,7 +86,7 @@ def resolve_plot_title(spec: dict, workflow: str) -> str:
     return title
 
 
-def validate_plot_specs(plot_specs: dict) -> None:
+def _validate_plot_specs(plot_specs: dict) -> None:
     """Validate the structure of all plot specifications."""
 
     valid_kinds = set(_REQUIRED_FIELDS_BY_KIND)
@@ -185,14 +185,14 @@ def validate_plot_specs(plot_specs: dict) -> None:
         )
 
 
-def valid_metric_expr(column_name: str) -> pl.Expr:
+def _valid_metric_expr(column_name: str) -> pl.Expr:
     """Treat null values and literal NA strings as missing."""
     return pl.col(column_name).is_not_null() & (
         pl.col(column_name).cast(pl.Utf8) != "NA"
     )
 
 
-def build_filter_expression(filter_spec: dict) -> pl.Expr:
+def _build_filter_expression(filter_spec: dict) -> pl.Expr:
     """Translate a plot filter specification into a Polars expression."""
 
     column_expr = pl.col(filter_spec["column"])
@@ -209,7 +209,7 @@ def build_filter_expression(filter_spec: dict) -> pl.Expr:
     raise ValueError(f"Unsupported filter specification: {filter_spec}")
 
 
-def build_value_expression(
+def _build_value_expression(
     value_spec: dict,
     alias_name: str | None = None,
 ) -> pl.Expr:
@@ -252,7 +252,7 @@ def build_value_expression(
     return expression
 
 
-def get_guideline_value(
+def _get_guideline_value(
     tables: dict,
     guideline_spec: dict,
 ) -> dict | None:
@@ -276,7 +276,7 @@ def get_guideline_value(
     if filtered_table.is_empty():
         return None
 
-    expression = build_value_expression(guideline_spec["value_spec"])
+    expression = _build_value_expression(guideline_spec["value_spec"])
 
     try:
         value = filtered_table.select(expression).head(1).item()
@@ -328,7 +328,7 @@ def get_guideline_value(
     }
 
 
-def get_available_guidelines(
+def _get_available_guidelines(
     tables: dict,
     spec: dict,
 ) -> list[dict]:
@@ -408,7 +408,7 @@ def get_available_guidelines(
                 if explicit_override is not None:
                     guideline_spec.update(explicit_override)
 
-                guideline = get_guideline_value(
+                guideline = _get_guideline_value(
                     tables,
                     guideline_spec,
                 )
@@ -435,7 +435,7 @@ def get_available_guidelines(
         if sample_id in handled_sample_ids:
             continue
 
-        guideline = get_guideline_value(
+        guideline = _get_guideline_value(
             tables,
             guideline_spec,
         )
@@ -452,7 +452,7 @@ def get_available_guidelines(
     return guidelines
 
 
-def compute_cart_ylim(
+def _compute_cart_ylim(
     spec: dict,
     plot_data,
     guidelines: list[dict] | dict | None = None,
@@ -578,7 +578,7 @@ def compute_cart_ylim(
     )
 
 
-def prepare_bar_plot_data(
+def _prepare_bar_plot_data(
     table: pl.DataFrame,
     spec: dict,
 ) -> pl.DataFrame:
@@ -590,13 +590,13 @@ def prepare_bar_plot_data(
         "na_filter_columns",
         [],
     ):
-        filters.append(valid_metric_expr(column_name))
+        filters.append(_valid_metric_expr(column_name))
 
     for filter_spec in spec.get(
         "filters",
         [],
     ):
-        filters.append(build_filter_expression(filter_spec))
+        filters.append(_build_filter_expression(filter_spec))
 
     if filters:
         combined_filter = filters[0]
@@ -607,7 +607,7 @@ def prepare_bar_plot_data(
         table = table.filter(combined_filter)
 
     table = table.with_columns(
-        build_value_expression(
+        _build_value_expression(
             spec["value_spec"],
             spec["y_var"],
         )
@@ -649,7 +649,7 @@ def prepare_bar_plot_data(
     return table
 
 
-def save_plot(
+def _save_plot(
     pdf_handle: PdfPages,
     plot,
 ) -> None:
@@ -675,7 +675,7 @@ def save_plot(
     plt.close(figure)
 
 
-def render_bar_plot(
+def _render_bar_plot(
     pdf_handle: PdfPages,
     spec: dict,
     tables: dict,
@@ -683,7 +683,7 @@ def render_bar_plot(
 ) -> None:
     """Render one bar plot."""
 
-    plot_data = prepare_bar_plot_data(
+    plot_data = _prepare_bar_plot_data(
         tables[spec["source"]],
         spec,
     )
@@ -691,7 +691,7 @@ def render_bar_plot(
     if spec.get("skip_if_empty") and plot_data.is_empty():
         return
 
-    guidelines = get_available_guidelines(
+    guidelines = _get_available_guidelines(
         tables,
         spec,
     )
@@ -710,7 +710,7 @@ def render_bar_plot(
         "Run index | Sample ID" if plot_x_var == "PLOT_SAMPLE_ID" else spec["x_lab"]
     )
 
-    plot = plot_bar_metric(
+    plot = Plot_bar_metric(
         data=plot_data,
         x_var=plot_x_var,
         y_var=spec["y_var"],
@@ -721,12 +721,12 @@ def render_bar_plot(
         ),
         x_lab=plot_x_lab,
         y_lab=spec["y_lab"],
-        cart_ylim=compute_cart_ylim(
+        cart_ylim=_compute_cart_ylim(
             spec,
             plot_data,
             guidelines,
         ),
-        title=resolve_plot_title(spec, workflow),
+        title=_resolve_plot_title(spec, workflow),
         x_lab_angle=spec.get(
             "x_lab_angle",
             ANGLE_X_NAMES,
@@ -790,13 +790,13 @@ def render_bar_plot(
             ),
         )
 
-    save_plot(
+    _save_plot(
         pdf_handle,
         plot,
     )
 
 
-def render_cluster_density_scatter(
+def _render_cluster_density_scatter(
     pdf_handle: PdfPages,
     spec: dict,
     tables: dict,
@@ -806,7 +806,7 @@ def render_cluster_density_scatter(
 
     plot_table = (
         tables[spec["source"]]
-        .filter(valid_metric_expr("ESTIMATED_YIELD"))
+        .filter(_valid_metric_expr("ESTIMATED_YIELD"))
         .with_columns(
             [
                 pl.col("CLUSTER_DENSITY").cast(pl.Float64),
@@ -848,7 +848,7 @@ def render_cluster_density_scatter(
         )
         + xlab("Cluster density")
         + ylab("Estimated yield")
-        + ggtitle(resolve_plot_title(spec, workflow))
+        + ggtitle(_resolve_plot_title(spec, workflow))
         + scale_x_continuous(
             breaks=[index * 50 for index in range(9)],
             minor_breaks=[index * 25 for index in range(17)],
@@ -890,13 +890,13 @@ def render_cluster_density_scatter(
         )
     )
 
-    save_plot(
+    _save_plot(
         pdf_handle,
         plot,
     )
 
 
-def render_contamination_scatter(
+def _render_contamination_scatter(
     pdf_handle: PdfPages,
     spec: dict,
     tables: dict,
@@ -907,8 +907,8 @@ def render_contamination_scatter(
     plot_table = (
         tables[spec["source"]]
         .filter(
-            valid_metric_expr("DNA_CONTAMINATION_SCORE")
-            & valid_metric_expr("DNA_CONTAMINATION_P_VALUE")
+            _valid_metric_expr("DNA_CONTAMINATION_SCORE")
+            & _valid_metric_expr("DNA_CONTAMINATION_P_VALUE")
         )
         .with_columns(
             [
@@ -969,7 +969,7 @@ def render_contamination_scatter(
 
     plot_color_var = "RUN_LABEL" if spec["color_var"] == "RUN" else spec["color_var"]
 
-    plot = plot_contamination_scatter(
+    plot = Plot_contamination_scatter(
         data=plot_table,
         color_var=plot_color_var,
         label_var=spec["label_var"],
@@ -977,7 +977,7 @@ def render_contamination_scatter(
             "guide_title",
             "Run",
         ),
-        title=resolve_plot_title(spec, workflow),
+        title=_resolve_plot_title(spec, workflow),
         x_lab_angle=spec.get(
             "x_lab_angle",
             ANGLE_X_NAMES,
@@ -992,13 +992,13 @@ def render_contamination_scatter(
         color_values=spec.get("color_values"),
     )
 
-    save_plot(
+    _save_plot(
         pdf_handle,
         plot,
     )
 
 
-def render_plot(
+def _render_plot(
     pdf_handle: PdfPages,
     spec_name: str,
     spec: dict,
@@ -1010,7 +1010,7 @@ def render_plot(
     plot_kind = spec["plot_kind"]
 
     if plot_kind == "bar":
-        render_bar_plot(
+        _render_bar_plot(
             pdf_handle,
             spec,
             tables,
@@ -1019,17 +1019,17 @@ def render_plot(
         return
 
     if plot_kind == "cluster_density_scatter":
-        render_cluster_density_scatter(pdf_handle, spec, tables, workflow)
+        _render_cluster_density_scatter(pdf_handle, spec, tables, workflow)
         return
 
     if plot_kind == "contamination_scatter":
-        render_contamination_scatter(pdf_handle, spec, tables, workflow)
+        _render_contamination_scatter(pdf_handle, spec, tables, workflow)
         return
 
     raise ValueError(f"Unsupported plot kind for {spec_name}: {plot_kind}")
 
 
-def build_tables(
+def _build_tables(
     joint_qc_table: pl.DataFrame,
     metrics_table: pl.DataFrame,
     workflow: str,
@@ -1146,7 +1146,7 @@ def build_tables(
     }
 
 
-def generate_qc_plots(
+def Generate_qc_plots(
     metrics_table: pl.DataFrame,
     joint_qc_table: pl.DataFrame,
     workflow: str,
@@ -1165,9 +1165,9 @@ def generate_qc_plots(
         logger.error(message)
         raise ValueError(message)
 
-    validate_plot_specs(PLOT_SPECS)
+    _validate_plot_specs(PLOT_SPECS)
 
-    tables = build_tables(
+    tables = _build_tables(
         joint_qc_table=joint_qc_table,
         metrics_table=metrics_table,
         workflow=workflow,
@@ -1208,7 +1208,7 @@ def generate_qc_plots(
                 f"Rendering plot {spec_name} (index {spec[workflow]['index']})."
             )
 
-            render_plot(
+            _render_plot(
                 pdf_handle,
                 spec_name,
                 spec,
