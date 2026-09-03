@@ -148,6 +148,57 @@ def test_generate_qc_plots_creates_real_pdf(
 
 
 @pytest.mark.parametrize(
+    ("pct_pf_reads", "expect_warning"),
+    [
+        (
+            "NA",
+            True,
+        ),
+        (
+            "95",
+            False,
+        ),
+    ],
+)
+def test_generate_qc_plots_warns_when_plot_skipped_for_empty_data(
+    monkeypatch,
+    tmp_path,
+    caplog,
+    pct_pf_reads,
+    expect_warning,
+):
+    """A skip_if_empty plot with no data left after filtering logs a warning."""
+    monkeypatch.setattr(
+        plotting,
+        "PLOT_SPECS",
+        _minimal_plot_specs(),
+    )
+
+    joint_qc = _joint_qc_frame("dragen").with_columns(
+        pl.lit(pct_pf_reads).alias("PCT_PF_READS")
+    )
+
+    Generate_qc_plots(
+        metrics_table=_metrics_frame("dragen"),
+        joint_qc_table=joint_qc,
+        workflow="dragen",
+        output_pdf=(tmp_path / "test.pdf"),
+    )
+
+    warnings = [
+        record.message
+        for record in caplog.records
+        if record.levelname == "WARNING" and "TEST_RUN_METRIC" in record.message
+    ]
+
+    if expect_warning:
+        assert len(warnings) == 1
+        assert "dragen" in warnings[0]
+    else:
+        assert warnings == []
+
+
+@pytest.mark.parametrize(
     "workflow",
     [
         "dragen",

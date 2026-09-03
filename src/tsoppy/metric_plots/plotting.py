@@ -1208,6 +1208,8 @@ def Generate_qc_plots(
                 f"Rendering plot {spec_name} (index {spec[workflow]['index']})."
             )
 
+            page_count_before = pdf_handle.get_pagecount()
+
             _render_plot(
                 pdf_handle,
                 spec_name,
@@ -1215,5 +1217,11 @@ def Generate_qc_plots(
                 tables,
                 workflow,
             )
+
+            if pdf_handle.get_pagecount() == page_count_before:
+                logger.warning(
+                    f"Skipped plot {spec_name} for {workflow}: "
+                    "no data remained after filtering."
+                )
 
     logger.info(f"QC plots written to {output_pdf}.")
