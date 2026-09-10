@@ -247,18 +247,17 @@ def test_current_plot_specs_validate():
     _validate_plot_specs(PLOT_SPECS)
 
 
-def test_duplicate_plot_indices_are_rejected():
+def test_duplicate_plot_indices_are_rejected(caplog):
     """Duplicate positive indices within one workflow are rejected."""
     duplicate_specs = {
         "FIRST": _minimal_bar_spec(index=1),
         "SECOND": _minimal_bar_spec(index=1),
     }
 
-    with pytest.raises(
-        KeyError,
-        match="duplicate plot index 1",
-    ):
+    with pytest.raises(KeyError):
         _validate_plot_specs(duplicate_specs)
+
+    assert "duplicate plot index 1" in caplog.text
 
 
 def test_zero_plot_indices_may_repeat():
@@ -283,52 +282,48 @@ def test_zero_plot_indices_may_repeat():
     )
 
 
-def test_missing_workflow_key_is_rejected():
+def test_missing_workflow_key_is_rejected(caplog):
     """Every plot specification must contain both workflows."""
     spec = _minimal_bar_spec()
     del spec["dragen"]
 
-    with pytest.raises(
-        KeyError,
-        match="Missing workflow routing key",
-    ):
+    with pytest.raises(KeyError):
         _validate_plot_specs({"TEST": spec})
 
+    assert "Missing workflow routing key" in caplog.text
 
-def test_missing_workflow_plot_field_is_rejected():
+
+def test_missing_workflow_plot_field_is_rejected(caplog):
     """Workflow routing requires the plot field."""
     spec = _minimal_bar_spec()
     spec["localapp"] = {"index": 1}
 
-    with pytest.raises(
-        KeyError,
-        match="missing fields",
-    ):
+    with pytest.raises(KeyError):
         _validate_plot_specs({"TEST": spec})
 
+    assert "missing fields" in caplog.text
 
-def test_missing_workflow_index_field_is_rejected():
+
+def test_missing_workflow_index_field_is_rejected(caplog):
     """Workflow routing requires the index field."""
     spec = _minimal_bar_spec()
     spec["localapp"] = {"plot": True}
 
-    with pytest.raises(
-        KeyError,
-        match="missing fields",
-    ):
+    with pytest.raises(KeyError):
         _validate_plot_specs({"TEST": spec})
 
+    assert "missing fields" in caplog.text
 
-def test_non_boolean_plot_flag_is_rejected():
+
+def test_non_boolean_plot_flag_is_rejected(caplog):
     """Plot routing flag must be boolean."""
     spec = _minimal_bar_spec()
     spec["localapp"]["plot"] = "yes"
 
-    with pytest.raises(
-        KeyError,
-        match="'plot' must be bool",
-    ):
+    with pytest.raises(KeyError):
         _validate_plot_specs({"TEST": spec})
+
+    assert "'plot' must be bool" in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -340,52 +335,48 @@ def test_non_boolean_plot_flag_is_rejected():
         None,
     ],
 )
-def test_invalid_plot_index_is_rejected(invalid_index):
+def test_invalid_plot_index_is_rejected(invalid_index, caplog):
     """Workflow plot index must be a non-negative integer."""
     spec = _minimal_bar_spec()
     spec["localapp"]["index"] = invalid_index
 
-    with pytest.raises(
-        KeyError,
-        match="'index' must be",
-    ):
+    with pytest.raises(KeyError):
         _validate_plot_specs({"TEST": spec})
 
+    assert "'index' must be" in caplog.text
 
-def test_unknown_plot_kind_is_rejected():
+
+def test_unknown_plot_kind_is_rejected(caplog):
     """Unknown plot renderer types are rejected."""
     spec = _minimal_bar_spec()
     spec["plot_kind"] = "unknown_plot"
 
-    with pytest.raises(
-        KeyError,
-        match="not recognized",
-    ):
+    with pytest.raises(KeyError):
         _validate_plot_specs({"TEST": spec})
 
+    assert "not recognized" in caplog.text
 
-def test_missing_common_plot_field_is_rejected():
+
+def test_missing_common_plot_field_is_rejected(caplog):
     """Common required specification fields are validated."""
     spec = _minimal_bar_spec()
     del spec["source"]
 
-    with pytest.raises(
-        KeyError,
-        match="Missing fields",
-    ):
+    with pytest.raises(KeyError):
         _validate_plot_specs({"TEST": spec})
 
+    assert "Missing fields" in caplog.text
 
-def test_missing_bar_specific_field_is_rejected():
+
+def test_missing_bar_specific_field_is_rejected(caplog):
     """Bar specifications require their bar-specific fields."""
     spec = _minimal_bar_spec()
     del spec["value_spec"]
 
-    with pytest.raises(
-        KeyError,
-        match="value_spec",
-    ):
+    with pytest.raises(KeyError):
         _validate_plot_specs({"TEST": spec})
+
+    assert "value_spec" in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -643,18 +634,17 @@ def test_build_filter_expression_not_equals():
     ]
 
 
-def test_build_filter_expression_rejects_unknown_operation():
+def test_build_filter_expression_rejects_unknown_operation(caplog):
     """Unsupported filter definitions raise ValueError."""
-    with pytest.raises(
-        ValueError,
-        match="Unsupported filter specification",
-    ):
+    with pytest.raises(ValueError):
         _build_filter_expression(
             {
                 "column": "TYPE",
                 "startswith": "DNA",
             }
         )
+
+    assert "Unsupported filter specification" in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -800,18 +790,17 @@ def test_build_value_expression_ratio_with_numerator_divisor():
     ]
 
 
-def test_build_value_expression_rejects_unknown_operation():
+def test_build_value_expression_rejects_unknown_operation(caplog):
     """Unsupported value operations raise ValueError."""
-    with pytest.raises(
-        ValueError,
-        match="Unsupported value operation",
-    ):
+    with pytest.raises(ValueError):
         _build_value_expression(
             {
                 "operation": "multiply",
                 "column": "VALUE",
             }
         )
+
+    assert "Unsupported value operation" in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -1171,14 +1160,11 @@ def test_compute_cart_ylim_dynamic_custom_lower():
     assert result == (5, 30)
 
 
-def test_compute_cart_ylim_rejects_unknown_dynamic_mode():
+def test_compute_cart_ylim_rejects_unknown_dynamic_mode(caplog):
     """Unsupported dynamic limit modes raise ValueError."""
     data = pl.DataFrame({"VALUE": [1, 2]})
 
-    with pytest.raises(
-        ValueError,
-        match="Unsupported dynamic y-limit mode",
-    ):
+    with pytest.raises(ValueError):
         _compute_cart_ylim(
             {
                 "cart_ylim_dynamic": {
@@ -1188,6 +1174,8 @@ def test_compute_cart_ylim_rejects_unknown_dynamic_mode():
             },
             data,
         )
+
+    assert "Unsupported dynamic y-limit mode" in caplog.text
 
 
 def test_compute_cart_ylim_guideline_above_bars_expands_limit():
@@ -1646,30 +1634,28 @@ def test_build_tables_strips_workflow_whitespace():
     assert tables["dna_sample_count"] == 2
 
 
-def test_build_tables_rejects_unknown_workflow():
+def test_build_tables_rejects_unknown_workflow(caplog):
     """Unsupported workflows raise ValueError."""
-    with pytest.raises(
-        ValueError,
-        match="Unsupported workflow",
-    ):
+    with pytest.raises(ValueError):
         _build_tables(
             joint_qc_table=_joint_qc_frame(),
             metrics_table=_metrics_frame(),
             workflow="unknown",
         )
 
+    assert "Unsupported workflow" in caplog.text
 
-def test_build_tables_rejects_empty_selected_workflow():
+
+def test_build_tables_rejects_empty_selected_workflow(caplog):
     """A workflow with no matching metrics cannot be plotted."""
-    with pytest.raises(
-        ValueError,
-        match="No metrics rows available",
-    ):
+    with pytest.raises(ValueError):
         _build_tables(
             joint_qc_table=_joint_qc_frame(),
             metrics_table=_metrics_frame(),
             workflow="localapp",
         )
+
+    assert "No metrics rows available" in caplog.text
 
 
 def test_build_tables_extracts_threshold_guidelines():
@@ -2053,12 +2039,9 @@ def test_render_plot_dispatches_contamination(
     )
 
 
-def test_render_plot_rejects_unknown_kind():
+def test_render_plot_rejects_unknown_kind(caplog):
     """Unsupported renderer types raise ValueError."""
-    with pytest.raises(
-        ValueError,
-        match="Unsupported plot kind",
-    ):
+    with pytest.raises(ValueError):
         _render_plot(
             MagicMock(),
             "BROKEN",
@@ -2068,6 +2051,8 @@ def test_render_plot_rejects_unknown_kind():
             {},
             "dragen",
         )
+
+    assert "Unsupported plot kind" in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -2309,18 +2294,18 @@ def test_render_bar_plot_draws_all_available_guidelines(
 
 def test_generate_qc_plots_rejects_unknown_workflow(
     tmp_path,
+    caplog,
 ):
     """Unknown workflow values are rejected before rendering."""
-    with pytest.raises(
-        ValueError,
-        match="Unsupported workflow",
-    ):
+    with pytest.raises(ValueError):
         Generate_qc_plots(
             metrics_table=_metrics_frame(),
             joint_qc_table=_joint_qc_frame(),
             workflow="unknown",
             output_pdf=(tmp_path / "test.pdf"),
         )
+
+    assert "Unsupported workflow" in caplog.text
 
 
 def test_generate_qc_plots_normalizes_workflow(

@@ -247,12 +247,11 @@ def metric_plots(
             plotting_run_ids = list(dict.fromkeys(plotting_run_ids))
 
         if plot_workflow is None:
-            message = (
+            logger.error(
                 "Internal error: --plot-workflow was not resolved before "
                 "plot selection despite passing the earlier validation."
             )
-            logger.error(message)
-            raise RuntimeError(message)
+            raise RuntimeError
 
         plot_frame, plot_joint_qc = metric_plotter.select_plot_data(
             master=master,

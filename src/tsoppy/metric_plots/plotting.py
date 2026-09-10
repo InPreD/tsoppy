@@ -115,10 +115,7 @@ def _validate_plot_specs(plot_specs: dict) -> None:
                     seen_indexes[index] = spec_name
 
     if structural_errors:
-        raise KeyError(
-            f"Found {len(structural_errors)} duplicate plot index error(s):\n"
-            + "\n".join(structural_errors)
-        )
+        raise KeyError
 
     for spec_name, spec in plot_specs.items():
         spec_errors = []
@@ -179,10 +176,7 @@ def _validate_plot_specs(plot_specs: dict) -> None:
             structural_errors.append(message)
 
     if structural_errors:
-        raise KeyError(
-            f"Found {len(structural_errors)} plot specification error(s):\n"
-            + "\n".join(structural_errors)
-        )
+        raise KeyError
 
 
 def _valid_metric_expr(column_name: str) -> pl.Expr:
@@ -206,7 +200,8 @@ def _build_filter_expression(filter_spec: dict) -> pl.Expr:
     if "not_equals" in filter_spec:
         return column_expr != filter_spec["not_equals"]
 
-    raise ValueError(f"Unsupported filter specification: {filter_spec}")
+    logger.error(f"Unsupported filter specification: {filter_spec}")
+    raise ValueError
 
 
 def _build_value_expression(
@@ -244,7 +239,8 @@ def _build_value_expression(
         )
 
     else:
-        raise ValueError(f"Unsupported value operation: {operation}")
+        logger.error(f"Unsupported value operation: {operation}")
+        raise ValueError
 
     if alias_name is not None:
         expression = expression.alias(alias_name)
@@ -480,7 +476,8 @@ def _compute_cart_ylim(
         )
 
     else:
-        raise ValueError(f"Unsupported dynamic y-limit mode: {dynamic_ylim['mode']}")
+        logger.error(f"Unsupported dynamic y-limit mode: {dynamic_ylim['mode']}")
+        raise ValueError
 
     if guidelines is None:
         return cart_ylim
@@ -1026,7 +1023,8 @@ def _render_plot(
         _render_contamination_scatter(pdf_handle, spec, tables, workflow)
         return
 
-    raise ValueError(f"Unsupported plot kind for {spec_name}: {plot_kind}")
+    logger.error(f"Unsupported plot kind for {spec_name}: {plot_kind}")
+    raise ValueError
 
 
 def _build_tables(
@@ -1039,13 +1037,12 @@ def _build_tables(
     workflow = workflow.strip().lower()
 
     if workflow not in SUPPORTED_WORKFLOWS:
-        message = (
+        logger.error(
             f"Unsupported workflow: {workflow}. "
             f"Expected one of: "
             f"{', '.join(sorted(SUPPORTED_WORKFLOWS))}."
         )
-        logger.error(message)
-        raise ValueError(message)
+        raise ValueError
 
     metrics_table = metrics_table.sort("RUN_INDEX")
     joint_qc_table = joint_qc_table.sort("RUN_INDEX")
@@ -1059,9 +1056,8 @@ def _build_tables(
     )
 
     if metrics_table.is_empty():
-        message = f"No metrics rows available for {workflow} plotting."
-        logger.error(message)
-        raise ValueError(message)
+        logger.error(f"No metrics rows available for {workflow} plotting.")
+        raise ValueError
 
     latest_run_index = (
         metrics_table.filter(
@@ -1157,13 +1153,12 @@ def Generate_qc_plots(
     workflow = workflow.strip().lower()
 
     if workflow not in SUPPORTED_WORKFLOWS:
-        message = (
+        logger.error(
             f"Unsupported workflow: {workflow}. "
             f"Expected one of: "
             f"{', '.join(sorted(SUPPORTED_WORKFLOWS))}."
         )
-        logger.error(message)
-        raise ValueError(message)
+        raise ValueError
 
     _validate_plot_specs(PLOT_SPECS)
 
