@@ -124,13 +124,6 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         obj._parse()
         return obj
 
-    @staticmethod
-    def _variant_id(
-        chromosome: str, position: int, reference: str, alternate: str
-    ) -> str:
-        """Create the shared variant identifier used by the key variant sources."""
-        return f"{chromosome}:{position}:{reference}:{alternate}"
-
     @classmethod
     def merge(
         cls,
@@ -196,7 +189,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         for variant in self.vcf:
             if not variant.ALT or variant.ALT == ["<NON_REF>"]:
                 continue
-            variant_id = SmallVariantGenomeVcf._variant_id(
+            variant_id = get_variant_id(
                 variant.CHROM, variant.POS, variant.REF, variant.ALT[0]
             )
             variant.INFO["variant_ID"] = variant_id
@@ -225,7 +218,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
 
         writer.close()
         self.vcf.close()
-
+        logger.info(f"Merged VCF file saved to '{out_path}'")
         print(f"Merged VCF file saved to '{out_path}'")
 
     def _to_dataframe(
@@ -233,7 +226,6 @@ class SmallVariantGenomeVcf(WorkflowOutput):
     ) -> polars.DataFrame:
         """Return merged variant data as a Polars dataframe."""
 
-        tmb_df = tmb_obj.class_table
         json_by_variant = json_obj.variant_dict
         var_stats = ["AD", "DP", "AF" if self.workflow_type == "dragen" else "VF"]
         cols = (
@@ -244,7 +236,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         for variant in self.vcf:
             if not variant.ALT or variant.ALT == ["<NON_REF>"]:
                 continue
-            variant_id = self._variant_id(
+            variant_id = get_variant_id(
                 variant.CHROM, variant.POS, variant.REF, variant.ALT[0]
             )
             variant_type, genes = (
@@ -271,7 +263,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
             df = df.explode(explode_cols, empty_as_null=True)
 
         joined_df = df.join(
-            tmb_df,
+            tmb_obj.class_table,
             left_on="variant_ID",
             right_on="variant_ID",
             how="left",
@@ -403,7 +395,7 @@ class TmbTraceTsv(WorkflowOutput):
         self.table = polars.read_csv(self.path, separator="\t")
         self.class_table = self._get_variant_class_table()
         self.variant_dict = {
-            SmallVariantGenomeVcf._variant_id(
+            get_variant_id(
                 row["Chromosome"], row["Position"], row["RefCall"], row["AltCall"]
             ): row
             for row in self.table.iter_rows(named=True)
@@ -489,7 +481,7 @@ class VariantsAnnotatedJson(WorkflowOutput):
                 else []
             )
             for alternate in position.get("altAlleles", []):
-                variant_id = SmallVariantGenomeVcf._variant_id(
+                variant_id = get_variant_id(
                     position["chromosome"],
                     position["position"],
                     position["refAllele"],
@@ -497,3 +489,10 @@ class VariantsAnnotatedJson(WorkflowOutput):
                 )
                 json_by_variant[variant_id] = (variant_type, genes)
         return json_by_variant
+
+
+def get_variant_id(
+    chromosome: str, position: int, reference: str, alternate: str
+) -> str:
+    """Create the shared variant identifier used by the key variant sources."""
+    return f"{chromosome}:{position}:{reference}:{alternate}"
