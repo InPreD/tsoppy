@@ -99,7 +99,6 @@ class SmallVariantGenomeVcf(WorkflowOutput):
     Attributes:
         header_rex: Regex to parse top level key value pairs in VCF object header (str)
         header_subrex: Regex to parse sub level key value pairs in VCF object header (str)
-        header_rex: Regex to parse sub level key value pairs in VCF object header (str)
         path: Path to vcf (Path)
         sample_id: Sample identifier (str)
         vcf: Parsed VCF object (cyvcf2.VCF)
