@@ -97,8 +97,8 @@ class SmallVariantGenomeVcf(WorkflowOutput):
     """Input class for small variant genome VCF files produced by different workflows.
 
     Attributes:
-        header_dict: Dict containing parsed VCF object header information accessible by keys (dict)
         header_rex: Regex to parse top level key value pairs in VCF object header (str)
+        header_subrex: Regex to parse sub level key value pairs in VCF object header (str)
         header_rex: Regex to parse sub level key value pairs in VCF object header (str)
         path: Path to vcf (Path)
         sample_id: Sample identifier (str)
