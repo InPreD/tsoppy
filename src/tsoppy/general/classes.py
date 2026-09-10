@@ -219,7 +219,6 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         writer.close()
         self.vcf.close()
         logger.info(f"Merged VCF file saved to '{out_path}'")
-        print(f"Merged VCF file saved to '{out_path}'")
 
     def _to_dataframe(
         self, tmb_obj: TmbTraceTsv, json_obj: VariantsAnnotatedJson
@@ -458,11 +457,10 @@ class VariantsAnnotatedJson(WorkflowOutput):
         if self.path.suffix == ".gz":
             with gzip.open(self.path, "rt") as file:
                 self.data = msgspec.json.decode(file.read())
-                self.variant_dict = self._get_variant_dict()
         else:
             with open(self.path, "r") as file:
                 self.data = msgspec.json.decode(file.read())
-                self.variant_dict = self._get_variant_dict()
+        self.variant_dict = self._get_variant_dict()
 
     def _get_variant_dict(self) -> dict[str, tuple[str | None, list[str]]]:
         json_by_variant = {}
