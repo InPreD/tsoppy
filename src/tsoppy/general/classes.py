@@ -23,6 +23,7 @@ class WorkflowConfig(msgspec.Struct):
         small_variant_genome_vcf: Paths to small variant genome vcf (dict[str, str])
         tmb_trace_tsv: Paths to tmb trace tsv (dict[str, str])
         variants_annotated_json: Paths to variants annotated json (dict[str, str])
+        combined_variant_output_tsv: Paths to combined variant output tsv (dict[str, str])
     """
 
     metrics_output_tsv: dict[str, str]
@@ -30,6 +31,7 @@ class WorkflowConfig(msgspec.Struct):
     small_variant_genome_vcf: dict[str, str]
     tmb_trace_tsv: dict[str, str]
     variants_annotated_json: dict[str, str]
+    combined_variant_output_tsv: dict[str, str]
 
     def __eq__(self, other):
         """Assess if two instances of this class are equal."""
@@ -41,6 +43,7 @@ class WorkflowConfig(msgspec.Struct):
             "small_variant_genome_vcf",
             "tmb_trace_tsv",
             "variants_annotated_json",
+            "combined_variant_output_tsv",
         ]
         return all(vars(self).get(k) == vars(other).get(k) for k in attr_to_compare)
 
@@ -310,6 +313,53 @@ class SmallVariantGenomeVcf(WorkflowOutput):
             )
             raise FileNotFoundError
         self.vcf = cyvcf2.VCF(self.path)
+
+
+class CombinedVariantOutputTsv(WorkflowOutput):
+    """Input class for combined variant output TSV files produced by different workflows.
+
+    Attributes:
+        files: Paths to all combined variant output TSV files (list[Path])
+        sections: Parsed sections of each combined variant output TSV file
+            (list[dict[str, polars.DataFrame]])
+    """
+
+    # Section names that are key-value pairs:
+    KEY_VALUE_SECTIONS = ["TMB", "MSI", "GIS", "Analysis Details"]
+
+    def __init__(self, config_yaml, inpred_nomenclature, root_path):
+        super().__init__(config_yaml, inpred_nomenclature, root_path)
+        self._parse()
+
+    def _parse(self):
+        """Find and parse all combined variant output TSV files."""
+        glob_pattern = self.config.combined_variant_output_tsv[self.workflow_id]
+
+        self.files = sorted(Path(self.root).glob(glob_pattern))
+        if not self.files:
+            logging.error(
+                f"No Combined Variant Output TSV files found matching {glob_pattern}."
+            )
+            raise FileNotFoundError
+
+        # Parse each file into its sections
+        self.sections = []
+        self.headers = None
+        for file_path in self.files:
+            headers, sections = Parse_section_tsv(
+                str(file_path), self.KEY_VALUE_SECTIONS
+            )
+            if self.headers is None:
+                self.headers = headers
+            self.sections.append(sections)
+
+    @classmethod
+    def create(cls, workflow_output: WorkflowOutput):
+        """Create CombinedVariantOutputTsv from an existing WorkflowOutput."""
+        obj = cls.__new__(cls)
+        obj.__dict__.update(workflow_output.__dict__)
+        obj._parse()
+        return obj
 
 
 class TmbTraceTsv(WorkflowOutput):

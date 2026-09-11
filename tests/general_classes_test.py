@@ -6,6 +6,7 @@ from polars import DataFrame
 from pytest import mark, raises
 
 from tsoppy.general.classes import (
+    CombinedVariantOutputTsv,
     SmallVariantGenomeVcf,
     TmbTraceTsv,
     VariantsAnnotatedJson,
@@ -311,3 +312,42 @@ def test_variantsannotatedjson_create(inputs, exception, want):
         workflow_output = WorkflowOutput(*inputs[:3])
         got = VariantsAnnotatedJson.create(workflow_output, inputs[3])
         assert got.data == want
+
+
+@mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+            ),
+            nullcontext(),
+            "dragen",
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+            ),
+            nullcontext(),
+            "localapp",
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/non-existent"),
+            ),
+            raises(FileNotFoundError),
+            None,
+        ),
+    ],
+)
+def test_combinedvariantoutputtsv_create(inputs, exception, want):
+    with exception:
+        workflow_output = WorkflowOutput(*inputs[:3])
+        got = CombinedVariantOutputTsv.create(workflow_output)
+        assert got.workflow_type == want

@@ -1,0 +1,34 @@
+TruSight Oncology 500 - Combined Variant Output
+For Research Use Only. Not for use in diagnostic procedures.
+
+[Analysis Details]
+Pair ID	sample1
+DNA Sample ID	sample1
+RNA Sample ID	NA
+Output Date	2020-01-01
+Output Time	01:00:00
+Module Version	NA
+Pipeline Version	ruo-2.2.0.12
+
+
+[TMB]
+Total TMB	1
+Coding Region Size in Megabases	1.27
+Number of Passing Eligible Variants	1
+
+[MSI]
+Usable MSI Sites	1
+Total MSI Sites Unstable	0
+Percent Unstable MSI Sites	0.00
+
+[Gene Amplifications]
+Gene	Fold Change
+MDM4	1.741
+
+[Splice Variants]
+Gene	Affected Exon	Breakpoint 1	Breakpoint 2	Splice Supporting Reads	Reference Reads Transcript
+NA
+
+[Fusions]
+Gene Pair	Breakpoint 1	Breakpoint 2	Fusion Supporting Reads	Gene 1 Reference Reads	Gene 2 Reference Reads
+NA
