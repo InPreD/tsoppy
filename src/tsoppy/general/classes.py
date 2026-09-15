@@ -400,8 +400,10 @@ class TmbTraceTsv(WorkflowOutput):
 
     def _get_variant_class_table(self):
         tmb_df = self.table.with_columns(
-            polars.concat_str(
-                ["Chromosome", "Position", "RefCall", "AltCall"], separator=":"
+            (
+                polars.concat_str(["Chromosome", "Position", "RefCall"], separator=":")
+                + polars.lit(">")
+                + polars.col("AltCall").cast(polars.String)
             ).alias("variant_ID")
         )
         if self.workflow_type == "localapp":
@@ -491,4 +493,4 @@ def get_variant_id(
     chromosome: str, position: int, reference: str, alternate: str
 ) -> str:
     """Create the shared variant identifier used by the key variant sources."""
-    return f"{chromosome}:{position}:{reference}:{alternate}"
+    return f"{chromosome}:{position}:{reference}>{alternate}"
