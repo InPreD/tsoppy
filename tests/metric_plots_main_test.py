@@ -565,6 +565,44 @@ def test_add_record_type_prefers_pair_id_over_sample_id():
     assert got["RECORD_TYPE"].to_list() == ["RNA_SAMPLE"]
 
 
+def test_add_record_type_falls_back_to_sample_id_when_pair_id_does_not_match():
+    """A row whose Pair_ID doesn't match the metrics output still classifies via Sample_ID."""
+    samples = polars.DataFrame(
+        {
+            "SAMPLE_ID": [
+                "PAIR01",
+                "REF_SAMPLE_P",
+            ],
+        }
+    )
+
+    samplesheet = polars.DataFrame(
+        {
+            "Sample_ID": [
+                "SAMPLE01",
+                "REF_SAMPLE_P",
+            ],
+            "Pair_ID": [
+                "PAIR01",
+                "REF_SAMPLE",
+            ],
+            "Sample_Type": [
+                "RNA",
+                "DNA",
+            ],
+        }
+    )
+
+    metric_plots = _metric_plots_without_init()
+
+    got = metric_plots._add_record_type(samples, samplesheet)
+
+    assert got["RECORD_TYPE"].to_list() == [
+        "RNA_SAMPLE",
+        "DNA_SAMPLE",
+    ]
+
+
 def test_add_record_type_falls_back_to_sample_id_without_pair_id_column():
     samples = polars.DataFrame(
         {

@@ -788,9 +788,11 @@ class MetricPlots:
     ) -> pl.DataFrame:
         """Classify sample rows as DNA, RNA, or unknown using the sample sheet's Sample_Type.
 
-        SAMPLE_ID values in the metrics output correspond to Pair_ID in the sample
-        sheet, so the lookup joins on Pair_ID when available and falls back to
-        Sample_ID otherwise. Metric content and SAMPLE_ID text are not used for
+        SAMPLE_ID values in the metrics output usually correspond to Pair_ID in
+        the sample sheet, so the lookup tries Pair_ID first and falls back to
+        Sample_ID, per row, for any sample Pair_ID didn't match (e.g. reference/
+        control samples whose Pair_ID doesn't carry the same suffix as their
+        Sample_ID). Metric content and SAMPLE_ID text are not used for
         classification: analysis is performed based on the sample sheet, so it is
         the authoritative source for sample type.
         """
@@ -803,45 +805,32 @@ class MetricPlots:
                 pl.lit(self.UNKNOWN_SAMPLE).alias("RECORD_TYPE")
             )
 
-        id_column = (
-            self.PAIR_ID_COL
-            if self.PAIR_ID_COL in samplesheet.columns
-            else self.SAMPLESHEET_SAMPLE_ID_COL
-        )
-
-        sample_types = samplesheet.select(
-            pl.col(id_column).alias("SAMPLE_ID"),
-            pl.col(self.SAMPLE_TYPE_COL)
-            .cast(pl.Utf8)
-            .str.strip_chars()
-            .str.to_uppercase()
-            .alias("_SAMPLE_TYPE"),
-        ).unique()
-
-        ambiguous_ids = (
-            sample_types.group_by("SAMPLE_ID")
-            .agg(pl.col("_SAMPLE_TYPE").n_unique().alias("_N_TYPES"))
-            .filter(pl.col("_N_TYPES") > 1)
-            .get_column("SAMPLE_ID")
-            .to_list()
-        )
-
-        if ambiguous_ids:
-            logger.warning(
-                "Ambiguous %s in sample sheet for: %s. Classified as %s.",
-                id_column,
-                ", ".join(ambiguous_ids),
-                self.UNKNOWN_SAMPLE,
-            )
-            sample_types = sample_types.filter(
-                ~pl.col("SAMPLE_ID").is_in(ambiguous_ids)
-            )
-
         joined = samples.join(
-            sample_types,
+            self._sample_type_lookup(
+                samplesheet, self.SAMPLESHEET_SAMPLE_ID_COL, "_SAMPLE_TYPE_BY_SAMPLE_ID"
+            ),
             on="SAMPLE_ID",
             how="left",
         )
+
+        if self.PAIR_ID_COL in samplesheet.columns:
+            joined = (
+                joined.join(
+                    self._sample_type_lookup(
+                        samplesheet, self.PAIR_ID_COL, "_SAMPLE_TYPE_BY_PAIR_ID"
+                    ),
+                    on="SAMPLE_ID",
+                    how="left",
+                )
+                .with_columns(
+                    pl.coalesce(
+                        ["_SAMPLE_TYPE_BY_PAIR_ID", "_SAMPLE_TYPE_BY_SAMPLE_ID"]
+                    ).alias("_SAMPLE_TYPE")
+                )
+                .drop(["_SAMPLE_TYPE_BY_PAIR_ID", "_SAMPLE_TYPE_BY_SAMPLE_ID"])
+            )
+        else:
+            joined = joined.rename({"_SAMPLE_TYPE_BY_SAMPLE_ID": "_SAMPLE_TYPE"})
 
         unmatched_ids = (
             joined.filter(pl.col("_SAMPLE_TYPE").is_null())
@@ -866,6 +855,41 @@ class MetricPlots:
             .otherwise(pl.lit(self.UNKNOWN_SAMPLE))
             .alias("RECORD_TYPE")
         ).drop("_SAMPLE_TYPE")
+
+    def _sample_type_lookup(
+        self,
+        samplesheet: pl.DataFrame,
+        id_column: str,
+        value_column_name: str,
+    ) -> pl.DataFrame:
+        """Build a deduplicated SAMPLE_ID -> sample type lookup, dropping ambiguous IDs."""
+        sample_types = samplesheet.select(
+            pl.col(id_column).alias("SAMPLE_ID"),
+            pl.col(self.SAMPLE_TYPE_COL)
+            .cast(pl.Utf8)
+            .str.strip_chars()
+            .str.to_uppercase()
+            .alias(value_column_name),
+        ).unique()
+
+        ambiguous_ids = (
+            sample_types.group_by("SAMPLE_ID")
+            .agg(pl.col(value_column_name).n_unique().alias("_N_TYPES"))
+            .filter(pl.col("_N_TYPES") > 1)
+            .get_column("SAMPLE_ID")
+            .to_list()
+        )
+
+        if ambiguous_ids:
+            logger.warning(
+                "Ambiguous %s in sample sheet for: %s. Classified as %s.",
+                id_column,
+                ", ".join(ambiguous_ids),
+                self.UNKNOWN_SAMPLE,
+            )
+            sample_types = sample_types.filter(~pl.col("SAMPLE_ID").is_in(ambiguous_ids))
+
+        return sample_types
 
     def _finalize_frame(
         self,
