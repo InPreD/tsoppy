@@ -123,23 +123,22 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         obj._parse()
         return obj
 
-    @classmethod
     def merge(
-        cls,
+        self,
         workflow_output: WorkflowOutput,
         sample_id: str,
         output_path: str | Path | None = None,
     ) -> None | polars.DataFrame:
         """Merge VCF enriched with TMB and Nirvana annotations and either save to file or return polars dataframe."""
 
-        vcf_obj = cls.create(workflow_output, sample_id)
+        vcf_obj = self.create(workflow_output, sample_id)
         tmb_obj = TmbTraceTsv.create(workflow_output, sample_id)
         json_obj = VariantsAnnotatedJson.create(workflow_output, sample_id)
 
         if output_path:
-            cls._write_vcf(vcf_obj, tmb_obj, json_obj, output_path)
+            vcf_obj._write_vcf(tmb_obj, json_obj, output_path)
         else:
-            return cls._to_dataframe(vcf_obj, tmb_obj=tmb_obj, json_obj=json_obj)
+            return vcf_obj._to_dataframe(tmb_obj, json_obj)
 
     def _write_vcf(
         self,
@@ -149,11 +148,6 @@ class SmallVariantGenomeVcf(WorkflowOutput):
     ):
         """Write a merged VCF with TMB and Nirvana annotations."""
 
-        out_path = Path(output_path)
-        tmb_by_variant = tmb_obj.variant_dict
-        tmb_df = tmb_obj.class_table
-
-        json_by_variant = json_obj.variant_dict
         info_headers = (
             {
                 "ID": "variant_ID",
@@ -184,6 +178,11 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         for info in info_headers:
             self.vcf.add_info_to_header(info)
 
+        tmb_by_variant = tmb_obj.variant_dict
+        tmb_df = tmb_obj.class_table
+        json_by_variant = json_obj.variant_dict
+
+        out_path = Path(output_path)
         writer = cyvcf2.Writer(out_path, self.vcf)
         for variant in self.vcf:
             if not variant.ALT or variant.ALT == ["<NON_REF>"]:
