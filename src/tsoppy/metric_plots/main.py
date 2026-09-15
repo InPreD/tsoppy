@@ -887,7 +887,9 @@ class MetricPlots:
                 ", ".join(ambiguous_ids),
                 self.UNKNOWN_SAMPLE,
             )
-            sample_types = sample_types.filter(~pl.col("SAMPLE_ID").is_in(ambiguous_ids))
+            sample_types = sample_types.filter(
+                ~pl.col("SAMPLE_ID").is_in(ambiguous_ids)
+            )
 
         return sample_types
 
