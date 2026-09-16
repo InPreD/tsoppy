@@ -89,15 +89,19 @@ The input options are defined as global typer options but the correct option nam
 
 ## Decision
 
+We decided to go with option 1 due as it makes the code DRYer and the tool is mostly used within a pipeline - running it manually is not the main mode of operation, hence ease of use can be neglected for this.
+
 ## Consequences
+
+We need to implement the common input options to make them available for all subcommands that require those.
 
 ### Positive
 
--
+- any subcommand can simply include the `typer.Context` to have access to common input parameters
 
 ### Negative
 
--
+- the parameters have to be provided prior to calling the subcommand
 
 ### Neutral
 
