@@ -1,22 +1,14 @@
 """This module contains the CLI commands for tsoppy."""
 
-import importlib.metadata
-import logging
-from enum import Enum
-from pathlib import Path
-from typing import Annotated
-
-import typer
-
-from tsoppy.metric_plots.main import MetricPlots
 from tsoppy.metric_plots.plotting import Generate_qc_plots
-
-
-class WorkflowType(str, Enum):
-    """Supported workflow types for metric plotting."""
-
-    DRAGEN = "dragen"
-    LOCALAPP = "localapp"
+from tsoppy.metric_plots.main import MetricPlots
+import typer
+from typing import Annotated
+from pathlib import Path
+from dataclasses import dataclass
+from enum import Enum
+import logging
+import importlib.metadata
 
 
 app = typer.Typer()
@@ -31,6 +23,20 @@ logger = logging.getLogger(__name__)
 app_version = importlib.metadata.version("tsoppy")
 
 
+class WorkflowType(str, Enum):
+    """Supported workflow types for metric plotting."""
+
+    DRAGEN = "dragen"
+    LOCALAPP = "localapp"
+
+
+@dataclass
+class CommonOptions:
+    """Holds common input options."""
+    nomenclature: Path
+    config: Path
+
+
 def _parse_run_ids(value: str) -> list[str]:
     """Split a comma-separated run ID string into stripped, non-empty IDs."""
     return [run_id.strip() for run_id in value.split(",") if run_id.strip()]
@@ -41,7 +47,8 @@ def _parse_run_id_file(value: str) -> list[str]:
     path = Path(value)
 
     if not path.is_file():
-        raise typer.BadParameter(f"File '{value}' does not exist or is not a file.")
+        raise typer.BadParameter(
+            f"File '{value}' does not exist or is not a file.")
 
     return [
         run_id
@@ -49,6 +56,21 @@ def _parse_run_id_file(value: str) -> list[str]:
         if line.strip()
         for run_id in _parse_run_ids(line)
     ]
+
+
+@app.callback()
+def main(
+    ctx: typer.Context,
+    config: Annotated[Path, typer.Option(
+        "--config", help="Path to tsoppy config file.", exists=True)],
+    nomenclature: Annotated[Path | None, typer.Option(
+        "--nomenclature", help="Path to inpred nomenclature file.")] = None,
+):
+    """
+    This is the main entry point for the tsoppy CLI application. It sets up the
+    context object with commonOptions that can be accessed by subcommands.
+    """
+    ctx.obj = CommonOptions(nomenclature=nomenclature, config=config)
 
 
 @app.command()
@@ -268,7 +290,8 @@ def metric_plots(
             f"{plot_joint_qc.height} joint QC rows for {plot_workflow.value} plotting."
         )
 
-        output_pdf = plot_output or Path(f"{plot_workflow.value}_metric_plots.pdf")
+        output_pdf = plot_output or Path(
+            f"{plot_workflow.value}_metric_plots.pdf")
 
         Generate_qc_plots(
             metrics_table=plot_frame,
