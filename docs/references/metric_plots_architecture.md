@@ -41,7 +41,7 @@ Metric transformation logic is kept outside the CLI.
 
 `MetricPlots` normalizes metrics from different TSO500 workflows into a common representation.
 
-It is responsible for combining selected runs, assigning run metadata, creating the master metrics table and joint sequencing QC table, and selecting data for plotting.
+It is responsible for combining selected runs, assigning run metadata, creating the master metrics table and joint sequencing QC table, and selecting data for plotting. The exact run- and plot-selection rules are documented in [Selecting runs](../guides/metric_plots.md#selecting-runs) and [Selecting runs for plotting](../guides/metric_plots.md#selecting-runs-for-plotting) in the user guide.
 
 ### Plotting
 
@@ -55,29 +55,17 @@ Plot definitions are kept separate from the normalized metric data so the same p
 
 Metrics from DRAGEN and LocalApp are normalized into a common schema before plotting.
 
-The master table contains metadata including:
+The master table's exact columns, metric naming convention, and record types are documented in the [metric plots user guide](../guides/metric_plots.md#master_metrics_tabletsv).
 
-- `RUN_INDEX`
-- `SAMPLE_ID`
-- `RUN`
-- `WORKFLOW_TYPE`
-- `WORKFLOW_VERSION`
-- `RECORD_TYPE`
-
-Workflow-specific DNA and RNA metrics use `DNA_` and `RNA_` prefixes.
-
-Sample type is taken from `Sample_Type` in the workflow sample sheet. The sample sheet is the authoritative source because it determines how the upstream analysis is performed.
+Sample type is taken from `Sample_Type` in the workflow sample sheet rather than from metric content or sample naming. The sample sheet is the authoritative source because it determines how the upstream analysis was performed.
 
 Lower and upper specification limits are represented as threshold records in the standardized data.
 
 ## Outputs
 
-The command writes two canonical metrics files:
+The exact files the command writes are documented in [Generated outputs](../guides/metric_plots.md#generated-outputs) in the user guide.
 
-- `master_metrics_table.tsv`
-- `joint_sequencing_QC_file.tsv`
-
-When plotting is requested, the standardized in-memory tables are passed directly to the plotting layer. Temporary plotting tables are not written to disk.
+When plotting is requested, the standardized in-memory tables are passed directly to the plotting layer; temporary plotting tables are not written to disk. See [In-memory plotting data](../guides/metric_plots.md#in-memory-plotting-data) for the exact objects passed between them.
 
 ## Run handling
 
@@ -87,7 +75,7 @@ Run ordering is resolved before metrics from individual workflow outputs are com
 
 Workflow-specific plotting operates on the standardized tables rather than rereading workflow outputs.
 
-Detailed run-selection behavior belongs in the [metric plots user guide](../guides/metric_plots.md).
+Detailed run-selection behavior belongs in the user guide: [Selecting runs](../guides/metric_plots.md#selecting-runs), [Run order and `RUN_INDEX`](../guides/metric_plots.md#run-order-and-run_index), and [Selecting runs for plotting](../guides/metric_plots.md#selecting-runs-for-plotting).
 
 ## Validation
 

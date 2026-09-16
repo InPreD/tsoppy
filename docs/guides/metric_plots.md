@@ -105,7 +105,7 @@ Duplicate IDs are removed while preserving their first occurrence.
 
 ## Run order and `RUN_INDEX`
 
-Run order is determined by the resolved run ID order, not by the order in which directories are returned by `--input-glob`.
+Run order is determined by the resolved run ID order, not by the order in which directories are returned by `--input-glob`. See [Run handling](../references/metric_plots_architecture.md#run-handling) for how this fits into the overall design.
 
 For `--run-ids`, the comma-separated order is preserved. For `--run-id-file`, run IDs are processed in file order. If neither option is supplied, all run IDs matched by `--input-glob` are used and sorted lexicographically.
 
@@ -257,7 +257,7 @@ LOWER_THRESHOLD
 UPPER_THRESHOLD
 ```
 
-Sample type is determined from `Sample_Type` in the workflow SampleSheet. Metrics samples are matched to the SampleSheet using `Pair_ID` when available, otherwise `Sample_ID`. `DNA` and `RNA` values are assigned `DNA_SAMPLE` and `RNA_SAMPLE`, respectively. Samples without an unambiguous supported SampleSheet classification are assigned `SAMPLE`.
+Sample type is determined from `Sample_Type` in the workflow SampleSheet — see [Standardized data](../references/metric_plots_architecture.md#standardized-data) for why the sample sheet is the authoritative source. For each sample, the lookup tries `Pair_ID` first and falls back to `Sample_ID` for any sample `Pair_ID` didn't match. `DNA` and `RNA` values are assigned `DNA_SAMPLE` and `RNA_SAMPLE`, respectively. Samples without an unambiguous match are assigned `SAMPLE`.
 
 Threshold rows keep lower and upper specification guidelines associated with the workflow type and version that produced them.
 
@@ -295,7 +295,7 @@ plot_joint_qc
 
 `plot_joint_qc` contains matching sequencing-QC rows.
 
-These DataFrames are passed directly to `Generate_qc_plots()`, which renders them to the output PDF.
+These DataFrames are passed directly to `Generate_qc_plots()`, which renders them to the output PDF — see [Design](../references/metric_plots_architecture.md#design) for why plotting only ever consumes standardized in-memory tables rather than reading workflow outputs itself.
 
 ## Complete examples
 
