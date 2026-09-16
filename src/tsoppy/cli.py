@@ -33,6 +33,7 @@ class WorkflowType(str, Enum):
 @dataclass
 class CommonOptions:
     """Holds common input options."""
+
     nomenclature: Path
     config: Path
 
