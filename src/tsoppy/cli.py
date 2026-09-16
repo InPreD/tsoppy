@@ -18,6 +18,7 @@ app_version = importlib.metadata.version("tsoppy")
 @dataclass
 class CommonOptions:
     """Holds common input options."""
+
     nomenclature: Path
     config: Path
 
@@ -30,7 +31,9 @@ def nomenclature_callback(value: Path | None) -> Path:
         temp_file = tempfile.NamedTemporaryFile(delete=False)
         # TODO: Update url when PR is merged to main branch
         request.urlretrieve(
-            "https://raw.githubusercontent.com/InPreD/reference/refs/heads/5-add-inpred-nomenclature/InPreD/sample_id_nomenclature/v4/nomenclature.yaml", temp_file.name)
+            "https://raw.githubusercontent.com/InPreD/reference/refs/heads/5-add-inpred-nomenclature/InPreD/sample_id_nomenclature/v4/nomenclature.yaml",
+            temp_file.name,
+        )
         return Path(temp_file.name)
     else:
         return value
@@ -39,10 +42,17 @@ def nomenclature_callback(value: Path | None) -> Path:
 @app.callback()
 def main(
     ctx: typer.Context,
-    config: Annotated[Path, typer.Option(
-        "--config", help="Path to tsoppy config file.", exists=True)],
-    nomenclature: Annotated[Path | None, typer.Option(
-        "--nomenclature", help="Path to inpred nomenclature file.", callback=nomenclature_callback)] = None,
+    config: Annotated[
+        Path, typer.Option("--config", help="Path to tsoppy config file.", exists=True)
+    ],
+    nomenclature: Annotated[
+        Path | None,
+        typer.Option(
+            "--nomenclature",
+            help="Path to inpred nomenclature file.",
+            callback=nomenclature_callback,
+        ),
+    ] = None,
 ):
     """
     This is the main entry point for the tsoppy CLI application. It sets up the
