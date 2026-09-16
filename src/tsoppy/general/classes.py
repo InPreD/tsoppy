@@ -171,7 +171,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
                 "ID": "Illumina_variant_class",
                 "Number": "1",
                 "Type": "String",
-                "Description": "Variant classification provided by initial Illumina pipeline analysis: 'Germline_DB'', 'Germline_Proxi', 'Somatic', 'Blacklist', 'VCF_filtered'",
+                "Description": "Variant classification provided by initial Illumina pipeline analysis: 'Germline_DB', 'Germline_Proxi', 'Somatic', 'Blacklist', 'VCF_filtered'",
             },
         )
 
