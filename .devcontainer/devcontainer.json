@@ -4,10 +4,10 @@
 		"dockerfile": "Dockerfile",
 		"args": {
 			"USERNAME": "${localEnv:USER}",
-			"USER_UID": "501",
-			"USER_GID": "20",
-			"MAIL": "${localEnv:MAIL:developer@example.com}",
-			"FULLNAME": "${localEnv:FULLNAME:Developer}"
+			"USER_UID": "${localEnv:UID}",
+			"USER_GID": "${localEnv:UID}",
+			"MAIL": "${localEnv:MAIL}",
+			"FULLNAME": "${localEnv:FULLNAME}"
 		}
 	},
 	"runArgs": [
@@ -15,14 +15,15 @@
 		"--security-opt",
 		"seccomp=unconfined"
 	],
-	"mounts": [
-		"source=/Users/omerali/Documents/Job-InPred/metrics_plot,target=/workspaces/metrics-plot-data,type=bind,consistency=cached"
-	],
 	"containerEnv": {
 		"TZ": "Europe/Berlin",
 		"LC_ALL": "en_US.UTF-8",
 		"LANG": "en_US.UTF-8",
-		"LANGUAGE": "en_US.UTF-8"
+		"LANGUAGE": "en_US.UTF-8",
+		"HTTP_PROXY": "${localEnv:HTTP_PROXY}",
+		"HTTPS_PROXY": "${localEnv:HTTP_PROXY}",
+		"http_proxy": "${localEnv:HTTP_PROXY}",
+		"https_proxy": "${localEnv:HTTP_PROXY}"
 	},
 	// Configure tool-specific properties.
 	"customizations": {
@@ -42,12 +43,13 @@
 				"gitlab.gitlab-workflow",
 				"kahole.magit",
 				"ms-vsliveshare.vsliveshare",
+				"mechatroner.rainbow-csv",
 				"tamasfe.even-better-toml"
 			]
 		}
 	},
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip install '.[dev]' && git config --global pull.rebase false",
+	"postCreateCommand": "pip install '.[dev]'",
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "${localEnv:USER}"
 }
