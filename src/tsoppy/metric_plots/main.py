@@ -572,10 +572,6 @@ class MetricPlots:
                 r"[^0-9A-Za-z]+",
                 "_",
             )
-            .str.replace_all(
-                r"_+",
-                "_",
-            )
             .str.strip_chars("_")
         )
 
@@ -623,7 +619,6 @@ class MetricPlots:
             self.USL_COL,
             self.VALUE_COL,
             "-",
-            "",
         }
 
         return [column for column in section.columns if column not in reserved]
