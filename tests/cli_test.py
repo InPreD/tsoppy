@@ -131,7 +131,6 @@ def test_cli_omits_master_run_selector_defers_to_input_glob(
     constructor_kwargs = mocks["constructor"].call_args.kwargs
 
     assert constructor_kwargs["run_ids"] is None
-    assert constructor_kwargs["run_id_file"] is None
 
 
 def test_cli_rejects_both_master_run_selectors(
@@ -149,6 +148,28 @@ def test_cli_rejects_both_master_run_selectors(
             "RUN_A",
             "--run-id-file",
             str(run_file),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--run-id-file" in _clean_output(result)
+
+
+def test_cli_rejects_both_master_run_selectors_regardless_of_order(
+    tmp_path,
+):
+    """The check is not order-dependent: --run-id-file may be typed first."""
+    run_file = tmp_path / "runs.txt"
+    run_file.write_text("RUN_A\n")
+
+    result = runner.invoke(
+        app,
+        _base_args(tmp_path)
+        + [
+            "--run-id-file",
+            str(run_file),
+            "--run-ids",
+            "RUN_A",
         ],
     )
 
@@ -231,6 +252,29 @@ def test_cli_rejects_last_runs_with_explicit_plot_runs(
     assert "--plot-last-runs" in _clean_output(result)
 
 
+def test_cli_rejects_last_runs_with_explicit_plot_runs_regardless_of_order(
+    tmp_path,
+):
+    """The check is not order-dependent: --plot-run-ids may be typed first."""
+    result = runner.invoke(
+        app,
+        _base_args(tmp_path)
+        + [
+            "--run-ids",
+            "RUN_A,RUN_B",
+            "--plot-run-ids",
+            "RUN_A",
+            "--plot-last-runs",
+            "2",
+            "--plot-workflow",
+            "dragen",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--plot-last-runs" in _clean_output(result)
+
+
 def test_cli_rejects_both_explicit_plot_run_selectors(
     tmp_path,
 ):
@@ -248,6 +292,32 @@ def test_cli_rejects_both_explicit_plot_run_selectors(
             "RUN_A",
             "--plot-run-id-file",
             str(plot_file),
+            "--plot-workflow",
+            "dragen",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--plot-run-id-file" in _clean_output(result)
+
+
+def test_cli_rejects_both_explicit_plot_run_selectors_regardless_of_order(
+    tmp_path,
+):
+    """The check is not order-dependent: --plot-run-id-file may be typed first."""
+    plot_file = tmp_path / "plot_runs.txt"
+    plot_file.write_text("RUN_A\n")
+
+    result = runner.invoke(
+        app,
+        _base_args(tmp_path)
+        + [
+            "--run-ids",
+            "RUN_A,RUN_B",
+            "--plot-run-id-file",
+            str(plot_file),
+            "--plot-run-ids",
+            "RUN_A",
             "--plot-workflow",
             "dragen",
         ],
@@ -321,7 +391,7 @@ def test_cli_reads_plot_run_id_file(
     monkeypatch,
     tmp_path,
 ):
-    """Plot-run files ignore blanks/comments and deduplicate IDs."""
+    """Plot-run files ignore blank lines and deduplicate IDs."""
     mocks = _mock_metric_plotter(monkeypatch)
 
     monkeypatch.setattr(
@@ -332,7 +402,7 @@ def test_cli_reads_plot_run_id_file(
 
     plot_file = tmp_path / "plot_runs.txt"
 
-    plot_file.write_text("\n# selected runs\nRUN_B\nRUN_A\nRUN_B\n\n")
+    plot_file.write_text("\nRUN_B\nRUN_A\nRUN_B\n\n")
 
     result = runner.invoke(
         app,

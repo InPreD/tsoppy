@@ -31,28 +31,9 @@ logger = logging.getLogger(__name__)
 app_version = importlib.metadata.version("tsoppy")
 
 
-def validate_run_id_file(
-    ctx: typer.Context,
-    value: Path | None,
-) -> Path | None:
-    """Ensure --run-id-file is not used with --run-ids."""
-    if value is not None and ctx.params.get("run_ids") is not None:
-        message = "--run-id-file cannot be used with --run-ids."
-        logger.error(message)
-        raise typer.BadParameter(message)
-    return value
-
-
-def validate_plot_run_id_file(
-    ctx: typer.Context,
-    value: Path | None,
-) -> Path | None:
-    """Ensure --plot-run-id-file is not used with --plot-run-ids."""
-    if value is not None and ctx.params.get("plot_run_ids") is not None:
-        message = "--plot-run-id-file cannot be used with --plot-run-ids."
-        logger.error(message)
-        raise typer.BadParameter(message)
-    return value
+def _parse_run_ids(value: str) -> list[str]:
+    """Split a comma-separated run ID string into stripped, non-empty IDs."""
+    return [run_id.strip() for run_id in value.split(",") if run_id.strip()]
 
 
 @app.command()
@@ -119,8 +100,15 @@ def metric_plots(
         ),
     ] = Path("config.yaml"),
     run_ids: Annotated[
+        # Annotated as str, not list[str], because typer/click treats a
+        # list[str]-annotated option as repeatable and would wrap this
+        # parser's own list return value in another list. The annotation
+        # only controls CLI parsing arity; the parser is what actually
+        # decides the value this function receives.
         str | None,
         typer.Option(
+            parser=_parse_run_ids,
+            metavar="TEXT",
             help=(
                 "Comma-separated run IDs to include in the generated master metrics "
                 "table. If neither --run-ids nor --run-id-file is provided, all runs "
@@ -137,7 +125,6 @@ def metric_plots(
             dir_okay=False,
             readable=True,
             resolve_path=True,
-            callback=validate_run_id_file,
             help=(
                 "Text file containing run IDs for generation of the master metrics "
                 "table, one per line. If neither --run-id-file nor --run-ids is "
@@ -147,8 +134,11 @@ def metric_plots(
         ),
     ] = None,
     plot_run_ids: Annotated[
+        # See the run_ids option above for why this stays annotated as str.
         str | None,
         typer.Option(
+            parser=_parse_run_ids,
+            metavar="TEXT",
             help=(
                 "Comma-separated list of run IDs to include in plot. "
                 "Mutually exclusive with --plot-run-id-file."
@@ -163,7 +153,6 @@ def metric_plots(
             dir_okay=False,
             readable=True,
             resolve_path=True,
-            callback=validate_plot_run_id_file,
             help=(
                 "Text file containing list of run IDs to select for plotting. "
                 "Mutually exclusive with --plot-run-ids."
@@ -194,6 +183,21 @@ def metric_plots(
     """Create metrics tables and optionally generate QC plots."""
     logger.info("Creating metrics master table and joint QC.")
 
+    # The mutual-exclusivity checks below all run here in the function body
+    # rather than as per-option callbacks: Click invokes option callbacks in
+    # command-line argument order, not declaration order, so a callback
+    # checking ctx.params for another option could silently miss a conflict
+    # depending on the order options are typed on the command line.
+    if run_ids is not None and run_id_file is not None:
+        message = "--run-id-file cannot be used with --run-ids."
+        logger.error(message)
+        raise typer.BadParameter(message)
+
+    if plot_run_ids is not None and plot_run_id_file is not None:
+        message = "--plot-run-id-file cannot be used with --plot-run-ids."
+        logger.error(message)
+        raise typer.BadParameter(message)
+
     plot_run_selection_given = plot_run_ids is not None or plot_run_id_file is not None
 
     prepare_plot_frames = (
@@ -216,12 +220,22 @@ def metric_plots(
         logger.error(message)
         raise typer.BadParameter(message)
 
+    # run_ids is already parsed into a list by the option's parser=, if given.
+    resolved_run_ids = run_ids
+
+    if resolved_run_ids is None and run_id_file is not None:
+        resolved_run_ids = [
+            run_id
+            for line in run_id_file.read_text().splitlines()
+            if line.strip()
+            for run_id in _parse_run_ids(line)
+        ]
+
     metric_plotter = MetricPlots(
         config_yaml=config_yaml,
         inpred_nomenclature=inpred_nomenclature,
         input_glob=input_glob,
-        run_ids=run_ids,
-        run_id_file=run_id_file,
+        run_ids=resolved_run_ids,
     )
 
     master, joint_qc = metric_plotter.generate_metrics_tables()
@@ -229,18 +243,14 @@ def metric_plots(
     logger.info("Metrics master table and joint QC files created.")
 
     if prepare_plot_frames:
-        plotting_run_ids: list[str] | None = None
+        # plot_run_ids is already parsed into a list by the option's parser=, if given.
+        plotting_run_ids = plot_run_ids
 
-        if plot_run_ids is not None:
-            plotting_run_ids = [
-                run_id.strip() for run_id in plot_run_ids.split(",") if run_id.strip()
-            ]
-
-        elif plot_run_id_file is not None:
+        if plotting_run_ids is None and plot_run_id_file is not None:
             plotting_run_ids = [
                 line.strip()
                 for line in plot_run_id_file.read_text().splitlines()
-                if line.strip() and not line.strip().startswith("#")
+                if line.strip()
             ]
 
         if plotting_run_ids is not None:

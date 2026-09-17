@@ -102,8 +102,7 @@ class MetricPlots:
         config_yaml: Path,
         inpred_nomenclature: Path,
         input_glob: str,
-        run_ids: str | list[str] | None = None,
-        run_id_file: Path | None = None,
+        run_ids: list[str] | None = None,
     ):
         """Initialize metric plot processing.
 
@@ -111,24 +110,15 @@ class MetricPlots:
             config_yaml: Workflow configuration file.
             inpred_nomenclature: InPreD nomenclature file.
             input_glob: Glob matching workflow output roots.
-            workdir: Output directory.
-            run_ids: Comma-separated string or list of run IDs.
-            run_id_file: File containing run IDs.
+            run_ids: Run IDs to process. If not provided, all runs matched by
+                input_glob are used.
         """
-
-        # although typer checks for mutual exclusivity, we also check here to ensure that the class is used correctly from other contexts
-        if run_ids is not None and run_id_file is not None:
-            logger.error("run_ids and run_id_file are mutually exclusive.")
-            raise ValueError
 
         self.config_yaml = Path(config_yaml)
         self.inpred_nomenclature = Path(inpred_nomenclature)
         self.input_glob = input_glob
 
-        self.run_ids = self._resolve_run_ids(
-            run_ids=run_ids,
-            run_id_file=run_id_file,
-        )
+        self.run_ids = self._resolve_run_ids(run_ids)
 
         self.input_roots: list[Path] = []
 
@@ -254,16 +244,12 @@ class MetricPlots:
 
     def _resolve_run_ids(
         self,
-        run_ids: str | list[str] | None,
-        run_id_file: Path | None,
+        run_ids: list[str] | None,
     ) -> list[str]:
-        """Resolve run IDs from CLI input, file input, or the input glob."""
+        """Resolve run IDs from explicit input or the input glob."""
 
         if run_ids is not None:
-            selected_run_ids = self._parse_run_id_input(run_ids)
-
-        elif run_id_file is not None:
-            selected_run_ids = self._read_run_id_file(run_id_file)
+            selected_run_ids = run_ids
 
         else:
             input_roots = self._glob_input_roots()
@@ -294,47 +280,6 @@ class MetricPlots:
         )
 
         return unique_run_ids
-
-    def _read_run_id_file(
-        self,
-        run_id_file: Path,
-    ) -> list[str]:
-        """Read one or more run IDs from a text file."""
-
-        if not run_id_file.is_file():
-            logger.error(f"Run ID file does not exist: {run_id_file}.")
-            raise FileNotFoundError
-
-        run_ids: list[str] = []
-
-        with run_id_file.open(
-            encoding="utf-8",
-        ) as handle:
-            for line in handle:
-                cleaned = line.strip()
-
-                if not cleaned or cleaned.startswith("#"):
-                    continue
-
-                run_ids.extend(self._parse_run_id_input(cleaned))
-
-        return run_ids
-
-    @staticmethod
-    def _parse_run_id_input(
-        run_ids: str | list[str],
-    ) -> list[str]:
-        """Parse comma-separated or list-based run IDs."""
-        if isinstance(run_ids, str):
-            values = run_ids.split(",")
-        else:
-            values = [item for value in run_ids for item in value.split(",")]
-
-        return [
-            value.strip().strip('"').strip("'")
-            for value in values
-            if value.strip() and not value.strip().startswith("#")
-        ]
 
     def _load_metrics_outputs(
         self,

@@ -99,7 +99,7 @@ RUN002
 RUN003
 ```
 
-Blank lines and lines beginning with `#` are ignored. A line may also contain comma-separated run IDs.
+Blank lines are ignored. A line may also contain comma-separated run IDs.
 
 Duplicate IDs are removed while preserving their first occurrence.
 
@@ -189,7 +189,7 @@ RUN002
 RUN004
 ```
 
-Blank lines and comment lines are ignored.
+Blank lines are ignored.
 
 ## CLI options
 
