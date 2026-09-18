@@ -44,8 +44,7 @@ class CommonOptions:
 def main(
     ctx: typer.Context,
     config: Annotated[
-        Path | None, typer.Option(
-            "--config", help="Path to tsoppy config file.")
+        Path | None, typer.Option("--config", help="Path to tsoppy config file.")
     ] = None,
     nomenclature: Annotated[
         Path | None,
