@@ -80,7 +80,7 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 │   │   └── <subpackage>_<module>/
 │   │       └── <function>/
 │   │           └── <test case name>.py
-│   └── test_<subpackage>_<module>.py
+│   └── <subpackage>_<module>_test.py
 ├── CODEOWNERS -> specifying who is responsible
 ├── Dockerfile -> build recipe for docker
 ├── LICENSE -> license that we agreed on in InPreD bioinfo group
