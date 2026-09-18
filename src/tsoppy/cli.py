@@ -43,8 +43,9 @@ def nomenclature_callback(value: Path | None) -> Path:
 def main(
     ctx: typer.Context,
     config: Annotated[
-        Path, typer.Option("--config", help="Path to tsoppy config file.", exists=True)
-    ],
+        Path | None, typer.Option(
+            "--config", help="Path to tsoppy config file.")
+    ] = None,
     nomenclature: Annotated[
         Path | None,
         typer.Option(
