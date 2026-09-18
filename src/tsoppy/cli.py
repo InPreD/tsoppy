@@ -1,14 +1,14 @@
 """This module contains the CLI commands for tsoppy."""
 
-from tsoppy.metric_plots.plotting import Generate_qc_plots
-from tsoppy.metric_plots.main import MetricPlots
-import typer
-from typing import Annotated
-from pathlib import Path
-from dataclasses import dataclass
-from enum import Enum
-import logging
 import importlib.metadata
+import logging
+from enum import Enum
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Annotated
+import typer
+from tsoppy.metric_plots.main import MetricPlots
+from tsoppy.metric_plots.plotting import Generate_qc_plots
 
 
 app = typer.Typer()
