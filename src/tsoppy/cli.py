@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
 from urllib import request
+from tsoppy.general.classes import WorkflowOutput
 
 import typer
 
@@ -23,20 +24,20 @@ class CommonOptions:
     config: Path
 
 
-def nomenclature_callback(value: Path | None) -> Path:
-    """
-    Callback function to provide fallback to nomenclature.yaml available on GitHub in case of missing or non-existent file.
-    """
-    if value is None or not value.exists():
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        # TODO: Update url when PR is merged to main branch
-        request.urlretrieve(
-            "https://raw.githubusercontent.com/InPreD/reference/refs/heads/5-add-inpred-nomenclature/InPreD/sample_id_nomenclature/v4/nomenclature.yaml",
-            temp_file.name,
-        )
-        return Path(temp_file.name)
-    else:
-        return value
+# TODO: Update url when PR is merged to main branch and uncomment this section
+# def nomenclature_callback(value: Path | None) -> Path:
+#    """
+#    Callback function to provide fallback to nomenclature.yaml available on GitHub in case of missing or non-existent file.
+#    """
+#    if value is None or not value.exists():
+#        temp_file = tempfile.NamedTemporaryFile(delete=False)
+#        request.urlretrieve(
+#            "https://raw.githubusercontent.com/InPreD/reference/refs/heads/5-add-inpred-nomenclature/InPreD/sample_id_nomenclature/v4/nomenclature.yaml",
+#            temp_file.name,
+#        )
+#        return Path(temp_file.name)
+#    else:
+#        return value
 
 
 @app.callback()
@@ -51,7 +52,7 @@ def main(
         typer.Option(
             "--nomenclature",
             help="Path to inpred nomenclature file.",
-            callback=nomenclature_callback,
+            # callback=nomenclature_callback,
         ),
     ] = None,
 ):
