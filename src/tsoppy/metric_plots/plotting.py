@@ -63,6 +63,10 @@ _REQUIRED_FIELDS_BY_KIND = {
         "color_var",
         "label_var",
     },
+    "pipeline_completion": {
+        "dna_spec",
+        "rna_spec",
+    },
 }
 
 SUPPORTED_WORKFLOWS = {
@@ -793,6 +797,57 @@ def _render_bar_plot(
     )
 
 
+def _render_pipeline_completion(
+    pdf_handle: PdfPages,
+    spec: dict,
+    tables: dict,
+    workflow: str,
+) -> None:
+    """Render DNA and RNA pipeline completion as two stacked panels on one page."""
+
+    dna_data = _prepare_bar_plot_data(
+        tables["dna_data_table"],
+        spec["dna_spec"],
+    ).with_columns(pl.lit("DNA").alias("ASSAY"))
+
+    rna_data = _prepare_bar_plot_data(
+        tables["rna_data_table"],
+        spec["rna_spec"],
+    ).with_columns(pl.lit("RNA").alias("ASSAY"))
+
+    plot_data = pl.concat([dna_data, rna_data], how="diagonal")
+
+    if spec.get("skip_if_empty") and plot_data.is_empty():
+        return
+
+    plot_x_var = (
+        "PLOT_SAMPLE_ID" if "PLOT_SAMPLE_ID" in plot_data.columns else "SAMPLE_ID"
+    )
+    plot_fill_var = "PLOT_RUN" if "PLOT_RUN" in plot_data.columns else "RUN"
+    plot_x_lab = (
+        "Run index | Sample ID" if plot_x_var == "PLOT_SAMPLE_ID" else "Sample ID"
+    )
+
+    plot = Plot_bar_metric(
+        data=plot_data,
+        x_var=plot_x_var,
+        y_var="COMPLETED_ALL_STEPS",
+        fill_var=plot_fill_var,
+        guide_title="Run",
+        x_lab=plot_x_lab,
+        y_lab="Pipeline completion",
+        title=_resolve_plot_title(spec, workflow),
+        x_lab_angle=spec.get("x_lab_angle", ANGLE_X_NAMES),
+        fig_size=spec.get("fig_size", (15, 10)),
+        facet_var="ASSAY",
+    )
+
+    _save_plot(
+        pdf_handle,
+        plot,
+    )
+
+
 def _render_cluster_density_scatter(
     pdf_handle: PdfPages,
     spec: dict,
@@ -1021,6 +1076,10 @@ def _render_plot(
 
     if plot_kind == "contamination_scatter":
         _render_contamination_scatter(pdf_handle, spec, tables, workflow)
+        return
+
+    if plot_kind == "pipeline_completion":
+        _render_pipeline_completion(pdf_handle, spec, tables, workflow)
         return
 
     logger.error(f"Unsupported plot kind for {spec_name}: {plot_kind}")

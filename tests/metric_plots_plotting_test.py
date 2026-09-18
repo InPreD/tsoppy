@@ -1782,12 +1782,12 @@ def test_dragen_contamination_scatter_is_disabled():
 
 
 def test_dragen_contamination_score_bar_is_enabled():
-    """DRAGEN uses contamination-score bar plot at index 10."""
+    """DRAGEN uses contamination-score bar plot at index 20."""
     spec = PLOT_SPECS["DNA_CONTAMINATION_SCORE"]
 
     assert spec["dragen"] == {
         "plot": True,
-        "index": 10,
+        "index": 20,
     }
 
     assert spec["localapp"] == {

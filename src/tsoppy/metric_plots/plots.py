@@ -8,6 +8,7 @@ from plotnine import (
     coord_cartesian,
     element_line,
     element_text,
+    facet_wrap,
     geom_col,
     geom_hline,
     geom_point,
@@ -72,8 +73,15 @@ def Plot_bar_metric(
     hline_size: float = HV_LINE_SIZE,
     ann_y_offset: float = 0.0,
     y_tick_step: int | float | None = None,
+    facet_var: str | None = None,
 ) -> ggplot:
-    """Create a reusable QC metric bar plot."""
+    """Create a reusable QC metric bar plot.
+
+    facet_var, when given, stacks one panel per distinct value of that column
+    (e.g. splitting DNA/RNA onto one page) instead of drawing a single panel.
+    Each panel gets its own x-axis category set, since the panels typically
+    cover different, non-overlapping samples.
+    """
 
     plot = (
         ggplot(data, aes(x=x_var, y=y_var))
@@ -108,12 +116,16 @@ def Plot_bar_metric(
                 ha="left",
             ),
         )
-        + scale_x_discrete(
+    )
+
+    if facet_var is not None:
+        plot = plot + facet_wrap(f"~{facet_var}", ncol=1, scales="free_x")
+    else:
+        plot = plot + scale_x_discrete(
             limits=(data.get_column(x_var).unique(maintain_order=True).to_list()),
             breaks=(data.get_column(x_var).unique(maintain_order=True).to_list()),
             expand=(0.05, 0, 0.1, 0),
         )
-    )
 
     if y_tick_step is not None and y_tick_step > 0:
         data_max = data.select(
