@@ -93,7 +93,7 @@ We decided to go with option 1 due as it makes the code DRYer and the tool is mo
 
 ## Consequences
 
-We need to implement the common input options to make them available for all subcommands that require those.
+We need to implement the common input options to make them available for all subcommands.
 
 ### Positive
 
@@ -102,6 +102,7 @@ We need to implement the common input options to make them available for all sub
 ### Negative
 
 - the parameters have to be provided prior to calling the subcommand
+- the options are part of all subcommands so they cannot be required by default - subcommands need to check that option is properly set if necessary.
 
 ### Neutral
 
