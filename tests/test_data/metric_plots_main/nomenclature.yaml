@@ -1,0 +1,107 @@
+format: "PPPyyyy-Ann-Sxz-Mll"
+project_code:
+  code: PPP
+  choices:
+    IPA: "InPreD AHUS"
+    IPD: "InPreD OUS"
+    IPH: "InPreD HUS"
+    IPO: "InPreD St. Olav"
+patient_code:
+  code: yyyy
+nucleic_acid_input_type_code:
+  code: A
+  choices:
+    C: "Cell-free samples"
+    D: "DNA"
+    R: "RNA"
+assay_type_code:
+  code: nn
+  choices:
+    "01": "TSO500 DNA"
+    "02": "Archer FusionPlex Lung assay"
+    "03": "TSO500 RNA"
+    "04": "EPIC DNA methylation"
+    "05": "Whole-genome DNA sequencing (WGS)"
+    "06": "TSO500 HRD (TSO500 solid + HRD)"
+    "07": "Whole-transcriptome RNA sequencing (WTS)"
+    "50": "[External] Twist Human Core Exome Plus (DNA)"
+    "51": "[External] TruSeq Stranded mRNA"
+sample_type_code:
+  code: S
+  choices:
+    A: "Post Allotransplantation"
+    C: "Cell-line"
+    D: "Distal metastasis, naive"
+    d: "Distal metastasis, post-treatment"
+    E: "Naive"
+    e: "Post treatment"
+    L: "Liquid"
+    M: "Metastasis"
+    N: "Normal/control"
+    P: "Primary tumor, naive"
+    p: "Primary tumor, post-treatment"
+    R: "Regional metastasis, naive"
+    r: "Regional metastasis, post-treatment"
+    T: "Primary tumor"
+    X: "Unknown"
+library_preparation_attempt:
+  code: x
+  choices:
+    "0": "First try"
+    "1": "Second try (e.g., after cleaning, new extraction)"
+    "2": "Third try"
+    "3": "Fourth try"
+    "4": "Fifth try"
+    "5": "Sixth try"
+    "6": "Seventh try"
+    "7": "Eighth try"
+    "8": "Nineth try"
+    "9": "Validation/verification test;"
+biological_replicate:
+  code: z
+sample_material:
+  code: M
+  choices:
+    A: "Archived (FFPE)"
+    B: "Blood"
+    C: "Cytology"
+    E: "Extramedullary"
+    F: "Fresh Frozen"
+    M: "Fresh bone Marrow"
+    S: "Buccal Swab"
+    X: "Unknown"
+tumor_site:
+  code: ll
+  choices:
+    "00": "Cancer origo incerta"
+    "01": "Adrenal Gland"
+    "02": "Ampulla of Vater"
+    "03": "Biliary Tract"
+    "04": "Bladder/Urinary Tract"
+    "05": "Bone"
+    "06": "Breast"
+    "07": "Cervix"
+    "08": "CNS/Brain"
+    "09": "Colon/Rectum"
+    "10": "Esophagus/Stomach"
+    "11": "Eye"
+    "12": "Head and Neck"
+    "13": "Kidney"
+    "14": "Liver"
+    "15": "Lung"
+    "16": "Lymphoid"
+    "17": "Myeloid"
+    "18": "Ovary/Fallopian Tube"
+    "19": "Pancreas"
+    "20": "Peripheral Nervous System"
+    "21": "Peritoneum"
+    "22": "Pleura"
+    "23": "Prostate"
+    "24": "Skin"
+    "25": "Soft Tissue"
+    "26": "Testis"
+    "27": "Thymus"
+    "28": "Thyroid"
+    "29": "Uterus"
+    "30": "Vulva/Vagina"
+    "XX": "Unknown"
