@@ -282,21 +282,6 @@ Columns are:
 
 Metrics unavailable for a workflow are represented as `NA`.
 
-## In-memory plotting data
-
-`select_plot_data()` returns:
-
-```text
-plot_frame
-plot_joint_qc
-```
-
-`plot_frame` contains the selected rows from the master table.
-
-`plot_joint_qc` contains matching sequencing-QC rows.
-
-These DataFrames are passed directly to `Generate_qc_plots()`, which renders them to the output PDF — see [Design](../references/metric_plots_architecture.md#design) for why plotting only ever consumes standardized in-memory tables rather than reading workflow outputs itself.
-
 ## Complete examples
 
 Generate tables only:
