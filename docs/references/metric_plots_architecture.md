@@ -29,31 +29,19 @@ Stadium = CLI entry point, subroutine boxes = classes, cylinder = the standardiz
 
 ## Components
 
-### CLI
+### `cli.py`
 
-The CLI validates user input, creates `MetricPlots`, generates the metrics tables, and optionally requests plotting.
+The `metric-plots` command in `cli.py` validates command-line input, creates `MetricPlots`, generates the metrics tables, and optionally requests plotting. Metric transformation logic itself lives in `MetricPlots`, not in `cli.py`.
 
-Metric transformation logic is kept outside the CLI.
+### `WorkflowOutput`, `MetricsOutputTsv`, `MetricPlots`
 
-### `WorkflowOutput`
+Class descriptions are documented in [Functions and classes](./functions_and_classes.md#classes).
 
-`WorkflowOutput` represents a workflow output directory and provides the workflow-aware context needed to locate downstream files.
-
-### `MetricsOutputTsv`
-
-`MetricsOutputTsv` parses individual `MetricsOutput.tsv` files and exposes their metric sections together with workflow type and version.
-
-### `MetricPlots`
-
-`MetricPlots` normalizes metrics from different TSO500 workflows into a common representation.
-
-It is responsible for combining selected runs, assigning run metadata, creating the master metrics table and joint sequencing QC table, and selecting data for plotting. The exact run- and plot-selection rules are documented in [Selecting runs](../guides/metric_plots.md#selecting-runs) and [Selecting runs for plotting](../guides/metric_plots.md#selecting-runs-for-plotting) in the user guide.
+`MetricPlots`'s exact run- and plot-selection rules are documented in [Selecting runs](../guides/metric_plots.md#selecting-runs) and [Selecting runs for plotting](../guides/metric_plots.md#selecting-runs-for-plotting) in the user guide.
 
 ### Plotting
 
 The plotting layer consumes standardized Polars DataFrames.
-
-It does not discover workflow outputs or parse `MetricsOutput.tsv` files.
 
 Plot definitions live in `PLOT_SPECS` (`plot_specs_workflows.py`), a declarative table listing every plot's title, page index, and data source per workflow. The rendering functions themselves are workflow-agnostic: the same code renders a plot for both DRAGEN and LocalApp, driven entirely by which `PLOT_SPECS` entries apply to the selected workflow.
 
@@ -63,7 +51,7 @@ Metrics from DRAGEN and LocalApp are normalized into a common schema before plot
 
 The master table's exact columns, metric naming convention, and record types are documented in the [metric plots user guide](../guides/metric_plots.md#master_metrics_tabletsv).
 
-Sample type is taken from `Sample_Type` in the workflow sample sheet rather than from metric content or sample naming. The sample sheet is the authoritative source because it determines how the upstream analysis was performed.
+Sample type is taken from `Sample_Type` in the workflow sample sheet, which is the authoritative source because it determines how the upstream analysis was performed.
 
 Lower and upper specification limits are represented as threshold records in the standardized data.
 
@@ -77,9 +65,7 @@ When plotting is requested, `select_plot_data()` returns two in-memory tables â€
 
 Runs may be selected explicitly or discovered from the input glob.
 
-Run ordering is resolved before metrics from individual workflow outputs are combined. `RUN_INDEX` records that resolved order and does not depend on filesystem glob ordering.
-
-Workflow-specific plotting operates on the standardized tables rather than rereading workflow outputs.
+Run ordering is resolved before metrics from individual workflow outputs are combined. `RUN_INDEX` records that resolved order.
 
 Detailed run-selection behavior belongs in the user guide: [Selecting runs](../guides/metric_plots.md#selecting-runs), [Run order and `RUN_INDEX`](../guides/metric_plots.md#run-order-and-run_index), and [Selecting runs for plotting](../guides/metric_plots.md#selecting-runs-for-plotting).
 
