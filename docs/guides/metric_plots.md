@@ -267,18 +267,18 @@ The joint QC table contains one row per run and workflow.
 
 Columns are:
 
-```text
-RUN_INDEX
-RUN_ID
-WORKFLOW_TYPE
-WORKFLOW_VERSION
-PCT_PF_READS
-PCT_Q30_R1
-PCT_Q30_R2
-CLUSTER_DENSITY
-ESTIMATED_YIELD
-CLUSTERS_PASSING_FILTER
-```
+| Column | Description |
+|---|---|
+| `RUN_INDEX` | Run-order index; `001` is the last run in the resolved run order |
+| `RUN_ID` | Sequencing run ID |
+| `WORKFLOW_TYPE` | Detected workflow type |
+| `WORKFLOW_VERSION` | Detected workflow version |
+| `PCT_PF_READS` | Percentage of PF reads |
+| `PCT_Q30_R1` | Percentage of R1 reads with quality >= 30 |
+| `PCT_Q30_R2` | Percentage of R2 reads with quality >= 30 |
+| `CLUSTER_DENSITY` | Cluster density |
+| `ESTIMATED_YIELD` | Estimated yield |
+| `CLUSTERS_PASSING_FILTER` | Clusters passing filter |
 
 Metrics unavailable for a workflow are represented as `NA`.
 
