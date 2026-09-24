@@ -57,7 +57,7 @@ Lower and upper specification limits are represented as threshold records in the
 
 ## Outputs
 
-The exact files the command writes are documented in [Generated outputs](../guides/metric_plots.md#generated-outputs) in the user guide.
+The exact output files of the command are documented in [Generated outputs](../guides/metric_plots.md#generated-outputs) in the user guide.
 
 When plotting is requested, `select_plot_data()` returns two in-memory tables — `plot_frame` (selected rows from the master table) and `plot_joint_qc` (matching sequencing-QC rows) — which are passed directly to `Generate_qc_plots()`. Temporary plotting tables are not written to disk.
 
