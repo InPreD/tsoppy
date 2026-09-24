@@ -329,6 +329,12 @@ tsoppy metric-plots \
 
 ### The input glob matches nothing
 
+```text
+ERROR: Input glob did not match any workflow output directories: results/*/*
+```
+
+This means `--input-glob` did not match any workflow output directory for the requested run(s). It usually happens when the glob points directly at `MetricsOutput.tsv` files or a parent directory instead of the workflow output directories themselves, or when the final directory name does not exactly equal the requested run ID (a glob matching `RUN01` will not match `RUN010`).
+
 Check that it points to workflow directories, not directly to metrics files:
 
 ```bash
@@ -339,11 +345,19 @@ The final directory name must exactly equal the requested run ID.
 
 ### A requested plot run is skipped
 
-The run may be part of the master run list but unavailable for the selected workflow. The command logs a warning and continues with available requested runs.
+```text
+WARNING: The following run IDs are not available for dragen and will be skipped: RUN005, RUN006
+```
+
+The run is part of the master run list but has no data for the selected `--plot-workflow`. This happens when a run was only processed by one workflow (e.g. only LocalApp), but `--plot-run-ids`/`--plot-run-id-file` requested it while plotting the other workflow. The command logs this warning and continues with the remaining available requested runs; no action is needed unless the run was expected to have data for that workflow.
 
 ### Plot workflow is missing
 
-When using a plot selector, add:
+```text
+Invalid value: --plot-workflow is required when plotting is requested.
+```
+
+A plot selector (`--plot-last-runs`, `--plot-run-ids`, or `--plot-run-id-file`) was given without `--plot-workflow`, so the command cannot tell which workflow's runs to plot. Add:
 
 ```bash
 --plot-workflow dragen
