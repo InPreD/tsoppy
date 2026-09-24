@@ -10,7 +10,6 @@ dist/
 venv/
 .venv/
 .gitignore
-docker-compose.yml
 
 # IDE
 .project
