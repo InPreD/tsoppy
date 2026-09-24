@@ -13,10 +13,10 @@ The implementation separates workflow discovery, metrics parsing, normalization,
 ```mermaid
 %%{init: {'flowchart': {'defaultRenderer': 'diagre-wrapper'}} }%%
 flowchart TD
-    CLI([CLI]) --> WorkflowOutput[[WorkflowOutput]]
+    CLI([CLI]) --> MetricPlots[[MetricPlots]]
+    MetricPlots --> WorkflowOutput[[WorkflowOutput]]
     WorkflowOutput --> MetricsOutputTsv[[MetricsOutputTsv]]
-    MetricsOutputTsv --> MetricPlots[[MetricPlots]]
-    MetricPlots --> Tables[(Standardized metrics tables)]
+    MetricsOutputTsv --> Tables[(Standardized metrics tables)]
     Tables --> MasterFile[/master_metrics_table.tsv/]
     Tables --> JointQcFile[/joint_sequencing_QC_file.tsv/]
     Tables --> PlotSelection[Plot-data selection]
@@ -25,7 +25,12 @@ flowchart TD
     Plotting --> PdfFile[/"workflow_metric_plots.pdf"/]
 ```
 
-Stadium = CLI entry point, subroutine boxes = classes, cylinder = the standardized in-memory tables (`master`/`joint_qc`), parallelogram = files written to disk.
+Shapes:
+
+- Stadium: CLI entry point
+- Subroutine box: class
+- Cylinder: standardized in-memory tables (`master`/`joint_qc`)
+- Parallelogram: file written to disk
 
 ## Components
 
