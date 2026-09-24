@@ -1,9 +1,30 @@
-*.egg-info
-.mypy_cache
-.ruff_cache
-__pycache__
-build
-dist
-venv
+# Python build/cache
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+*.pyo
+build/
+dist/
+venv/
+.venv/
+.gitignore
+
+# IDE
 .project
 .pydevproject
+.vscode/
+
+# macOS
+.DS_Store
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# Temporary files
+*.swp
+*.tmp
+

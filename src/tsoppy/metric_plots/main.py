@@ -1,0 +1,960 @@
+"""Create standardized TSO500 metrics tables."""
+
+from __future__ import annotations
+
+import logging
+from glob import glob
+from pathlib import Path
+
+import polars as pl
+
+from tsoppy.general.classes import MetricsOutputTsv, WorkflowOutput
+
+logger = logging.getLogger(__name__)
+
+
+class MetricPlots:
+    """Create metrics tables and prepare data for QC plotting.
+
+    Attributes:
+        config_yaml: Workflow output configuration path.
+        inpred_nomenclature: InPreD nomenclature configuration path.
+        input_glob: Glob pattern matching workflow output roots.
+        input_roots: Workflow roots resolved from input_glob.
+        run_ids: Run IDs selected for processing.
+    """
+
+    METRIC_COL = "Metric (UOM)"
+    LSL_COL = "LSL Guideline"
+    USL_COL = "USL Guideline"
+    VALUE_COL = "Value"
+
+    LSL_SAMPLE_ID = "LSL_Guideline"
+    USL_SAMPLE_ID = "USL_Guideline"
+    RUN_VALUE_ID = "__RUN_VALUE__"
+
+    LOWER_THRESHOLD = "LOWER_THRESHOLD"
+    UPPER_THRESHOLD = "UPPER_THRESHOLD"
+    DNA_SAMPLE = "DNA_SAMPLE"
+    RNA_SAMPLE = "RNA_SAMPLE"
+    UNKNOWN_SAMPLE = "SAMPLE"
+
+    SAMPLESHEET_SAMPLE_ID_COL = "Sample_ID"
+    PAIR_ID_COL = "Pair_ID"
+    SAMPLE_TYPE_COL = "Sample_Type"
+    SAMPLESHEET_DNA_VALUE = "DNA"
+    SAMPLESHEET_RNA_VALUE = "RNA"
+
+    RUN_INDEX = "RUN_INDEX"
+
+    MASTER_METRICS_TABLE_PATH = Path("master_metrics_table.tsv")
+    JOINT_QC_TABLE_PATH = Path("joint_sequencing_QC_file.tsv")
+
+    DEFAULT_PLOT_LAST_RUNS = 10
+
+    IGNORED_SECTIONS = {
+        "Header",
+        "Notes",
+    }
+
+    MISSING_VALUES = [
+        "",
+        "-",
+        "NA",
+        "N/A",
+        "nan",
+        "None",
+    ]
+
+    METADATA_COLUMNS = [
+        RUN_INDEX,
+        "SAMPLE_ID",
+        "RUN",
+        "WORKFLOW_TYPE",
+        "WORKFLOW_VERSION",
+        "RECORD_TYPE",
+    ]
+
+    JOINT_QC_METRICS = [
+        "PCT_PF_READS",
+        "PCT_Q30_R1",
+        "PCT_Q30_R2",
+        "CLUSTER_DENSITY",
+        "ESTIMATED_YIELD",
+        "CLUSTERS_PASSING_FILTER",
+    ]
+
+    JOINT_QC_COLUMNS = [
+        "RUN_INDEX",
+        "RUN_ID",
+        "WORKFLOW_TYPE",
+        "WORKFLOW_VERSION",
+        "PCT_PF_READS",
+        "PCT_Q30_R1",
+        "PCT_Q30_R2",
+        "CLUSTER_DENSITY",
+        "ESTIMATED_YIELD",
+        "CLUSTERS_PASSING_FILTER",
+    ]
+
+    def __init__(
+        self,
+        config_yaml: Path,
+        inpred_nomenclature: Path,
+        input_glob: str,
+        run_ids: list[str] | None = None,
+    ):
+        """Initialize metric plot processing.
+
+        Args:
+            config_yaml: Workflow configuration file.
+            inpred_nomenclature: InPreD nomenclature file.
+            input_glob: Glob matching workflow output roots.
+            run_ids: Run IDs to process. If not provided, all runs matched by
+                input_glob are used.
+        """
+
+        self.config_yaml = Path(config_yaml)
+        self.inpred_nomenclature = Path(inpred_nomenclature)
+        self.input_glob = input_glob
+
+        self.run_ids = self._resolve_run_ids(run_ids)
+
+        self.input_roots: list[Path] = []
+
+    def __eq__(self, other):
+        """Assess if two instances of this class are equal."""
+        if not isinstance(other, MetricPlots):
+            return False
+        attr_to_compare = [
+            "config_yaml",
+            "inpred_nomenclature",
+            "input_glob",
+            "run_ids",
+            "input_roots",
+        ]
+        return all(vars(self).get(k) == vars(other).get(k) for k in attr_to_compare)
+
+    def generate_metrics_tables(
+        self,
+    ) -> tuple[
+        pl.DataFrame,
+        pl.DataFrame,
+    ]:
+        """Create and write master and joint QC tables."""
+        logger.info(
+            "Generating metrics tables for %d run(s).",
+            len(self.run_ids),
+        )
+        metrics_outputs = self._load_metrics_outputs()
+
+        run_frames = [
+            self._transform_metrics_output(
+                run_id=run_id,
+                metrics_output=metrics_output,
+            )
+            for run_id, metrics_output in metrics_outputs
+        ]
+
+        master = self._combine_runs(run_frames)
+        master = self._add_run_index(
+            master,
+            run_column="RUN",
+        )
+        master = self._finalize_frame(master)
+
+        joint_qc = self._create_joint_qc(master)
+
+        master_path = self.MASTER_METRICS_TABLE_PATH
+        joint_qc_path = self.JOINT_QC_TABLE_PATH
+
+        master.write_csv(
+            master_path,
+            separator="\t",
+        )
+        joint_qc.write_csv(
+            joint_qc_path,
+            separator="\t",
+        )
+
+        logger.info(
+            "Generated %d master rows and %d joint QC rows.",
+            master.height,
+            joint_qc.height,
+        )
+
+        return master, joint_qc
+
+    def select_plot_data(
+        self,
+        master: pl.DataFrame,
+        joint_qc: pl.DataFrame,
+        workflow_type: str,
+        plot_last_runs: int | None = None,
+        plot_run_ids: list[str] | None = None,
+    ) -> tuple[pl.DataFrame, pl.DataFrame]:
+        """Prepare workflow-specific metrics and joint QC rows for plotting."""
+
+        workflow_frame = master.filter(pl.col("WORKFLOW_TYPE") == workflow_type)
+
+        available_runs = (
+            workflow_frame.select("RUN")
+            .unique(maintain_order=True)
+            .get_column("RUN")
+            .to_list()
+        )
+
+        if plot_last_runs is not None:
+            selected_runs = available_runs[-plot_last_runs:]
+
+        elif plot_run_ids is not None:
+            missing_runs = [
+                run_id for run_id in plot_run_ids if run_id not in available_runs
+            ]
+
+            if missing_runs:
+                logger.warning(
+                    "The following run IDs are not available for %s "
+                    "and will be skipped: %s",
+                    workflow_type,
+                    ", ".join(missing_runs),
+                )
+
+            selected_runs = [
+                run_id for run_id in plot_run_ids if run_id in available_runs
+            ]
+
+        else:
+            selected_runs = available_runs[-self.DEFAULT_PLOT_LAST_RUNS :]
+
+        logger.info(
+            "Selected %d %s run(s) for plotting.",
+            len(selected_runs),
+            workflow_type,
+        )
+
+        plot_frame = workflow_frame.filter(pl.col("RUN").is_in(selected_runs))
+
+        plot_joint_qc = joint_qc.filter(
+            (pl.col("WORKFLOW_TYPE") == workflow_type)
+            & pl.col("RUN_ID").is_in(selected_runs)
+        )
+
+        return plot_frame, plot_joint_qc
+
+    def _resolve_run_ids(
+        self,
+        run_ids: list[str] | None,
+    ) -> list[str]:
+        """Resolve run IDs from explicit input or the input glob."""
+
+        if run_ids is not None:
+            selected_run_ids = run_ids
+
+        else:
+            input_roots = self._glob_input_roots()
+
+            selected_run_ids = sorted({root.name for root in input_roots})
+
+            if not selected_run_ids:
+                logger.error(
+                    "Input glob did not match any workflow output directories: "
+                    f"{self.input_glob}"
+                )
+                raise FileNotFoundError
+
+            logger.info(
+                "No run IDs provided; using all %d run ID(s) matched by input glob.",
+                len(selected_run_ids),
+            )
+
+        unique_run_ids = list(dict.fromkeys(selected_run_ids))
+
+        if not unique_run_ids:
+            logger.error("No run IDs could be resolved.")
+            raise ValueError
+
+        logger.info(
+            "Selected %d unique run ID(s).",
+            len(unique_run_ids),
+        )
+
+        return unique_run_ids
+
+    def _load_metrics_outputs(
+        self,
+    ) -> list[tuple[str, MetricsOutputTsv]]:
+        """Load all configured workflow outputs for selected runs."""
+        self._validate_inputs()
+
+        outputs: list[tuple[str, MetricsOutputTsv]] = []
+
+        for run_id in self.run_ids:
+            run_roots = self._find_run_roots(run_id)
+
+            if not run_roots:
+                logger.error(f"No workflow output root found for run {run_id}.")
+                raise FileNotFoundError
+
+            loaded_for_run = 0
+
+            for root in run_roots:
+                try:
+                    workflow_output = WorkflowOutput(
+                        config_yaml=self.config_yaml,
+                        inpred_nomenclature=self.inpred_nomenclature,
+                        root_path=root,
+                    )
+
+                    metrics_output = MetricsOutputTsv.create(workflow_output)
+
+                except (
+                    FileNotFoundError,
+                    KeyError,
+                    ValueError,
+                ) as error:
+                    logger.debug(f"Skipping workflow root {root}: {error}")
+                    continue
+
+                outputs.append(
+                    (
+                        run_id,
+                        metrics_output,
+                    )
+                )
+                loaded_for_run += 1
+
+                logger.info(
+                    f"Loaded {metrics_output.workflow_type} "
+                    f"{metrics_output.workflow_version} "
+                    f"for run {run_id} from {metrics_output.path}."
+                )
+
+            if loaded_for_run == 0:
+                logger.error(f"No valid MetricsOutput.tsv found for run {run_id}.")
+                raise FileNotFoundError
+
+        return outputs
+
+    def _glob_input_roots(
+        self,
+    ) -> list[Path]:
+        """Return unique workflow roots matched by the input glob."""
+
+        return list(
+            dict.fromkeys(
+                Path(match)
+                for match in glob(
+                    self.input_glob,
+                    recursive=True,
+                )
+                if Path(match).is_dir()
+            )
+        )
+
+    def _validate_inputs(
+        self,
+    ) -> None:
+        """Validate required inputs and resolve workflow roots."""
+
+        for path, description in [
+            (
+                self.config_yaml,
+                "workflow configuration",
+            ),
+            (
+                self.inpred_nomenclature,
+                "InPreD nomenclature",
+            ),
+        ]:
+            if not path.is_file():
+                logger.error(f"{description} file does not exist: {path}")
+                raise FileNotFoundError
+
+        self.input_roots = self._glob_input_roots()
+
+        if not self.input_roots:
+            logger.error(
+                f"Input glob did not match any workflow output directories: "
+                f"{self.input_glob}"
+            )
+            raise FileNotFoundError
+
+        logger.info(f"Input glob matched {len(self.input_roots)} workflow root(s).")
+
+    def _find_run_roots(
+        self,
+        run_id: str,
+    ) -> list[Path]:
+        """Find glob-matched workflow roots for a selected run ID."""
+
+        return [root for root in self.input_roots if root.name == run_id]
+
+    def _transform_metrics_output(
+        self,
+        run_id: str,
+        metrics_output: MetricsOutputTsv,
+    ) -> pl.DataFrame:
+        """Transform one parsed MetricsOutput.tsv."""
+        sample_frames: list[pl.DataFrame] = []
+        threshold_frames: list[pl.DataFrame] = []
+        run_metric_frames: list[pl.DataFrame] = []
+
+        for (
+            section_name,
+            section,
+        ) in metrics_output.sections.items():
+            if section_name in self.IGNORED_SECTIONS or section.is_empty():
+                continue
+
+            standardized = self._standardize_section(
+                section_name=section_name,
+                section=section,
+            )
+
+            sample_columns = self._sample_columns(standardized)
+
+            if sample_columns:
+                sample_frames.append(
+                    self._section_to_wide(
+                        section=standardized,
+                        value_columns=(sample_columns),
+                    )
+                )
+
+            threshold_frames.append(
+                self._section_to_wide(
+                    section=standardized,
+                    value_columns=[
+                        self.LSL_COL,
+                        self.USL_COL,
+                    ],
+                    identifier_mapping={
+                        self.LSL_COL: (self.LSL_SAMPLE_ID),
+                        self.USL_COL: (self.USL_SAMPLE_ID),
+                    },
+                )
+            )
+
+            if self.VALUE_COL in standardized.columns:
+                run_metric_frames.append(
+                    self._section_to_wide(
+                        section=standardized,
+                        value_columns=[self.VALUE_COL],
+                        identifier_mapping={self.VALUE_COL: (self.RUN_VALUE_ID)},
+                    )
+                )
+
+        samples = self._merge_wide_frames(sample_frames)
+        thresholds = self._merge_wide_frames(threshold_frames)
+        run_metrics = self._merge_wide_frames(run_metric_frames)
+
+        if not run_metrics.is_empty():
+            if run_metrics.height != 1:
+                logger.error(
+                    f"Expected exactly one run-level metrics row for run {run_id}, "
+                    f"found {run_metrics.height}."
+                )
+                raise ValueError
+
+            run_values = run_metrics.drop("SAMPLE_ID")
+
+            if samples.is_empty():
+                logger.warning(f"No sample rows found for run {run_id}.")
+            else:
+                samples = samples.join(
+                    run_values,
+                    how="cross",
+                )
+
+        if not samples.is_empty():
+            samples = self._add_record_type(samples, metrics_output.samples)
+
+        if not thresholds.is_empty():
+            thresholds = thresholds.with_columns(
+                pl.when(pl.col("SAMPLE_ID") == self.LSL_SAMPLE_ID)
+                .then(pl.lit(self.LOWER_THRESHOLD))
+                .otherwise(pl.lit(self.UPPER_THRESHOLD))
+                .alias("RECORD_TYPE")
+            )
+
+        output_frames = [
+            frame
+            for frame in [
+                thresholds,
+                samples,
+            ]
+            if not frame.is_empty()
+        ]
+
+        if not output_frames:
+            logger.error(
+                f"No metric data could be transformed from {metrics_output.path} for run {run_id}."
+            )
+            raise ValueError
+
+        result = pl.concat(
+            output_frames,
+            how="diagonal",
+        ).with_columns(
+            pl.lit(run_id).alias("RUN"),
+            pl.lit(metrics_output.workflow_type).alias("WORKFLOW_TYPE"),
+            pl.lit(str(metrics_output.workflow_version)).alias("WORKFLOW_VERSION"),
+        )
+
+        return self._finalize_frame(result)
+
+    def _standardize_section(
+        self,
+        section_name: str,
+        section: pl.DataFrame,
+    ) -> pl.DataFrame:
+        """Standardize section columns and metric names."""
+        metric_column = section.columns[0]
+
+        if metric_column != self.METRIC_COL:
+            section = section.rename({metric_column: (self.METRIC_COL)})
+
+        for required_column in [
+            self.LSL_COL,
+            self.USL_COL,
+        ]:
+            if required_column not in section.columns:
+                section = section.with_columns(
+                    pl.lit(
+                        None,
+                        dtype=pl.String,
+                    ).alias(required_column)
+                )
+
+        section = section.with_columns(
+            pl.all().cast(
+                pl.String,
+                strict=False,
+            )
+        )
+
+        value_columns = [
+            column for column in section.columns if column != self.METRIC_COL
+        ]
+
+        section = section.with_columns(
+            [
+                pl.when(
+                    pl.col(column).is_null() | pl.col(column).is_in(self.MISSING_VALUES)
+                )
+                .then(
+                    pl.lit(
+                        None,
+                        dtype=pl.String,
+                    )
+                )
+                .otherwise(pl.col(column).str.strip_chars())
+                .alias(column)
+                for column in value_columns
+            ]
+        )
+
+        prefix = self._section_prefix(section_name)
+
+        metric_expression = (
+            pl.col(self.METRIC_COL)
+            .str.strip_chars()
+            .str.replace(
+                r"\s+\(.*$",
+                "",
+            )
+            .str.replace_all(
+                "%",
+                "PCT",
+            )
+            .str.replace_all(
+                r"[^0-9A-Za-z]+",
+                "_",
+            )
+            .str.strip_chars("_")
+        )
+
+        if prefix:
+            metric_expression = (
+                pl.when(metric_expression.str.starts_with(prefix))
+                .then(metric_expression)
+                .otherwise(
+                    pl.concat_str(
+                        [
+                            pl.lit(prefix),
+                            metric_expression,
+                        ]
+                    )
+                )
+            )
+
+        return section.with_columns(metric_expression.alias(self.METRIC_COL)).filter(
+            pl.col(self.METRIC_COL).is_not_null() & (pl.col(self.METRIC_COL) != "")
+        )
+
+    @staticmethod
+    def _section_prefix(
+        section_name: str,
+    ) -> str:
+        """Return the DNA or RNA prefix."""
+        upper_name = section_name.upper()
+
+        if "DNA" in upper_name:
+            return "DNA_"
+
+        if "RNA" in upper_name:
+            return "RNA_"
+
+        return ""
+
+    def _sample_columns(
+        self,
+        section: pl.DataFrame,
+    ) -> list[str]:
+        """Return columns representing samples."""
+        reserved = {
+            self.METRIC_COL,
+            self.LSL_COL,
+            self.USL_COL,
+            self.VALUE_COL,
+            "-",
+        }
+
+        return [column for column in section.columns if column not in reserved]
+
+    def _section_to_wide(
+        self,
+        section: pl.DataFrame,
+        value_columns: list[str],
+        identifier_mapping: (dict[str, str] | None) = None,
+    ) -> pl.DataFrame:
+        """Convert one section into a wide table."""
+        existing_columns = [
+            column for column in value_columns if column in section.columns
+        ]
+
+        if not existing_columns:
+            return pl.DataFrame()
+
+        mapping = identifier_mapping or {}
+
+        long_frame = (
+            section.select(
+                [
+                    self.METRIC_COL,
+                    *existing_columns,
+                ]
+            )
+            .unpivot(
+                index=self.METRIC_COL,
+                on=existing_columns,
+                variable_name="SAMPLE_ID",
+                value_name="VALUE",
+            )
+            .with_columns(pl.col("SAMPLE_ID").replace(mapping).alias("SAMPLE_ID"))
+            .filter(pl.col("VALUE").is_not_null())
+        )
+
+        if long_frame.is_empty():
+            return pl.DataFrame()
+
+        conflicts = (
+            long_frame.group_by(
+                [
+                    "SAMPLE_ID",
+                    self.METRIC_COL,
+                ]
+            )
+            .agg(pl.col("VALUE").n_unique().alias("VALUE_COUNT"))
+            .filter(pl.col("VALUE_COUNT") > 1)
+        )
+
+        if conflicts.height:
+            logger.error(
+                f"Conflicting duplicate metric values were detected for run {section}."
+            )
+            raise ValueError
+
+        return long_frame.pivot(
+            index="SAMPLE_ID",
+            on=self.METRIC_COL,
+            values="VALUE",
+            aggregate_function="first",
+        )
+
+    def _merge_wide_frames(
+        self,
+        frames: list[pl.DataFrame],
+    ) -> pl.DataFrame:
+        """Merge section frames by sample ID."""
+        usable_frames = [frame for frame in frames if not frame.is_empty()]
+
+        if not usable_frames:
+            return pl.DataFrame()
+
+        combined = pl.concat(
+            usable_frames,
+            how="diagonal",
+        )
+
+        value_columns = [column for column in combined.columns if column != "SAMPLE_ID"]
+
+        for column in value_columns:
+            conflicts = (
+                combined.group_by("SAMPLE_ID")
+                .agg(pl.col(column).drop_nulls().n_unique().alias("VALUE_COUNT"))
+                .filter(pl.col("VALUE_COUNT") > 1)
+            )
+
+            if conflicts.height:
+                logger.error(f"Conflicting values detected for metric {column}.")
+                raise ValueError
+
+        return combined.group_by(
+            "SAMPLE_ID",
+            maintain_order=True,
+        ).agg(
+            [
+                pl.col(column).drop_nulls().first().alias(column)
+                for column in value_columns
+            ]
+        )
+
+    def _add_record_type(
+        self,
+        samples: pl.DataFrame,
+        samplesheet: pl.DataFrame,
+    ) -> pl.DataFrame:
+        """Classify sample rows as DNA, RNA, or unknown using the sample sheet's Sample_Type.
+
+        SAMPLE_ID values in the metrics output usually correspond to Pair_ID in
+        the sample sheet, so the lookup tries Pair_ID first and falls back to
+        Sample_ID, per row, for any sample Pair_ID didn't match (e.g. reference/
+        control samples whose Pair_ID doesn't carry the same suffix as their
+        Sample_ID). Metric content and SAMPLE_ID text are not used for
+        classification: analysis is performed based on the sample sheet, so it is
+        the authoritative source for sample type.
+        """
+        if self.SAMPLE_TYPE_COL not in samplesheet.columns:
+            logger.warning(
+                "Sample sheet has no %s column; samples cannot be classified.",
+                self.SAMPLE_TYPE_COL,
+            )
+            return samples.with_columns(
+                pl.lit(self.UNKNOWN_SAMPLE).alias("RECORD_TYPE")
+            )
+
+        joined = samples.join(
+            self._sample_type_lookup(
+                samplesheet, self.SAMPLESHEET_SAMPLE_ID_COL, "_SAMPLE_TYPE_BY_SAMPLE_ID"
+            ),
+            on="SAMPLE_ID",
+            how="left",
+        )
+
+        if self.PAIR_ID_COL in samplesheet.columns:
+            joined = (
+                joined.join(
+                    self._sample_type_lookup(
+                        samplesheet, self.PAIR_ID_COL, "_SAMPLE_TYPE_BY_PAIR_ID"
+                    ),
+                    on="SAMPLE_ID",
+                    how="left",
+                )
+                .with_columns(
+                    pl.coalesce(
+                        ["_SAMPLE_TYPE_BY_PAIR_ID", "_SAMPLE_TYPE_BY_SAMPLE_ID"]
+                    ).alias("_SAMPLE_TYPE")
+                )
+                .drop(["_SAMPLE_TYPE_BY_PAIR_ID", "_SAMPLE_TYPE_BY_SAMPLE_ID"])
+            )
+        else:
+            joined = joined.rename({"_SAMPLE_TYPE_BY_SAMPLE_ID": "_SAMPLE_TYPE"})
+
+        unmatched_ids = (
+            joined.filter(pl.col("_SAMPLE_TYPE").is_null())
+            .get_column("SAMPLE_ID")
+            .unique()
+            .to_list()
+        )
+
+        if unmatched_ids:
+            logger.warning(
+                "No sample sheet %s found for: %s. Classified as %s.",
+                self.SAMPLE_TYPE_COL,
+                ", ".join(unmatched_ids),
+                self.UNKNOWN_SAMPLE,
+            )
+
+        return joined.with_columns(
+            pl.when(pl.col("_SAMPLE_TYPE") == self.SAMPLESHEET_DNA_VALUE)
+            .then(pl.lit(self.DNA_SAMPLE))
+            .when(pl.col("_SAMPLE_TYPE") == self.SAMPLESHEET_RNA_VALUE)
+            .then(pl.lit(self.RNA_SAMPLE))
+            .otherwise(pl.lit(self.UNKNOWN_SAMPLE))
+            .alias("RECORD_TYPE")
+        ).drop("_SAMPLE_TYPE")
+
+    def _sample_type_lookup(
+        self,
+        samplesheet: pl.DataFrame,
+        id_column: str,
+        value_column_name: str,
+    ) -> pl.DataFrame:
+        """Build a deduplicated SAMPLE_ID -> sample type lookup, dropping ambiguous IDs."""
+        sample_types = samplesheet.select(
+            pl.col(id_column).alias("SAMPLE_ID"),
+            pl.col(self.SAMPLE_TYPE_COL)
+            .cast(pl.Utf8)
+            .str.strip_chars()
+            .str.to_uppercase()
+            .alias(value_column_name),
+        ).unique()
+
+        ambiguous_ids = (
+            sample_types.group_by("SAMPLE_ID")
+            .agg(pl.col(value_column_name).n_unique().alias("_N_TYPES"))
+            .filter(pl.col("_N_TYPES") > 1)
+            .get_column("SAMPLE_ID")
+            .to_list()
+        )
+
+        if ambiguous_ids:
+            logger.warning(
+                "Ambiguous %s in sample sheet for: %s. Classified as %s.",
+                id_column,
+                ", ".join(ambiguous_ids),
+                self.UNKNOWN_SAMPLE,
+            )
+            sample_types = sample_types.filter(
+                ~pl.col("SAMPLE_ID").is_in(ambiguous_ids)
+            )
+
+        return sample_types
+
+    def _finalize_frame(
+        self,
+        frame: pl.DataFrame,
+    ) -> pl.DataFrame:
+        """Order columns and replace null values with NA."""
+        metadata = [
+            column for column in self.METADATA_COLUMNS if column in frame.columns
+        ]
+
+        run_metrics = sorted(
+            column
+            for column in frame.columns
+            if column not in metadata
+            and not column.startswith("DNA_")
+            and not column.startswith("RNA_")
+        )
+
+        dna_metrics = sorted(
+            column for column in frame.columns if column.startswith("DNA_")
+        )
+
+        rna_metrics = sorted(
+            column for column in frame.columns if column.startswith("RNA_")
+        )
+
+        return (
+            frame.select(metadata + run_metrics + dna_metrics + rna_metrics)
+            .with_columns(
+                pl.all().cast(
+                    pl.String,
+                    strict=False,
+                )
+            )
+            .fill_null("NA")
+        )
+
+    @staticmethod
+    def _combine_runs(
+        run_frames: list[pl.DataFrame],
+    ) -> pl.DataFrame:
+        """Combine all processed workflow frames."""
+        if not run_frames:
+            logger.error("No run metrics were parsed.")
+            raise ValueError
+
+        return pl.concat(
+            run_frames,
+            how="diagonal",
+        ).fill_null("NA")
+
+    def _create_joint_qc(
+        self,
+        master: pl.DataFrame,
+    ) -> pl.DataFrame:
+        """Create one joint QC row per run and workflow."""
+        sample_rows = master.filter(
+            pl.col("RECORD_TYPE").is_in(
+                [
+                    self.DNA_SAMPLE,
+                    self.RNA_SAMPLE,
+                    self.UNKNOWN_SAMPLE,
+                ]
+            )
+        )
+
+        aggregations: list[pl.Expr] = []
+
+        for metric in self.JOINT_QC_METRICS:
+            if metric in sample_rows.columns:
+                aggregations.append(
+                    pl.col(metric)
+                    .filter(pl.col(metric).is_not_null() & (pl.col(metric) != "NA"))
+                    .first()
+                    .alias(metric)
+                )
+            else:
+                aggregations.append(
+                    pl.lit(
+                        None,
+                        dtype=pl.String,
+                    ).alias(metric)
+                )
+
+        return (
+            sample_rows.group_by(
+                [
+                    "RUN_INDEX",
+                    "RUN",
+                    "WORKFLOW_TYPE",
+                    "WORKFLOW_VERSION",
+                ],
+                maintain_order=True,
+            )
+            .agg(aggregations)
+            .rename(
+                {
+                    "RUN": "RUN_ID",
+                }
+            )
+            .select(self.JOINT_QC_COLUMNS)
+            .fill_null("NA")
+        )
+
+    def _add_run_index(
+        self,
+        frame: pl.DataFrame,
+        run_column: str,
+    ) -> pl.DataFrame:
+        """Add run index where 001 corresponds to the latest run."""
+
+        n_runs = len(self.run_ids)
+        width = max(3, len(str(n_runs)))
+
+        mapping = {
+            run_id: str(n_runs - index).zfill(width)
+            for index, run_id in enumerate(self.run_ids)
+        }
+        message = (
+            f"Assigned run indices to {n_runs} run(s); "
+            f"latest run {self.run_ids[-1]} has index 001."
+        )
+        logger.info(message)
+        return frame.with_columns(
+            pl.col(run_column).replace(mapping).alias(self.RUN_INDEX)
+        )

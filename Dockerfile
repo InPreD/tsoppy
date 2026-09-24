@@ -8,8 +8,8 @@ COPY pyproject.toml ./
 COPY src/ ./src/
 
 # Install build dependencies and build the package as a wheel
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir build \
+RUN pip install --no-cache-dir --upgrade pip==26.2.1 \
+    && pip install --no-cache-dir build==1.6.1 \
     && python -m build --wheel --outdir dist/ .
 
 # Stage 2: Runtime
