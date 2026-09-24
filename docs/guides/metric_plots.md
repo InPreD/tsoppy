@@ -101,7 +101,7 @@ RUN003
 
 Blank lines are ignored. A line may also contain comma-separated run IDs.
 
-Duplicate IDs are removed while preserving their first occurrence.
+Duplicate IDs are removed.
 
 ## Run order and `RUN_INDEX`
 
