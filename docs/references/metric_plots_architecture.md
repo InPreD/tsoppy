@@ -55,7 +55,7 @@ The plotting layer consumes standardized Polars DataFrames.
 
 It does not discover workflow outputs or parse `MetricsOutput.tsv` files.
 
-Plot definitions are kept separate from the normalized metric data so the same plotting code can be used for supported workflow types.
+Plot definitions live in `PLOT_SPECS` (`plot_specs_workflows.py`), a declarative table listing every plot's title, page index, and data source per workflow. The rendering functions themselves are workflow-agnostic: the same code renders a plot for both DRAGEN and LocalApp, driven entirely by which `PLOT_SPECS` entries apply to the selected workflow.
 
 ## Standardized data
 
