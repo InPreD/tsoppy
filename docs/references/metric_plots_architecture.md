@@ -25,7 +25,7 @@ flowchart TD
 
 ### CLI
 
-The CLI validates user input, creates `MetricPlots`, generates the metrics tables, and optionally requests plotting.
+The CLI validates user input, creates an instance of the class `MetricPlots`, generates the metrics tables, and optionally requests plotting.
 
 Metric transformation logic is kept outside the CLI.
 
@@ -63,7 +63,7 @@ Lower and upper specification limits are represented as threshold records in the
 
 ## Outputs
 
-The exact files the command writes are documented in [Generated outputs](../guides/metric_plots.md#generated-outputs) in the user guide.
+The exact output files of the command are documented in [Generated outputs](../guides/metric_plots.md#generated-outputs) in the user guide.
 
 When plotting is requested, the standardized in-memory tables are passed directly to the plotting layer; temporary plotting tables are not written to disk. See [In-memory plotting data](../guides/metric_plots.md#in-memory-plotting-data) for the exact objects passed between them.
 

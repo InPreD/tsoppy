@@ -109,7 +109,7 @@ Run order is determined by the resolved run ID order, not by the order in which 
 
 For `--run-ids`, the comma-separated order is preserved. For `--run-id-file`, run IDs are processed in file order. If neither option is supplied, all run IDs matched by `--input-glob` are used and sorted lexicographically.
 
-Duplicate run IDs are removed while preserving their first occurrence.
+Duplicate run IDs are removed.
 
 The command does not parse dates from run identifiers. The last run in the resolved order is treated as the latest/current run and receives:
 
@@ -222,6 +222,7 @@ When plotting is requested with --plot-workflow, it also writes a workflow-speci
 `dragen_metric_plots.pdf` or `localapp_metric_plots.pdf`
 
 There is no --workdir or output-directory option. Workflow managers such as Nextflow are expected to manage the process working directory and publish outputs afterwards.
+
 ### `master_metrics_table.tsv`
 
 The master table contains standardized sample-level, threshold, and run-level metrics.
@@ -249,13 +250,11 @@ Finalized missing values are represented as `NA`.
 
 Record types include:
 
-```text
-DNA_SAMPLE
-RNA_SAMPLE
-SAMPLE
-LOWER_THRESHOLD
-UPPER_THRESHOLD
-```
+- `DNA_SAMPLE`
+- `RNA_SAMPLE`
+- `SAMPLE`
+- `LOWER_THRESHOLD`
+- `UPPER_THRESHOLD`
 
 Sample type is determined from `Sample_Type` in the workflow SampleSheet — see [Standardized data](../references/metric_plots_architecture.md#standardized-data) for why the sample sheet is the authoritative source. For each sample, the lookup tries `Pair_ID` first and falls back to `Sample_ID` for any sample `Pair_ID` didn't match. `DNA` and `RNA` values are assigned `DNA_SAMPLE` and `RNA_SAMPLE`, respectively. Samples without an unambiguous match are assigned `SAMPLE`.
 
