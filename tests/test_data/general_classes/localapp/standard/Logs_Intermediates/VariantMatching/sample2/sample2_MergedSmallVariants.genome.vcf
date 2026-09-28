@@ -4,6 +4,7 @@
 ##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allele Depth">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Total Depth Used For Variant Calling">
 ##FORMAT=<ID=VF,Number=.,Type=Float,Description="Variant Frequency">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">
 ##FILTER=<ID=LowSupport,Description="Variant is supported by too few fragments">
 ##FILTER=<ID=Blacklist,Description="Variant overlaps a region in the blacklist BED file">
 ##FILTER=<ID=LowDP,Description="Low coverage (DP tag), therefore no genotype called, by Scylla">
