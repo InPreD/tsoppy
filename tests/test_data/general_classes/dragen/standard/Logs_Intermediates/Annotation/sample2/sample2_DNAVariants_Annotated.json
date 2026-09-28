@@ -1,0 +1,464 @@
+{
+  "header": {
+    "annotator": "Synthetic Nirvana",
+    "genomeAssembly": "GRCh37",
+    "schemaVersion": 6,
+    "dataVersion": "50",
+    "dataSources": [
+      {
+        "name": "Synthetic data",
+        "version": "1.0",
+        "description": "Synthetic data for testing purposes",
+        "releaseDate": "2026-09-25"
+      }
+    ],
+    "samples": [
+      "sample2"
+    ]
+  },
+  "positions": [
+    {
+      "chromosome": "chr1",
+      "position": 1000000,
+      "refAllele": "A",
+      "altAlleles": [
+        "G"
+      ],
+      "filters": [
+        "weak_evidence",
+        "excluded_regions"
+      ],
+      "cytogeneticBand": "1p00.01",
+      "samples": [
+        {
+          "genotype": "0/1",
+          "variantFrequencies": [
+            0.0054
+          ],
+          "totalDepth": 190,
+          "alleleDepths": [
+            189,
+            1
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "vid": "chr1:1000000:G",
+          "chromosome": "chr1",
+          "begin": 1000000,
+          "end": 1000000,
+          "refAllele": "A",
+          "altAllele": "G",
+          "variantType": "SNV",
+          "transcripts": [
+            {
+              "transcript": "transcript_1",
+              "source": "Synthetic",
+              "bioType": "mRNA",
+              "hgnc": "SYN_GENE_A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chromosome": "chr1",
+      "position": 1000000,
+      "refAllele": "A",
+      "altAlleles": [
+        "C"
+      ],
+      "filters": [
+        "excluded_regions"
+      ],
+      "cytogeneticBand": "1p00.01",
+      "samples": [
+        {
+          "genotype": "0/1",
+          "variantFrequencies": [
+            0.5064
+          ],
+          "totalDepth": 371,
+          "alleleDepths": [
+            177,
+            194
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "vid": "chr1:1000000:C",
+          "chromosome": "chr1",
+          "begin": 1000000,
+          "end": 1000000,
+          "refAllele": "A",
+          "altAllele": "C",
+          "variantType": "SNV",
+          "transcripts": [
+            {
+              "transcript": "transcript_1",
+              "source": "Synthetic",
+              "bioType": "lncRNA",
+              "hgnc": "GENE_4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chromosome": "chr1",
+      "position": 1200000,
+      "refAllele": "CTGAAAGAGC",
+      "altAlleles": [
+        "GTGAAAGAGT"
+      ],
+      "filters": [
+        "PASS"
+      ],
+      "cytogeneticBand": "1p00.01",
+      "samples": [
+        {
+          "genotype": "0/1",
+          "variantFrequencies": [
+            0.042
+          ],
+          "totalDepth": 256,
+          "alleleDepths": [
+            244,
+            12
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "vid": "chr1:1200000:1200000:GTGAAAGAGT",
+          "chromosome": "chr1",
+          "begin": 1200000,
+          "end": 1200000,
+          "refAllele": "CTGAAAGAGC",
+          "altAllele": "GTGAAAGAGT",
+          "variantType": "MNV",
+          "transcripts": [
+            {
+              "transcript": "transcript_1",
+              "source": "Synthetic",
+              "bioType": "mRNA",
+              "hgnc": "SYN_GENE_X"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chromosome": "chr1",
+      "position": 2000000,
+      "refAllele": "A",
+      "altAlleles": [
+        "G"
+      ],
+      "filters": [
+        "PASS"
+      ],
+      "cytogeneticBand": "1p00.01",
+      "samples": [
+        {
+          "genotype": "0|1",
+          "variantFrequencies": [
+            0.0434
+          ],
+          "totalDepth": 438,
+          "alleleDepths": [
+            419,
+            19
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "vid": "chr1:2000000:G",
+          "chromosome": "chr1",
+          "begin": 2000000,
+          "end": 2000000,
+          "refAllele": "A",
+          "altAllele": "G",
+          "variantType": "SNV",
+          "transcripts": [
+            {
+              "transcript": "transcript_1",
+              "source": "Synthetic",
+              "bioType": "mRNA",
+              "hgnc": "SYN_GENE_A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chromosome": "chr1",
+      "position": 3000000,
+      "refAllele": "G",
+      "altAlleles": [
+        "A"
+      ],
+      "filters": [
+        "weak_evidence"
+      ],
+      "cytogeneticBand": "1p00.01",
+      "samples": [
+        {
+          "genotype": "0/1",
+          "variantFrequencies": [
+            0.015
+          ],
+          "totalDepth": 123,
+          "alleleDepths": [
+            0,
+            123
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "vid": "chr1:3000000:A",
+          "chromosome": "chr1",
+          "begin": 3000000,
+          "end": 3000000,
+          "refAllele": "G",
+          "altAllele": "A",
+          "variantType": "SNV",
+          "transcripts": [
+            {
+              "transcript": "transcript_1",
+              "source": "Synthetic",
+              "bioType": "mRNA",
+              "hgnc": "SYN_GENE_B"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chromosome": "chr1",
+      "position": 5000000,
+      "refAllele": "G",
+      "altAlleles": [
+        "A"
+      ],
+      "filters": [
+        "PASS"
+      ],
+      "cytogeneticBand": "1p00.01",
+      "samples": [
+        {
+          "genotype": "0/1",
+          "variantFrequencies": [
+            0.7738
+          ],
+          "totalDepth": 546,
+          "alleleDepths": [
+            0,
+            546
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "vid": "chr1:5000000:A",
+          "chromosome": "chr1",
+          "begin": 5000000,
+          "end": 5000000,
+          "refAllele": "G",
+          "altAllele": "A",
+          "variantType": "SNV",
+          "transcripts": [
+            {
+              "transcript": "transcript_1",
+              "source": "Synthetic",
+              "bioType": "mRNA",
+              "hgnc": "SYN_GENE_B"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chromosome": "chr1",
+      "position": 6000000,
+      "refAllele": "G",
+      "altAlleles": [
+        "A"
+      ],
+      "filters": [
+        "PASS"
+      ],
+      "cytogeneticBand": "1p00.01",
+      "samples": [
+        {
+          "genotype": "0/1",
+          "variantFrequencies": [
+            0.4788
+          ],
+          "totalDepth": 1243,
+          "alleleDepths": [
+            0,
+            1243
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "vid": "chr1:6000000:A",
+          "chromosome": "chr1",
+          "begin": 6000000,
+          "end": 6000000,
+          "refAllele": "G",
+          "altAllele": "A",
+          "variantType": "SNV",
+          "transcripts": [
+            {
+              "transcript": "transcript_1",
+              "source": "Synthetic",
+              "bioType": "mRNA",
+              "hgnc": "SYN_GENE_C"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chromosome": "chr1",
+      "position": 7000000,
+      "refAllele": "C",
+      "altAlleles": [
+        "T"
+      ],
+      "filters": [
+        "PASS"
+      ],
+      "cytogeneticBand": "1p00.01",
+      "samples": [
+        {
+          "genotype": "0/1",
+          "variantFrequencies": [
+            1.0
+          ],
+          "totalDepth": 186,
+          "alleleDepths": [
+            0,
+            186
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "vid": "chr1:7000000:T",
+          "chromosome": "chr1",
+          "begin": 7000000,
+          "end": 7000000,
+          "refAllele": "C",
+          "altAllele": "T",
+          "variantType": "SNV",
+          "transcripts": [
+            {
+              "transcript": "transcript_1",
+              "source": "Synthetic",
+              "bioType": "mRNA",
+              "hgnc": "SYN_GENE_D"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chromosome": "chr1",
+      "position": 8000000,
+      "refAllele": "T",
+      "altAlleles": [
+        "TC"
+      ],
+      "filters": [
+        "multiallelic"
+      ],
+      "cytogeneticBand": "1p00.01",
+      "samples": [
+        {
+          "genotype": "1/2",
+          "variantFrequencies": [
+            0.0864
+          ],
+          "totalDepth": 244,
+          "alleleDepths": [
+            218,
+            26
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "vid": "chr1:8000000:8000000:C",
+          "chromosome": "chr1",
+          "begin": 8000000,
+          "end": 8000000,
+          "refAllele": "-",
+          "altAllele": "C",
+          "variantType": "insertion",
+          "transcripts": [
+            {
+              "transcript": "transcript_1",
+              "source": "Synthetic",
+              "bioType": "mRNA",
+              "hgnc": "SYN_GENE_E"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chromosome": "chr1",
+      "position": 9000000,
+      "refAllele": "CG",
+      "altAlleles": [
+        "C"
+      ],
+      "filters": [
+        "multiallelic",
+        "weak_evidence",
+        "excluded_regions"
+      ],
+      "cytogeneticBand": "1p00.01",
+      "samples": [
+        {
+          "genotype": "0/1",
+          "variantFrequencies": [
+            0.0079
+          ],
+          "totalDepth": 807,
+          "alleleDepths": [
+            801,
+            6
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "vid": "chr1:9000000:9000000",
+          "chromosome": "chr1",
+          "begin": 9000000,
+          "end": 9000000,
+          "refAllele": "G",
+          "altAllele": "-",
+          "variantType": "deletion",
+          "transcripts": [
+            {
+              "transcript": "transcript_1",
+              "source": "Synthetic",
+              "bioType": "mRNA",
+              "hgnc": "SYN_GENE_F"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
