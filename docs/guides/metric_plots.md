@@ -256,7 +256,7 @@ Record types include:
 - `LOWER_THRESHOLD`
 - `UPPER_THRESHOLD`
 
-Sample type is determined from `Sample_Type` in the workflow SampleSheet — see [Standardized data](../references/metric_plots_architecture.md#standardized-data) for why the sample sheet is the authoritative source. For each sample, the lookup tries `Pair_ID` first and falls back to `Sample_ID` for any sample `Pair_ID` didn't match. `DNA` and `RNA` values are assigned `DNA_SAMPLE` and `RNA_SAMPLE`, respectively. Samples without an unambiguous match are assigned `SAMPLE`.
+Sample type is determined from `Sample_Type` in the workflow SampleSheet — see [Standardized data](../references/metric_plots_architecture.md#standardized-data) for why the sample sheet is the authoritative source. For each sample, the lookup matches on `Sample_ID`. `DNA` and `RNA` values are assigned `DNA_SAMPLE` and `RNA_SAMPLE`, respectively. Samples without an unambiguous match are assigned `SAMPLE`.
 
 Threshold rows keep lower and upper specification guidelines associated with the workflow type and version that produced them.
 

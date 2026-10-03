@@ -521,10 +521,6 @@ def test_add_record_type_uses_samplesheet_sample_type():
                 "RNA_LOOKING_ID",
                 "DNA_LOOKING_ID",
             ],
-            "Pair_ID": [
-                "RNA_LOOKING_ID",
-                "DNA_LOOKING_ID",
-            ],
             "Sample_Type": [
                 "DNA",
                 "RNA",
@@ -542,68 +538,7 @@ def test_add_record_type_uses_samplesheet_sample_type():
     ]
 
 
-def test_add_record_type_prefers_pair_id_over_sample_id():
-    """The metrics output keys samples by Pair_ID, so the lookup joins on it."""
-    samples = polars.DataFrame(
-        {
-            "SAMPLE_ID": ["PAIR01"],
-        }
-    )
-
-    samplesheet = polars.DataFrame(
-        {
-            "Sample_ID": ["SAMPLE01"],
-            "Pair_ID": ["PAIR01"],
-            "Sample_Type": ["RNA"],
-        }
-    )
-
-    metric_plots = _metric_plots_without_init()
-
-    got = metric_plots._add_record_type(samples, samplesheet)
-
-    assert got["RECORD_TYPE"].to_list() == ["RNA_SAMPLE"]
-
-
-def test_add_record_type_falls_back_to_sample_id_when_pair_id_does_not_match():
-    """A row whose Pair_ID doesn't match the metrics output still classifies via Sample_ID."""
-    samples = polars.DataFrame(
-        {
-            "SAMPLE_ID": [
-                "PAIR01",
-                "REF_SAMPLE_P",
-            ],
-        }
-    )
-
-    samplesheet = polars.DataFrame(
-        {
-            "Sample_ID": [
-                "SAMPLE01",
-                "REF_SAMPLE_P",
-            ],
-            "Pair_ID": [
-                "PAIR01",
-                "REF_SAMPLE",
-            ],
-            "Sample_Type": [
-                "RNA",
-                "DNA",
-            ],
-        }
-    )
-
-    metric_plots = _metric_plots_without_init()
-
-    got = metric_plots._add_record_type(samples, samplesheet)
-
-    assert got["RECORD_TYPE"].to_list() == [
-        "RNA_SAMPLE",
-        "DNA_SAMPLE",
-    ]
-
-
-def test_add_record_type_falls_back_to_sample_id_without_pair_id_column():
+def test_add_record_type_matches_on_sample_id():
     samples = polars.DataFrame(
         {
             "SAMPLE_ID": ["SAMPLE01"],
@@ -634,7 +569,6 @@ def test_add_record_type_unmatched_sample_falls_back_to_unknown():
     samplesheet = polars.DataFrame(
         {
             "Sample_ID": ["OTHER_SAMPLE"],
-            "Pair_ID": ["OTHER_SAMPLE"],
             "Sample_Type": ["DNA"],
         }
     )
@@ -656,7 +590,6 @@ def test_add_record_type_missing_sample_type_column_falls_back_to_unknown():
     samplesheet = polars.DataFrame(
         {
             "Sample_ID": ["SAMPLE01"],
-            "Pair_ID": ["SAMPLE01"],
         }
     )
 
@@ -668,12 +601,12 @@ def test_add_record_type_missing_sample_type_column_falls_back_to_unknown():
 
 
 def test_add_record_type_ambiguous_samplesheet_uses_fallback():
-    """A Pair_ID shared by a DNA and an RNA sample cannot be classified unambiguously."""
+    """A Sample_ID mapped to more than one Sample_Type cannot be classified unambiguously."""
     samples = polars.DataFrame(
         {
             "SAMPLE_ID": [
-                "SHARED_PAIR",
-                "SOLO_PAIR",
+                "DUPLICATE_ID",
+                "SOLO_SAMPLE",
             ],
         }
     )
@@ -681,14 +614,9 @@ def test_add_record_type_ambiguous_samplesheet_uses_fallback():
     samplesheet = polars.DataFrame(
         {
             "Sample_ID": [
-                "Patient01_D",
-                "Patient01_R",
-                "Patient02",
-            ],
-            "Pair_ID": [
-                "SHARED_PAIR",
-                "SHARED_PAIR",
-                "SOLO_PAIR",
+                "DUPLICATE_ID",
+                "DUPLICATE_ID",
+                "SOLO_SAMPLE",
             ],
             "Sample_Type": [
                 "DNA",
@@ -718,7 +646,6 @@ def test_add_record_type_sample_type_is_case_and_whitespace_insensitive():
     samplesheet = polars.DataFrame(
         {
             "Sample_ID": ["SAMPLE01"],
-            "Pair_ID": ["SAMPLE01"],
             "Sample_Type": [" dna "],
         }
     )

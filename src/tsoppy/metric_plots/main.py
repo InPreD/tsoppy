@@ -40,7 +40,6 @@ class MetricPlots:
     UNKNOWN_SAMPLE = "SAMPLE"
 
     SAMPLESHEET_SAMPLE_ID_COL = "Sample_ID"
-    PAIR_ID_COL = "Pair_ID"
     SAMPLE_TYPE_COL = "Sample_Type"
     SAMPLESHEET_DNA_VALUE = "DNA"
     SAMPLESHEET_RNA_VALUE = "RNA"
@@ -728,13 +727,10 @@ class MetricPlots:
     ) -> pl.DataFrame:
         """Classify sample rows as DNA, RNA, or unknown using the sample sheet's Sample_Type.
 
-        SAMPLE_ID values in the metrics output usually correspond to Pair_ID in
-        the sample sheet, so the lookup tries Pair_ID first and falls back to
-        Sample_ID, per row, for any sample Pair_ID didn't match (e.g. reference/
-        control samples whose Pair_ID doesn't carry the same suffix as their
-        Sample_ID). Metric content and SAMPLE_ID text are not used for
-        classification: analysis is performed based on the sample sheet, so it is
-        the authoritative source for sample type.
+        SAMPLE_ID values in the metrics output are matched against the sample
+        sheet's Sample_ID column. Metric content and SAMPLE_ID text are not used
+        for classification: analysis is performed based on the sample sheet, so
+        it is the authoritative source for sample type.
         """
         if self.SAMPLE_TYPE_COL not in samplesheet.columns:
             logger.warning(
@@ -747,30 +743,11 @@ class MetricPlots:
 
         joined = samples.join(
             self._sample_type_lookup(
-                samplesheet, self.SAMPLESHEET_SAMPLE_ID_COL, "_SAMPLE_TYPE_BY_SAMPLE_ID"
+                samplesheet, self.SAMPLESHEET_SAMPLE_ID_COL, "_SAMPLE_TYPE"
             ),
             on="SAMPLE_ID",
             how="left",
         )
-
-        if self.PAIR_ID_COL in samplesheet.columns:
-            joined = (
-                joined.join(
-                    self._sample_type_lookup(
-                        samplesheet, self.PAIR_ID_COL, "_SAMPLE_TYPE_BY_PAIR_ID"
-                    ),
-                    on="SAMPLE_ID",
-                    how="left",
-                )
-                .with_columns(
-                    pl.coalesce(
-                        ["_SAMPLE_TYPE_BY_PAIR_ID", "_SAMPLE_TYPE_BY_SAMPLE_ID"]
-                    ).alias("_SAMPLE_TYPE")
-                )
-                .drop(["_SAMPLE_TYPE_BY_PAIR_ID", "_SAMPLE_TYPE_BY_SAMPLE_ID"])
-            )
-        else:
-            joined = joined.rename({"_SAMPLE_TYPE_BY_SAMPLE_ID": "_SAMPLE_TYPE"})
 
         unmatched_ids = (
             joined.filter(pl.col("_SAMPLE_TYPE").is_null())
