@@ -51,6 +51,8 @@ def load_data_from_cancer_susceptibility_genes_table(
     """
 
     # load metadata about source of the info
+    source = "NA"
+
     with open(file_path, "r") as file:
         for line in file:
             if re.match(r"# source:", line):
@@ -58,7 +60,8 @@ def load_data_from_cancer_susceptibility_genes_table(
                 source = source.strip()
 
     # load input data
-    df = pl.read_csv(file_path, columns=column_list, separator="\t")
+    df = pl.read_csv(file_path, columns=column_list,
+                     separator="\t", comment_prefix="#")
 
     # gene_column_name is supposed to be a column containing
     # primary key of the cancer_susceptibility_genes file
@@ -75,7 +78,7 @@ def load_data_from_cancer_susceptibility_genes_table(
         row.pop(gene_name_column): row for row in df.to_dicts()
     }
 
-    return cancer_susceptibility_genes_dict, source
+    return (cancer_susceptibility_genes_dict, source)
 
 
 def lookup_predisposition_variants(
@@ -165,7 +168,7 @@ def print_predisposition_variants_to_output_file(
     )
 
     header_lines_length_of_targeted_coding_regions = Template(
-        """# [$sample_id] Cumulative length of all the targeted coding regions (in millions of bases): $length_of_targeted_coding_regions}
+        """# [$sample_id] Cumulative length of all the targeted coding regions (in millions of bases): $length_of_targeted_coding_regions
 """
     )
 
@@ -180,7 +183,7 @@ def print_predisposition_variants_to_output_file(
 # [$sample_id]    [Actionability]_[Age]
 # [$sample_id]    where:
 # [$sample_id]        Actionability: [ MA-CSG | HA-CSG | SA-CSG ]
-# [$sample_id]            - MA-CSG = most actionable cancer susceptibility gene, HA-CSG = highly actionable csg, SA-CSG = standardly actionable csg
+# [$sample_id]        - MA-CSG = most actionable cancer susceptibility gene, HA-CSG = highly actionable csg, SA-CSG = standardly actionable csg
 # [$sample_id]        Age: [ Allages | Age<30 ]
 """
     )
@@ -235,8 +238,8 @@ def print_predisposition_variants_to_output_file(
             header_lines_tumor_purity.safe_substitute(tumor_purity_info))
 
         gene_predisposition_info = {"sample_id": sample_id}
-        header_lines_gene_predisposition.safe_substitute(
-            gene_predisposition_info)
+        output.write(
+            header_lines_gene_predisposition.safe_substitute(gene_predisposition_info))
 
     # transform the nested dict into a list of dicts
     # using **fields to unpack the rest of the dictionary values

@@ -84,18 +84,21 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
     # write content to the temp file, expected
     test_file_expected = directory / "cancer_susceptibility_genes_expected.csv"
     cancer_susceptibility_genes_table_content_expected = (
-        "Gene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages"
+        "# source: doi_url\nGene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages"
     )
-    test_file_expected.write_text(cancer_susceptibility_genes_table_content_expected)
+    test_file_expected.write_text(
+        cancer_susceptibility_genes_table_content_expected)
 
     # expected result
-    result = dict()
-    result["TP53"] = dict()
-    result["TP53"]["Actionability"] = "HA-CSG"
-    result["TP53"]["Age"] = "Age<30"
-    result["BRCA1"] = dict()
-    result["BRCA1"]["Actionability"] = "MA-CSG"
-    result["BRCA1"]["Age"] = "Allages"
+    result_g = dict()
+    result_g["TP53"] = dict()
+    result_g["TP53"]["Actionability"] = "HA-CSG"
+    result_g["TP53"]["Age"] = "Age<30"
+    result_g["BRCA1"] = dict()
+    result_g["BRCA1"]["Actionability"] = "MA-CSG"
+    result_g["BRCA1"]["Age"] = "Allages"
+    result_s = 'doi_url'
+    result = (result_g, result_s)
 
     # test the expected input
     assert (
@@ -182,7 +185,7 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
         "Gene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages"
     )
 
-    doi_reference = "https://doi.org/10.1016/j.annonc.2022.12.003"
+    source = "doi_url"
 
     small_variant_calls = directory / "small_variant_calls.tsv"
     small_variant_calls.write_text("test")
@@ -220,18 +223,18 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
     metadata = (
         f"# [{sample_id}] Version string: {version_string}\n"
         f"# [{sample_id}] Cancer susceptibility genes are defined in:\n"
-        f"# [{sample_id}] \tfile {cancer_susceptibility_genes}\n"
-        f"# [{sample_id}] \tarticle {doi_reference}\n"
+        f"# [{sample_id}]    file: {cancer_susceptibility_genes}\n"
+        f"# [{sample_id}]    source: {source}\n"
         f"# [{sample_id}] Small variant calls are defined in: {small_variant_calls}\n"
         f"# [{sample_id}] Cumulative length of all the targeted coding regions (in millions of bases): {length_of_targeted_coding_regions:.2f}\n"
         f"# [{sample_id}] Tumor purity (as a fraction between 0 and 1): {tumor_purity:.2f}\n"
-        f"# [{sample_id}] \tThe tumor purity is provided as an input parameter for tsoppy.\n"
+        f"# [{sample_id}]    The tumor purity is provided as an input parameter for tsoppy.\n"
         f"# [{sample_id}] Gene_predisposition column format:\n"
-        f"# [{sample_id}] \t[Actionability]_[Age]\n"
-        f"# [{sample_id}] \twhere:\n"
-        f"# [{sample_id}] \t\tActionability: [ MA-CSG | HA-CSG | SA-CSG ]\n"
-        f"# [{sample_id}] \t\t\t - MA-CSG = most actionable cancer susceptibility gene, HA-CSG = highly actionable csg, SA-CSG = standardly actionable csg\n"
-        f"# [{sample_id}] \t\tAge: [ Allages | Age<30 ]\n"
+        f"# [{sample_id}]    [Actionability]_[Age]\n"
+        f"# [{sample_id}]    where:\n"
+        f"# [{sample_id}]        Actionability: [ MA-CSG | HA-CSG | SA-CSG ]\n"
+        f"# [{sample_id}]        - MA-CSG = most actionable cancer susceptibility gene, HA-CSG = highly actionable csg, SA-CSG = standardly actionable csg\n"
+        f"# [{sample_id}]        Age: [ Allages | Age<30 ]\n"
     )
 
     header = (
@@ -281,8 +284,8 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
     print_predisposition_variants_to_output_file(
         sample_id,
         version_string,
+        source,
         cancer_susceptibility_genes,
-        doi_reference,
         small_variant_calls,
         length_of_targeted_coding_regions,
         tumor_purity,
@@ -290,4 +293,5 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
         output_file,
     )
 
-    assert Path(expected_output_file).read_text() == Path(output_file).read_text()
+    assert Path(expected_output_file).read_text() == Path(
+        output_file).read_text()
