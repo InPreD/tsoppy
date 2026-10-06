@@ -330,6 +330,11 @@ class SmallVariantGenomeVcf(WorkflowOutput):
             key = match.groupdict()["key"]
             value = match.groupdict()["value"]
 
+            # Handle command line arguments separately, can occur multiple times (LocalApp)
+            if key.lower().endswith("_cmdline"):
+                self.header_dict.setdefault(key, []).append(value)
+                continue
+
             # Check if value containes additional key value pairs
             if not bool(re.search(self.header_subrex, value)):
                 self.header_dict[key] = value
