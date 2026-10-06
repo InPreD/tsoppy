@@ -102,6 +102,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         path: Path to vcf (Path)
         sample_id: Sample identifier (str)
         vcf: Parsed VCF object (cyvcf2.VCF)
+        merged_table: Merged small variant data (polars.DataFrame)
     """
 
     header_dict = {}
@@ -138,7 +139,8 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         if output_path:
             vcf_obj._write_vcf(tmb_obj, json_obj, output_path)
         else:
-            return vcf_obj._to_dataframe(tmb_obj, json_obj)
+            self.merged_table = vcf_obj._to_dataframe(tmb_obj, json_obj)
+            return self.merged_table
 
     def _write_vcf(
         self,
