@@ -25,7 +25,7 @@ flowchart TD
     Plotting --> PdfFile[/"workflow_metric_plots.pdf"/]
 ```
 
-Shapes:
+Legend:
 
 - Stadium: CLI entry point
 - Subroutine box: class

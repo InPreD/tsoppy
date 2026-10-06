@@ -1,5 +1,6 @@
 """Unit tests for workflow-specific metric plotting helpers."""
 
+from contextlib import nullcontext
 from unittest.mock import MagicMock
 
 import polars as pl
@@ -282,50 +283,6 @@ def test_zero_plot_indices_may_repeat():
     )
 
 
-def test_missing_workflow_key_is_rejected(caplog):
-    """Every plot specification must contain both workflows."""
-    spec = _minimal_bar_spec()
-    del spec["dragen"]
-
-    with pytest.raises(KeyError):
-        _validate_plot_specs({"TEST": spec})
-
-    assert "Missing workflow routing key" in caplog.text
-
-
-def test_missing_workflow_plot_field_is_rejected(caplog):
-    """Workflow routing requires the plot field."""
-    spec = _minimal_bar_spec()
-    spec["localapp"] = {"index": 1}
-
-    with pytest.raises(KeyError):
-        _validate_plot_specs({"TEST": spec})
-
-    assert "missing fields" in caplog.text
-
-
-def test_missing_workflow_index_field_is_rejected(caplog):
-    """Workflow routing requires the index field."""
-    spec = _minimal_bar_spec()
-    spec["localapp"] = {"plot": True}
-
-    with pytest.raises(KeyError):
-        _validate_plot_specs({"TEST": spec})
-
-    assert "missing fields" in caplog.text
-
-
-def test_non_boolean_plot_flag_is_rejected(caplog):
-    """Plot routing flag must be boolean."""
-    spec = _minimal_bar_spec()
-    spec["localapp"]["plot"] = "yes"
-
-    with pytest.raises(KeyError):
-        _validate_plot_specs({"TEST": spec})
-
-    assert "'plot' must be bool" in caplog.text
-
-
 @pytest.mark.parametrize(
     "invalid_index",
     [
@@ -346,37 +303,83 @@ def test_invalid_plot_index_is_rejected(invalid_index, caplog):
     assert "'index' must be" in caplog.text
 
 
-def test_unknown_plot_kind_is_rejected(caplog):
-    """Unknown plot renderer types are rejected."""
-    spec = _minimal_bar_spec()
+def _delete_dragen_key(spec):
+    del spec["dragen"]
+
+
+def _set_localapp_missing_plot_field(spec):
+    spec["localapp"] = {"index": 1}
+
+
+def _set_localapp_missing_index_field(spec):
+    spec["localapp"] = {"plot": True}
+
+
+def _set_non_boolean_plot_flag(spec):
+    spec["localapp"]["plot"] = "yes"
+
+
+def _set_unknown_plot_kind(spec):
     spec["plot_kind"] = "unknown_plot"
 
-    with pytest.raises(KeyError):
-        _validate_plot_specs({"TEST": spec})
 
-    assert "not recognized" in caplog.text
-
-
-def test_missing_common_plot_field_is_rejected(caplog):
-    """Common required specification fields are validated."""
-    spec = _minimal_bar_spec()
+def _delete_source_field(spec):
     del spec["source"]
 
-    with pytest.raises(KeyError):
-        _validate_plot_specs({"TEST": spec})
 
-    assert "Missing fields" in caplog.text
-
-
-def test_missing_bar_specific_field_is_rejected(caplog):
-    """Bar specifications require their bar-specific fields."""
-    spec = _minimal_bar_spec()
+def _delete_value_spec_field(spec):
     del spec["value_spec"]
 
+
+@pytest.mark.parametrize(
+    "mutate_spec, want_caplog_substring",
+    [
+        (
+            # every plot specification must contain both workflows
+            _delete_dragen_key,
+            "Missing workflow routing key",
+        ),
+        (
+            # workflow routing requires the plot field
+            _set_localapp_missing_plot_field,
+            "missing fields",
+        ),
+        (
+            # workflow routing requires the index field
+            _set_localapp_missing_index_field,
+            "missing fields",
+        ),
+        (
+            # plot routing flag must be boolean
+            _set_non_boolean_plot_flag,
+            "'plot' must be bool",
+        ),
+        (
+            # unknown plot renderer types are rejected
+            _set_unknown_plot_kind,
+            "not recognized",
+        ),
+        (
+            # common required specification fields are validated
+            _delete_source_field,
+            "Missing fields",
+        ),
+        (
+            # bar specifications require their bar-specific fields
+            _delete_value_spec_field,
+            "value_spec",
+        ),
+    ],
+)
+def test_minimal_bar_spec_rejections(mutate_spec, want_caplog_substring, caplog):
+    """_validate_plot_specs rejects a minimal bar spec that violates one rule."""
+    spec = _minimal_bar_spec()
+    mutate_spec(spec)
+
     with pytest.raises(KeyError):
         _validate_plot_specs({"TEST": spec})
 
-    assert "value_spec" in caplog.text
+    assert want_caplog_substring in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -514,137 +517,67 @@ def test_get_available_guidelines_skips_na_threshold():
     assert result[0]["value"] == 8.0
 
 
-def test_compute_cart_ylim_contains_both_guidelines():
-    """Axis limits include all available thresholds."""
-
-    data = pl.DataFrame(
-        {
-            "VALUE": [
-                0.5,
-                1.0,
-                3.0,
-            ]
-        }
-    )
-
-    result = _compute_cart_ylim(
-        {
-            "y_var": "VALUE",
-        },
-        data,
-        [
-            {
-                "value": 1.0,
-                "ann_y_offset": 0,
-            },
-            {
-                "value": 8.0,
-                "ann_y_offset": 0,
-            },
-        ],
-    )
-
-    assert result[0] == 0
-    assert result[1] > 8
-
-
 # ---------------------------------------------------------------------------
 # _build_filter_expression
 # ---------------------------------------------------------------------------
 
 
-def test_build_filter_expression_contains():
-    """Contains filters perform string matching."""
-    frame = pl.DataFrame(
-        {
-            "NAME": [
-                "DNA_SAMPLE_A",
-                "RNA_SAMPLE_A",
-                "DNA_SAMPLE_B",
-            ]
-        }
-    )
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            # contains: keeps rows whose column value contains the substring
+            (
+                "NAME",
+                ["DNA_SAMPLE_A", "RNA_SAMPLE_A", "DNA_SAMPLE_B"],
+                {"column": "NAME", "contains": "DNA"},
+            ),
+            nullcontext(),
+            ["DNA_SAMPLE_A", "DNA_SAMPLE_B"],
+        ),
+        (
+            # equals: keeps only exactly matching rows
+            (
+                "TYPE",
+                ["DNA", "RNA", "DNA"],
+                {"column": "TYPE", "equals": "DNA"},
+            ),
+            nullcontext(),
+            ["DNA", "DNA"],
+        ),
+        (
+            # not_equals: removes only exactly matching rows
+            (
+                "TYPE",
+                ["DNA", "RNA", "SAMPLE"],
+                {"column": "TYPE", "not_equals": "RNA"},
+            ),
+            nullcontext(),
+            ["DNA", "SAMPLE"],
+        ),
+        (
+            # an unsupported filter key raises ValueError
+            (
+                "TYPE",
+                ["DNA"],
+                {"column": "TYPE", "startswith": "DNA"},
+            ),
+            pytest.raises(ValueError),
+            "Unsupported filter specification",
+        ),
+    ],
+)
+def test_build_filter_expression(inputs, exception, want, caplog):
+    column, values, filter_spec = inputs
+    frame = pl.DataFrame({column: values})
 
-    result = frame.filter(
-        _build_filter_expression(
-            {
-                "column": "NAME",
-                "contains": "DNA",
-            }
-        )
-    )
+    with exception:
+        result = frame.filter(_build_filter_expression(filter_spec))
 
-    assert result["NAME"].to_list() == [
-        "DNA_SAMPLE_A",
-        "DNA_SAMPLE_B",
-    ]
-
-
-def test_build_filter_expression_equals():
-    """Equals filters keep matching values."""
-    frame = pl.DataFrame(
-        {
-            "TYPE": [
-                "DNA",
-                "RNA",
-                "DNA",
-            ]
-        }
-    )
-
-    result = frame.filter(
-        _build_filter_expression(
-            {
-                "column": "TYPE",
-                "equals": "DNA",
-            }
-        )
-    )
-
-    assert result["TYPE"].to_list() == [
-        "DNA",
-        "DNA",
-    ]
-
-
-def test_build_filter_expression_not_equals():
-    """Not-equals filters remove matching values."""
-    frame = pl.DataFrame(
-        {
-            "TYPE": [
-                "DNA",
-                "RNA",
-                "SAMPLE",
-            ]
-        }
-    )
-
-    result = frame.filter(
-        _build_filter_expression(
-            {
-                "column": "TYPE",
-                "not_equals": "RNA",
-            }
-        )
-    )
-
-    assert result["TYPE"].to_list() == [
-        "DNA",
-        "SAMPLE",
-    ]
-
-
-def test_build_filter_expression_rejects_unknown_operation(caplog):
-    """Unsupported filter definitions raise ValueError."""
-    with pytest.raises(ValueError):
-        _build_filter_expression(
-            {
-                "column": "TYPE",
-                "startswith": "DNA",
-            }
-        )
-
-    assert "Unsupported filter specification" in caplog.text
+    if isinstance(want, str):
+        assert want in caplog.text
+    else:
+        assert result[column].to_list() == want
 
 
 # ---------------------------------------------------------------------------
@@ -652,155 +585,101 @@ def test_build_filter_expression_rejects_unknown_operation(caplog):
 # ---------------------------------------------------------------------------
 
 
-def test_build_value_expression_cast():
-    """Cast operation converts values to the requested dtype."""
-    frame = pl.DataFrame({"VALUE": ["1.5", "2.5"]})
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            # cast converts values to the requested dtype
+            (
+                {"VALUE": ["1.5", "2.5"]},
+                {"operation": "cast", "column": "VALUE", "dtype": pl.Float64},
+            ),
+            nullcontext(),
+            [1.5, 2.5],
+        ),
+        (
+            # cast without a dtype returns the original expression
+            (
+                {"VALUE": ["1", "2"]},
+                {"operation": "cast", "column": "VALUE"},
+            ),
+            nullcontext(),
+            ["1", "2"],
+        ),
+        (
+            # a missing operation defaults to cast
+            (
+                {"VALUE": ["1", "2"]},
+                {"column": "VALUE", "dtype": pl.Int64},
+            ),
+            nullcontext(),
+            [1, 2],
+        ),
+        (
+            # divide scales the selected metric
+            (
+                {"VALUE": ["10", "20"]},
+                {
+                    "operation": "divide",
+                    "column": "VALUE",
+                    "divisor": 10,
+                    "dtype": pl.Float64,
+                },
+            ),
+            nullcontext(),
+            [1.0, 2.0],
+        ),
+        (
+            # ratio divides numerator by denominator
+            (
+                {"NUM": ["10", "20"], "DEN": ["2", "4"]},
+                {
+                    "operation": "ratio",
+                    "numerator": "NUM",
+                    "denominator": "DEN",
+                    "dtype": pl.Float64,
+                },
+            ),
+            nullcontext(),
+            [5.0, 5.0],
+        ),
+        (
+            # ratio supports scaling the numerator before division
+            (
+                {"NUM": ["100", "200"], "DEN": ["2", "4"]},
+                {
+                    "operation": "ratio",
+                    "numerator": "NUM",
+                    "denominator": "DEN",
+                    "numerator_divisor": 10,
+                    "dtype": pl.Float64,
+                },
+            ),
+            nullcontext(),
+            [5.0, 5.0],
+        ),
+        (
+            # an unsupported value operation raises ValueError
+            (
+                {"VALUE": ["1"]},
+                {"operation": "multiply", "column": "VALUE"},
+            ),
+            pytest.raises(ValueError),
+            "Unsupported value operation",
+        ),
+    ],
+)
+def test_build_value_expression(inputs, exception, want, caplog):
+    columns, value_spec = inputs
+    frame = pl.DataFrame(columns)
 
-    result = frame.select(
-        _build_value_expression(
-            {
-                "operation": "cast",
-                "column": "VALUE",
-                "dtype": pl.Float64,
-            },
-            alias_name="RESULT",
-        )
-    )
+    with exception:
+        result = frame.select(_build_value_expression(value_spec, alias_name="RESULT"))
 
-    assert result["RESULT"].to_list() == [
-        1.5,
-        2.5,
-    ]
-
-
-def test_build_value_expression_cast_without_dtype():
-    """Cast operation can return the original expression."""
-    frame = pl.DataFrame({"VALUE": ["1", "2"]})
-
-    result = frame.select(
-        _build_value_expression(
-            {
-                "operation": "cast",
-                "column": "VALUE",
-            },
-            alias_name="RESULT",
-        )
-    )
-
-    assert result["RESULT"].to_list() == [
-        "1",
-        "2",
-    ]
-
-
-def test_build_value_expression_default_operation_is_cast():
-    """Missing operation defaults to cast."""
-    frame = pl.DataFrame({"VALUE": ["1", "2"]})
-
-    result = frame.select(
-        _build_value_expression(
-            {
-                "column": "VALUE",
-                "dtype": pl.Int64,
-            },
-            alias_name="RESULT",
-        )
-    )
-
-    assert result["RESULT"].to_list() == [
-        1,
-        2,
-    ]
-
-
-def test_build_value_expression_divide():
-    """Divide operation scales the selected metric."""
-    frame = pl.DataFrame({"VALUE": ["10", "20"]})
-
-    result = frame.select(
-        _build_value_expression(
-            {
-                "operation": "divide",
-                "column": "VALUE",
-                "divisor": 10,
-                "dtype": pl.Float64,
-            },
-            alias_name="RESULT",
-        )
-    )
-
-    assert result["RESULT"].to_list() == [
-        1.0,
-        2.0,
-    ]
-
-
-def test_build_value_expression_ratio():
-    """Ratio operation divides numerator by denominator."""
-    frame = pl.DataFrame(
-        {
-            "NUM": ["10", "20"],
-            "DEN": ["2", "4"],
-        }
-    )
-
-    result = frame.select(
-        _build_value_expression(
-            {
-                "operation": "ratio",
-                "numerator": "NUM",
-                "denominator": "DEN",
-                "dtype": pl.Float64,
-            },
-            alias_name="RESULT",
-        )
-    )
-
-    assert result["RESULT"].to_list() == [
-        5.0,
-        5.0,
-    ]
-
-
-def test_build_value_expression_ratio_with_numerator_divisor():
-    """Ratio supports scaling the numerator before division."""
-    frame = pl.DataFrame(
-        {
-            "NUM": ["100", "200"],
-            "DEN": ["2", "4"],
-        }
-    )
-
-    result = frame.select(
-        _build_value_expression(
-            {
-                "operation": "ratio",
-                "numerator": "NUM",
-                "denominator": "DEN",
-                "numerator_divisor": 10,
-                "dtype": pl.Float64,
-            },
-            alias_name="RESULT",
-        )
-    )
-
-    assert result["RESULT"].to_list() == [
-        5.0,
-        5.0,
-    ]
-
-
-def test_build_value_expression_rejects_unknown_operation(caplog):
-    """Unsupported value operations raise ValueError."""
-    with pytest.raises(ValueError):
-        _build_value_expression(
-            {
-                "operation": "multiply",
-                "column": "VALUE",
-            }
-        )
-
-    assert "Unsupported value operation" in caplog.text
+    if isinstance(want, str):
+        assert want in caplog.text
+    else:
+        assert result["RESULT"].to_list() == want
 
 
 # ---------------------------------------------------------------------------
@@ -808,295 +687,180 @@ def test_build_value_expression_rejects_unknown_operation(caplog):
 # ---------------------------------------------------------------------------
 
 
-def test_get_guideline_value_returns_guideline():
-    """Guideline values and plotting metadata are extracted."""
-    tables = {
-        "guidelines": pl.DataFrame(
+@pytest.mark.parametrize(
+    "tables, spec, want",
+    [
+        (
+            # guideline values and plotting metadata are extracted
             {
-                "SAMPLE_ID": ["USL_Guideline"],
-                "VALUE": ["12.5"],
-            }
-        )
-    }
-
-    result = _get_guideline_value(
-        tables,
-        {
-            "table": "guidelines",
-            "sample_id": "USL_Guideline",
-            "value_spec": {
-                "operation": "cast",
-                "column": "VALUE",
-                "dtype": pl.Float64,
+                "guidelines": pl.DataFrame(
+                    {"SAMPLE_ID": ["USL_Guideline"], "VALUE": ["12.5"]}
+                )
             },
-            "python_cast": float,
-            "label_prefix": "USL",
-            "alpha": 0.5,
-            "color": "red",
-            "ann_y_offset": 2,
-        },
-    )
-
-    assert result == {
-        "value": 12.5,
-        "label": "USL: 12.5",
-        "alpha": 0.5,
-        "color": "red",
-        "ann_y_offset": 2,
-    }
-
-
-def test_get_guideline_value_supports_explicit_label():
-    """Explicit guideline labels override generated labels."""
-    tables = {
-        "guidelines": pl.DataFrame(
             {
-                "SAMPLE_ID": ["USL_Guideline"],
-                "VALUE": ["10"],
-            }
-        )
-    }
-
-    result = _get_guideline_value(
-        tables,
-        {
-            "table": "guidelines",
-            "sample_id": "USL_Guideline",
-            "value_spec": {
-                "column": "VALUE",
-                "dtype": pl.Float64,
+                "table": "guidelines",
+                "sample_id": "USL_Guideline",
+                "value_spec": {
+                    "operation": "cast",
+                    "column": "VALUE",
+                    "dtype": pl.Float64,
+                },
+                "python_cast": float,
+                "label_prefix": "USL",
+                "alpha": 0.5,
+                "color": "red",
+                "ann_y_offset": 2,
             },
-            "label_prefix": "Unused",
-            "label": "Custom guideline",
-        },
-    )
-
-    assert result["label"] == "Custom guideline"
-
-
-def test_get_guideline_value_supports_custom_id_column():
-    """Guidelines can select rows using a non-SAMPLE_ID column."""
-    tables = {
-        "guidelines": pl.DataFrame(
             {
-                "RUN_ID": ["LSL_Guideline"],
-                "VALUE": ["85"],
-            }
-        )
-    }
-
-    result = _get_guideline_value(
-        tables,
-        {
-            "table": "guidelines",
-            "id_column": "RUN_ID",
-            "sample_id": "LSL_Guideline",
-            "value_spec": {
-                "column": "VALUE",
-                "dtype": pl.Float64,
+                "value": 12.5,
+                "label": "USL: 12.5",
+                "alpha": 0.5,
+                "color": "red",
+                "ann_y_offset": 2,
             },
-            "label_prefix": "LSL",
-        },
-    )
-
-    assert result["value"] == 85.0
-
-
-def test_get_guideline_value_empty_table_returns_none():
-    """Empty guideline tables do not produce a guideline."""
-    tables = {
-        "guidelines": pl.DataFrame(
-            schema={
-                "SAMPLE_ID": pl.String,
-                "VALUE": pl.String,
-            }
-        )
-    }
-
-    result = _get_guideline_value(
-        tables,
-        {
-            "table": "guidelines",
-            "sample_id": "USL_Guideline",
-            "value_spec": {
-                "column": "VALUE",
-            },
-            "label_prefix": "USL",
-        },
-    )
-
-    assert result is None
-
-
-def test_get_guideline_value_missing_id_column_returns_none():
-    """Missing guideline ID columns are handled gracefully."""
-    tables = {
-        "guidelines": pl.DataFrame(
+        ),
+        (
+            # explicit guideline labels override generated labels
             {
-                "OTHER": ["USL_Guideline"],
-                "VALUE": ["10"],
-            }
-        )
-    }
-
-    result = _get_guideline_value(
-        tables,
-        {
-            "table": "guidelines",
-            "sample_id": "USL_Guideline",
-            "value_spec": {
-                "column": "VALUE",
+                "guidelines": pl.DataFrame(
+                    {"SAMPLE_ID": ["USL_Guideline"], "VALUE": ["10"]}
+                )
             },
-            "label_prefix": "USL",
-        },
-    )
-
-    assert result is None
-
-
-def test_get_guideline_value_missing_sample_returns_none():
-    """Missing guideline rows return None."""
-    tables = {
-        "guidelines": pl.DataFrame(
             {
-                "SAMPLE_ID": ["LSL_Guideline"],
-                "VALUE": ["10"],
-            }
-        )
-    }
-
-    result = _get_guideline_value(
-        tables,
-        {
-            "table": "guidelines",
-            "sample_id": "USL_Guideline",
-            "value_spec": {
-                "column": "VALUE",
+                "table": "guidelines",
+                "sample_id": "USL_Guideline",
+                "value_spec": {"column": "VALUE", "dtype": pl.Float64},
+                "label_prefix": "Unused",
+                "label": "Custom guideline",
             },
-            "label_prefix": "USL",
-        },
-    )
-
-    assert result is None
-
-
-def test_get_guideline_value_missing_metric_column_returns_none():
-    """Missing guideline metric columns return None."""
-    tables = {
-        "guidelines": pl.DataFrame(
+            {"label": "Custom guideline"},
+        ),
+        (
+            # guidelines can select rows using a non-SAMPLE_ID column
             {
-                "SAMPLE_ID": ["USL_Guideline"],
-            }
-        )
-    }
-
-    result = _get_guideline_value(
-        tables,
-        {
-            "table": "guidelines",
-            "sample_id": "USL_Guideline",
-            "value_spec": {
-                "column": "MISSING",
+                "guidelines": pl.DataFrame(
+                    {"RUN_ID": ["LSL_Guideline"], "VALUE": ["85"]}
+                )
             },
-            "label_prefix": "USL",
-        },
-    )
-
-    assert result is None
-
-
-def test_get_guideline_value_null_metric_returns_none():
-    """Null guideline metric values return None."""
-    tables = {
-        "guidelines": pl.DataFrame(
             {
-                "SAMPLE_ID": ["USL_Guideline"],
-                "VALUE": [None],
+                "table": "guidelines",
+                "id_column": "RUN_ID",
+                "sample_id": "LSL_Guideline",
+                "value_spec": {"column": "VALUE", "dtype": pl.Float64},
+                "label_prefix": "LSL",
             },
-            schema={
-                "SAMPLE_ID": pl.String,
-                "VALUE": pl.Float64,
-            },
-        )
-    }
-
-    result = _get_guideline_value(
-        tables,
-        {
-            "table": "guidelines",
-            "sample_id": "USL_Guideline",
-            "value_spec": {
-                "column": "VALUE",
-            },
-            "label_prefix": "USL",
-        },
-    )
-
-    assert result is None
-
-
-def test_get_guideline_value_literal_na_returns_none():
-    """Literal NA guideline values are treated as unavailable."""
-
-    tables = {
-        "guidelines": pl.DataFrame(
+            {"value": 85.0},
+        ),
+        (
+            # empty guideline tables do not produce a guideline
             {
-                "SAMPLE_ID": [
-                    "USL_Guideline",
-                ],
-                "VALUE": [
-                    "NA",
-                ],
-            }
-        )
-    }
-
-    result = _get_guideline_value(
-        tables,
-        {
-            "table": "guidelines",
-            "sample_id": "USL_Guideline",
-            "value_spec": {
-                "column": "VALUE",
+                "guidelines": pl.DataFrame(
+                    schema={"SAMPLE_ID": pl.String, "VALUE": pl.String}
+                )
             },
-            "python_cast": float,
-            "label_prefix": "USL",
-        },
-    )
-
-    assert result is None
-
-
-def test_get_guideline_value_zero_lsl_returns_none():
-    """A zero LSL is not treated as a drawable guideline."""
-
-    tables = {
-        "guidelines": pl.DataFrame(
             {
-                "SAMPLE_ID": [
-                    "LSL_Guideline",
-                ],
-                "VALUE": [
-                    "0",
-                ],
-            }
-        )
-    }
-
-    result = _get_guideline_value(
-        tables,
-        {
-            "table": "guidelines",
-            "sample_id": "LSL_Guideline",
-            "value_spec": {
-                "column": "VALUE",
+                "table": "guidelines",
+                "sample_id": "USL_Guideline",
+                "value_spec": {"column": "VALUE"},
+                "label_prefix": "USL",
             },
-            "python_cast": float,
-            "label_prefix": "LSL_Guideline",
-        },
-    )
+            None,
+        ),
+        (
+            # missing guideline ID columns are handled gracefully
+            {"guidelines": pl.DataFrame({"OTHER": ["USL_Guideline"], "VALUE": ["10"]})},
+            {
+                "table": "guidelines",
+                "sample_id": "USL_Guideline",
+                "value_spec": {"column": "VALUE"},
+                "label_prefix": "USL",
+            },
+            None,
+        ),
+        (
+            # missing guideline rows return None
+            {
+                "guidelines": pl.DataFrame(
+                    {"SAMPLE_ID": ["LSL_Guideline"], "VALUE": ["10"]}
+                )
+            },
+            {
+                "table": "guidelines",
+                "sample_id": "USL_Guideline",
+                "value_spec": {"column": "VALUE"},
+                "label_prefix": "USL",
+            },
+            None,
+        ),
+        (
+            # missing guideline metric columns return None
+            {"guidelines": pl.DataFrame({"SAMPLE_ID": ["USL_Guideline"]})},
+            {
+                "table": "guidelines",
+                "sample_id": "USL_Guideline",
+                "value_spec": {"column": "MISSING"},
+                "label_prefix": "USL",
+            },
+            None,
+        ),
+        (
+            # null guideline metric values return None
+            {
+                "guidelines": pl.DataFrame(
+                    {"SAMPLE_ID": ["USL_Guideline"], "VALUE": [None]},
+                    schema={"SAMPLE_ID": pl.String, "VALUE": pl.Float64},
+                )
+            },
+            {
+                "table": "guidelines",
+                "sample_id": "USL_Guideline",
+                "value_spec": {"column": "VALUE"},
+                "label_prefix": "USL",
+            },
+            None,
+        ),
+        (
+            # literal NA guideline values are treated as unavailable
+            {
+                "guidelines": pl.DataFrame(
+                    {"SAMPLE_ID": ["USL_Guideline"], "VALUE": ["NA"]}
+                )
+            },
+            {
+                "table": "guidelines",
+                "sample_id": "USL_Guideline",
+                "value_spec": {"column": "VALUE"},
+                "python_cast": float,
+                "label_prefix": "USL",
+            },
+            None,
+        ),
+        (
+            # a zero LSL is not treated as a drawable guideline
+            {
+                "guidelines": pl.DataFrame(
+                    {"SAMPLE_ID": ["LSL_Guideline"], "VALUE": ["0"]}
+                )
+            },
+            {
+                "table": "guidelines",
+                "sample_id": "LSL_Guideline",
+                "value_spec": {"column": "VALUE"},
+                "python_cast": float,
+                "label_prefix": "LSL_Guideline",
+            },
+            None,
+        ),
+    ],
+)
+def test_get_guideline_value(tables, spec, want):
+    result = _get_guideline_value(tables, spec)
 
-    assert result is None
+    if want is None:
+        assert result is None
+    else:
+        for key, value in want.items():
+            assert result[key] == value
 
 
 # ---------------------------------------------------------------------------
@@ -1104,187 +868,145 @@ def test_get_guideline_value_zero_lsl_returns_none():
 # ---------------------------------------------------------------------------
 
 
-def test_compute_cart_ylim_returns_static_limits():
-    """Static axis limits are returned unchanged."""
-    data = pl.DataFrame({"VALUE": [1, 2, 3]})
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            # a configured static limit is returned unchanged
+            ({"cart_ylim": (0, 10)}, [1, 2, 3], None),
+            nullcontext(),
+            (0, 10),
+        ),
+        (
+            # missing axis-limit configuration returns None
+            ({}, [1, 2], None),
+            nullcontext(),
+            None,
+        ),
+        (
+            # dynamic limits use data maximum plus a configured offset
+            (
+                {
+                    "cart_ylim_dynamic": {
+                        "mode": "max_plus",
+                        "column": "VALUE",
+                        "offset": 5,
+                    }
+                },
+                [10, 20, 15],
+                None,
+            ),
+            nullcontext(),
+            (0, 25),
+        ),
+        (
+            # dynamic limits support a custom lower bound
+            (
+                {
+                    "cart_ylim_dynamic": {
+                        "mode": "max_plus",
+                        "column": "VALUE",
+                        "lower": 5,
+                        "offset": 10,
+                    }
+                },
+                [10, 20],
+                None,
+            ),
+            nullcontext(),
+            (5, 30),
+        ),
+        (
+            # a configured limit is kept unchanged when the guideline already fits
+            (
+                {"y_var": "VALUE", "cart_ylim": (0, 20)},
+                [1.0, 2.0, 3.0],
+                {"value": 8.0, "ann_y_offset": 1.0},
+            ),
+            nullcontext(),
+            (0, 20),
+        ),
+        (
+            # an unsupported dynamic mode raises ValueError
+            (
+                {"cart_ylim_dynamic": {"mode": "unknown", "column": "VALUE"}},
+                [1, 2],
+                None,
+            ),
+            pytest.raises(ValueError),
+            "Unsupported dynamic y-limit mode",
+        ),
+    ],
+)
+def test_compute_cart_ylim(inputs, exception, want, caplog):
+    spec, data_values, guidelines = inputs
+    data = pl.DataFrame({"VALUE": data_values})
 
-    assert _compute_cart_ylim(
-        {
-            "cart_ylim": (0, 10),
-        },
-        data,
-    ) == (0, 10)
+    with exception:
+        if guidelines is None:
+            result = _compute_cart_ylim(spec, data)
+        else:
+            result = _compute_cart_ylim(spec, data, guidelines)
 
-
-def test_compute_cart_ylim_returns_none_without_configuration():
-    """Missing axis-limit configuration returns None."""
-    data = pl.DataFrame({"VALUE": [1, 2]})
-
-    assert _compute_cart_ylim({}, data) is None
-
-
-def test_compute_cart_ylim_dynamic_max_plus():
-    """Dynamic limits use data maximum plus configured offset."""
-    data = pl.DataFrame({"VALUE": [10, 20, 15]})
-
-    result = _compute_cart_ylim(
-        {
-            "cart_ylim_dynamic": {
-                "mode": "max_plus",
-                "column": "VALUE",
-                "offset": 5,
-            }
-        },
-        data,
-    )
-
-    assert result == (0, 25)
-
-
-def test_compute_cart_ylim_dynamic_custom_lower():
-    """Dynamic limits support a custom lower bound."""
-    data = pl.DataFrame({"VALUE": [10, 20]})
-
-    result = _compute_cart_ylim(
-        {
-            "cart_ylim_dynamic": {
-                "mode": "max_plus",
-                "column": "VALUE",
-                "lower": 5,
-                "offset": 10,
-            }
-        },
-        data,
-    )
-
-    assert result == (5, 30)
-
-
-def test_compute_cart_ylim_rejects_unknown_dynamic_mode(caplog):
-    """Unsupported dynamic limit modes raise ValueError."""
-    data = pl.DataFrame({"VALUE": [1, 2]})
-
-    with pytest.raises(ValueError):
-        _compute_cart_ylim(
-            {
-                "cart_ylim_dynamic": {
-                    "mode": "unknown",
-                    "column": "VALUE",
-                }
-            },
-            data,
-        )
-
-    assert "Unsupported dynamic y-limit mode" in caplog.text
-
-
-def test_compute_cart_ylim_guideline_above_bars_expands_limit():
-    """Guidelines above all bars remain visible."""
-    data = pl.DataFrame(
-        {
-            "VALUE": [
-                1.0,
-                2.0,
-                3.0,
-            ]
-        }
-    )
-
-    result = _compute_cart_ylim(
-        {
-            "y_var": "VALUE",
-        },
-        data,
-        {
-            "value": 8.0,
-            "ann_y_offset": 1.0,
-        },
-    )
-
-    assert result[0] == 0
-    assert result[1] > 9.0
+    if isinstance(want, str):
+        assert want in caplog.text
+    else:
+        assert result == want
 
 
-def test_compute_cart_ylim_bar_above_guideline_uses_bar_max():
-    """Bars above the guideline determine the visible upper range."""
-    data = pl.DataFrame(
-        {
-            "VALUE": [
-                3.0,
-                10.0,
-                15.0,
-            ]
-        }
-    )
+@pytest.mark.parametrize(
+    "data_values, cart_ylim, guidelines, want_upper_exceeds",
+    [
+        (
+            # guidelines both above and below the bars remain visible
+            [0.5, 1.0, 3.0],
+            None,
+            [
+                {"value": 1.0, "ann_y_offset": 0},
+                {"value": 8.0, "ann_y_offset": 0},
+            ],
+            8,
+        ),
+        (
+            # a guideline above all bars remains visible
+            [1.0, 2.0, 3.0],
+            None,
+            {"value": 8.0, "ann_y_offset": 1.0},
+            9.0,
+        ),
+        (
+            # bars above the guideline determine the visible upper range
+            [3.0, 10.0, 15.0],
+            None,
+            {"value": 8.0, "ann_y_offset": 0},
+            15.0,
+        ),
+        (
+            # a configured limit expands when it would otherwise clip a guideline
+            [1.0, 2.0, 3.0],
+            (0, 5),
+            {"value": 8.0, "ann_y_offset": 0},
+            8.0,
+        ),
+    ],
+)
+def test_compute_cart_ylim_expands_for_guidelines(
+    data_values,
+    cart_ylim,
+    guidelines,
+    want_upper_exceeds,
+):
+    """Axis limits expand to keep guidelines visible without clipping bar data."""
+    data = pl.DataFrame({"VALUE": data_values})
+    spec = {"y_var": "VALUE"}
 
-    result = _compute_cart_ylim(
-        {
-            "y_var": "VALUE",
-        },
-        data,
-        {
-            "value": 8.0,
-            "ann_y_offset": 0,
-        },
-    )
+    if cart_ylim is not None:
+        spec["cart_ylim"] = cart_ylim
 
-    assert result[0] == 0
-    assert result[1] > 15.0
-
-
-def test_compute_cart_ylim_keeps_existing_limit_when_guideline_is_visible():
-    """Configured limits remain unchanged when they already show the guideline."""
-    data = pl.DataFrame(
-        {
-            "VALUE": [
-                1.0,
-                2.0,
-                3.0,
-            ]
-        }
-    )
-
-    result = _compute_cart_ylim(
-        {
-            "y_var": "VALUE",
-            "cart_ylim": (0, 20),
-        },
-        data,
-        {
-            "value": 8.0,
-            "ann_y_offset": 1.0,
-        },
-    )
-
-    assert result == (0, 20)
-
-
-def test_compute_cart_ylim_expands_existing_limit_for_guideline():
-    """Configured limits expand when a guideline would otherwise be clipped."""
-    data = pl.DataFrame(
-        {
-            "VALUE": [
-                1.0,
-                2.0,
-                3.0,
-            ]
-        }
-    )
-
-    result = _compute_cart_ylim(
-        {
-            "y_var": "VALUE",
-            "cart_ylim": (0, 5),
-        },
-        data,
-        {
-            "value": 8.0,
-            "ann_y_offset": 0,
-        },
-    )
+    result = _compute_cart_ylim(spec, data, guidelines)
 
     assert result[0] == 0
-    assert result[1] > 8.0
+    assert result[1] > want_upper_exceeds
 
 
 def test_dna_chimeric_reads_has_usl_guideline():
@@ -1937,106 +1659,25 @@ def test_save_plot_first_page_number_is_one(
 # ---------------------------------------------------------------------------
 
 
-def test_render_plot_dispatches_bar(
-    monkeypatch,
-):
-    """Bar specifications use _render_bar_plot."""
+@pytest.mark.parametrize(
+    "plot_kind, renderer_name, workflow",
+    [
+        ("bar", "_render_bar_plot", "dragen"),
+        ("cluster_density_scatter", "_render_cluster_density_scatter", "dragen"),
+        ("contamination_scatter", "_render_contamination_scatter", "localapp"),
+    ],
+)
+def test_render_plot_dispatches(plot_kind, renderer_name, workflow, monkeypatch):
+    """Each supported plot_kind dispatches to its corresponding renderer."""
     renderer = MagicMock()
-
-    monkeypatch.setattr(
-        plotting,
-        "_render_bar_plot",
-        renderer,
-    )
+    monkeypatch.setattr(plotting, renderer_name, renderer)
 
     pdf = MagicMock()
+    spec = {"plot_kind": plot_kind}
 
-    spec = {
-        "plot_kind": "bar",
-    }
+    _render_plot(pdf, "TEST", spec, {}, workflow)
 
-    _render_plot(
-        pdf,
-        "TEST",
-        spec,
-        {},
-        "dragen",
-    )
-
-    renderer.assert_called_once_with(
-        pdf,
-        spec,
-        {},
-        "dragen",
-    )
-
-
-def test_render_plot_dispatches_cluster_density(
-    monkeypatch,
-):
-    """Cluster-density specifications use the correct renderer."""
-    renderer = MagicMock()
-
-    monkeypatch.setattr(
-        plotting,
-        "_render_cluster_density_scatter",
-        renderer,
-    )
-
-    pdf = MagicMock()
-
-    spec = {
-        "plot_kind": "cluster_density_scatter",
-    }
-
-    _render_plot(
-        pdf,
-        "TEST",
-        spec,
-        {},
-        "dragen",
-    )
-
-    renderer.assert_called_once_with(
-        pdf,
-        spec,
-        {},
-        "dragen",
-    )
-
-
-def test_render_plot_dispatches_contamination(
-    monkeypatch,
-):
-    """Contamination specifications use the correct renderer."""
-    renderer = MagicMock()
-
-    monkeypatch.setattr(
-        plotting,
-        "_render_contamination_scatter",
-        renderer,
-    )
-
-    pdf = MagicMock()
-
-    spec = {
-        "plot_kind": "contamination_scatter",
-    }
-
-    _render_plot(
-        pdf,
-        "TEST",
-        spec,
-        {},
-        "localapp",
-    )
-
-    renderer.assert_called_once_with(
-        pdf,
-        spec,
-        {},
-        "localapp",
-    )
+    renderer.assert_called_once_with(pdf, spec, {}, workflow)
 
 
 def test_render_plot_rejects_unknown_kind(caplog):
