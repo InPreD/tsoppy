@@ -636,7 +636,7 @@ class MetricPlots:
         if not existing_columns:
             return pl.DataFrame()
 
-        mapping = identifier_mapping or {}
+        mapping = dict(identifier_mapping) if identifier_mapping else {}
 
         long_frame = (
             section.select(
