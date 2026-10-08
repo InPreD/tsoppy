@@ -168,6 +168,100 @@ def _joint_qc_frame(
     )
 
 
+def _real_pdf_metrics_frame(
+    workflow: str,
+) -> pl.DataFrame:
+    """Return the minimum metrics frame required by _build_tables."""
+    return pl.DataFrame(
+        {
+            "SAMPLE_ID": [
+                "DNA_SAMPLE_A",
+            ],
+            "RUN": [
+                "RUN_A",
+            ],
+            "RUN_INDEX": [
+                "001",
+            ],
+            "WORKFLOW_TYPE": [
+                workflow,
+            ],
+            "RECORD_TYPE": [
+                "DNA_SAMPLE",
+            ],
+            "DNA_CONTAMINATION_SCORE": [
+                "100",
+            ],
+            "RNA_MEDIAN_CV_GENE_500X": [
+                None,
+            ],
+        },
+        schema_overrides={
+            "RNA_MEDIAN_CV_GENE_500X": (pl.String),
+        },
+    )
+
+
+def _real_pdf_joint_qc_frame(
+    workflow: str,
+) -> pl.DataFrame:
+    """Return a minimum run-level QC frame."""
+    return pl.DataFrame(
+        {
+            "RUN_ID": [
+                "RUN_A",
+            ],
+            "RUN_INDEX": [
+                "001",
+            ],
+            "WORKFLOW_TYPE": [
+                workflow,
+            ],
+            "PCT_PF_READS": [
+                "95",
+            ],
+        }
+    )
+
+
+def _real_pdf_plot_specs() -> dict:
+    """Return one real bar plot enabled for both workflows."""
+    return {
+        "TEST_RUN_METRIC": {
+            "localapp": {
+                "plot": True,
+                "index": 1,
+            },
+            "dragen": {
+                "plot": True,
+                "index": 1,
+            },
+            "plot_kind": "bar",
+            "source": "joint_qc_table",
+            "requires_samples": None,
+            "title": "End-to-end QC test",
+            "x_var": "RUN_ID",
+            "y_var": "PCT_PF_READS",
+            "fill_var": "RUN_ID",
+            "x_lab": "Run ID",
+            "y_lab": "Percentage",
+            "value_spec": {
+                "operation": "cast",
+                "column": "PCT_PF_READS",
+                "dtype": pl.Float64,
+            },
+            "na_filter_columns": [
+                "PCT_PF_READS",
+            ],
+            "cart_ylim": (
+                0,
+                100,
+            ),
+            "skip_if_empty": True,
+        }
+    }
+
+
 def _minimal_bar_spec(
     index: int = 1,
 ) -> dict:
@@ -2077,3 +2171,91 @@ def test_generate_qc_plots_renders_run_plot_without_samples(
     )
 
     render_mock.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "workflow",
+    [
+        "dragen",
+        "localapp",
+    ],
+)
+def test_generate_qc_plots_creates_real_pdf(
+    monkeypatch,
+    tmp_path,
+    workflow,
+):
+    """Full plotting orchestration produces a real PDF."""
+    monkeypatch.setattr(
+        plotting,
+        "PLOT_SPECS",
+        _real_pdf_plot_specs(),
+    )
+
+    output = tmp_path / f"{workflow}_metric_plots.pdf"
+
+    Generate_qc_plots(
+        metrics_table=_real_pdf_metrics_frame(workflow),
+        joint_qc_table=_real_pdf_joint_qc_frame(workflow),
+        workflow=workflow,
+        output_pdf=output,
+    )
+
+    assert output.exists()
+    assert output.stat().st_size > 1000
+
+    content = output.read_bytes()
+
+    assert content.startswith(b"%PDF")
+    assert b"%%EOF" in content[-1024:]
+
+
+@pytest.mark.parametrize(
+    ("pct_pf_reads", "expect_warning"),
+    [
+        (
+            "NA",
+            True,
+        ),
+        (
+            "95",
+            False,
+        ),
+    ],
+)
+def test_generate_qc_plots_warns_when_plot_skipped_for_empty_data(
+    monkeypatch,
+    tmp_path,
+    caplog,
+    pct_pf_reads,
+    expect_warning,
+):
+    """A skip_if_empty plot with no data left after filtering logs a warning."""
+    monkeypatch.setattr(
+        plotting,
+        "PLOT_SPECS",
+        _real_pdf_plot_specs(),
+    )
+
+    joint_qc = _real_pdf_joint_qc_frame("dragen").with_columns(
+        pl.lit(pct_pf_reads).alias("PCT_PF_READS")
+    )
+
+    Generate_qc_plots(
+        metrics_table=_real_pdf_metrics_frame("dragen"),
+        joint_qc_table=joint_qc,
+        workflow="dragen",
+        output_pdf=(tmp_path / "test.pdf"),
+    )
+
+    warnings = [
+        record.message
+        for record in caplog.records
+        if record.levelname == "WARNING" and "TEST_RUN_METRIC" in record.message
+    ]
+
+    if expect_warning:
+        assert len(warnings) == 1
+        assert "dragen" in warnings[0]
+    else:
+        assert warnings == []
