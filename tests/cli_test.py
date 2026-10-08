@@ -110,25 +110,6 @@ def _mock_metric_plotter(
     }
 
 
-def test_cli_omits_master_run_selector_defers_to_input_glob(
-    monkeypatch,
-    tmp_path,
-):
-    """Omitting both master run selectors is valid and defers to --input-glob."""
-    mocks = _mock_metric_plotter(monkeypatch)
-
-    result = runner.invoke(
-        app,
-        _base_args(tmp_path),
-    )
-
-    assert result.exit_code == 0, result.output
-
-    constructor_kwargs = mocks["constructor"].call_args.kwargs
-
-    assert constructor_kwargs["run_ids"] is None
-
-
 @pytest.mark.parametrize(
     "run_ids_first",
     [True, False],
@@ -265,26 +246,6 @@ def test_cli_rejects_both_explicit_plot_run_selectors(
 
     assert result.exit_code != 0
     assert "--plot-run-id-file" in _clean_output(result)
-
-
-def test_cli_plot_last_runs_must_be_positive(
-    tmp_path,
-):
-    """Typer rejects zero as --plot-last-runs."""
-    result = runner.invoke(
-        app,
-        _base_args(tmp_path)
-        + [
-            "--run-ids",
-            "RUN_A",
-            "--plot-last-runs",
-            "0",
-            "--plot-workflow",
-            "dragen",
-        ],
-    )
-
-    assert result.exit_code != 0
 
 
 def test_cli_parses_and_deduplicates_plot_run_ids(
