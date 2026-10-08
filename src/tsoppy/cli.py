@@ -245,6 +245,7 @@ def metric_plots(
         )
 
         if plotting_run_ids is not None:
+            # dict.fromkeys deduplicates while preserving order.
             plotting_run_ids = list(dict.fromkeys(plotting_run_ids))
 
         if plot_workflow is None:
