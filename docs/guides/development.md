@@ -27,14 +27,14 @@ Open the [`Command Palette`](https://code.visualstudio.com/api/ux-guidelines/com
 
 ## Recommended workflow
 
-1. Create an [issue](https://github.com/InPreD/tsoppy/issues/new) which is assigned to yourself, labeled as `enhancement` and of type `feature`. Include an adequate description and link to any relevant old TSOPPI code or other documents.
+1. Create an [issue](https://github.com/InPreD/tsoppy/issues/new) which is assigned to yourself, labeled as `enhancement` and of type `feature`. Include an adequate description, feature spec and link to any relevant old TSOPPI code or other documents.
 1. In the issue, use the `Create a branch` shortcut to create a new feature branch which should **always** branch off `develop`.
 1. Check out your new branch locally and follow this guide for designing a subpackage.
-1. Commit your changes often and as logically structured parts. Use [commit message conventions](https://inpred.github.io/24-03_bioinfo_ws/#19).
+1. Commit your changes often and as logically structured parts. Use [commit message conventions](https://inpred.github.io/24-03_bioinfo_ws/#19). If the changes become extensive rather split your work into logical parts and commit it to several branches to make the reviewing process easier.
 1. Before pushing, ensure that `ruff format --check` is happy with formatting.
 1. When you are done with the work or want to get feedback, open a [pull request](https://github.com/InPreD/tsoppy/pulls). Your branches should be `base: develop` and `compare: <your feature branch>`. Assign yourself as assignee and include reviewers that can give you feedback on code quality and functionality.
 1. Keep an eye on the github actions passing to make sure your unit tests work and your code is linted.
-1. Address all comments from the reviewers and when your changes were approved it is time to merge.
+1. Address all comments from the reviewers and mark them as resolved when you are done. In case of discussion, agree on a solution before implementing the change and resolving the thread. Only when all comments and suggestions have been addressed and resolved, and your changes were approved you may merge your branch into the base branch.
 
 ## Recommended packages
 
@@ -50,6 +50,8 @@ read csv/tsv tables | [polars](https://docs.pola.rs/)
 read json/toml/yaml | [msgspec](https://jcristharif.com/msgspec/index.html)
 testing | [pytest](https://docs.pytest.org/en/stable/)
 vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
+
+The use of different packages for individual cases should be discussed, e.g. in an issue. If you want to argue for adoption of a package globally you can open an issue, create a pull request and submit an ADR with your reasoning and the predicted consequences. Include relevant reviewers in the PR.
 
 ## Repository structure
 
@@ -79,8 +81,10 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 │   ├── test_data/
 │   │   └── <subpackage>_<module>/
 │   │       └── <function>/
-│   │           └── <test case name>.py
-│   └── test_<subpackage>_<module>.py
+│   │           └── <test case name>.<file extension>
+│   ├── __init__.py
+│   └── <subpackage>_<module>_test.py
+├── .gitignore -> ignore files that should not be committed
 ├── CODEOWNERS -> specifying who is responsible
 ├── Dockerfile -> build recipe for docker
 ├── LICENSE -> license that we agreed on in InPreD bioinfo group
@@ -97,7 +101,7 @@ vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 1. Include a short description on top of the file.
 1. Any imports of python packages should follow and be sorted with `isort`. Also, add packages that are not installed yet to the `pyproject.toml`, section `[project]`, key `dependencies`.
 1. Create a logger below the import section like so: `logger = logging.getLogger(__name__)`.
-1. Functions should be named with snake_case. Starting with a capital letter indicates that the function is designed to be used outside of the module, e.g. `Public_function_name(...)`, while prefixing with `_` is for internal helper functions, e.g. `_internal_function(...)`. All input variables and output should be [typed](https://docs.python.org/3/library/typing.html). Include a short description under the function definition line. Also provide comments to describe individual sections of the function and for parts that are generally more complex.
+1. Functions should be named with snake_case. Starting with a capital letter indicates that the function is designed to be used outside of the module, e.g. `Public_function_name(...)`, while prefixing with `_` is for internal helper functions, e.g. `_internal_function(...)`. All input variables and output should be [typed](https://docs.python.org/3/library/typing.html). Include a short description (docstring) under the function definition line. Also provide docstrings/comments to describe individual sections of the function and for parts that are generally more complex.
 1. Classes should be named with [PascalCase](https://stringcase.org/cases/pascal/). The class should contain a description and a list over all attributes. It also needs a constructor method `__init__` and potentially a [`__eq__` method](#alternatives-for-assert-value1--value2) for testing. The same guidelines listed for functions should be applied to methods.
 1. Import your subpackage to `src/tsoppy/cli.py` like so: `from tsoppy.<subpackage>.<module> import <class or function>`. Subsequently, connect your subpackage to a command like so:
 
@@ -159,6 +163,8 @@ def test_<function>(inputs, exception, want):
 > [!WARNING]
 > Please keep in mind that the example is simplified and you need to adapt the tests to your needs. Start by defining your test cases and expected output and then modify the unit test accordingly.
 
+To avoid repetitive code, structure your tests in a way that you can have one test per function/method and provide all cases to that test. Furthermore, testing high level functions/methods should not include all test cases that were already tested for the low level functions/methods called by these high level functions/methods. For example, a function `read_csv()` has five different test cases, two successful ones and three that fail. If the function `get_data()` calls `read_csv()` we do not need to test all five cases again but rather only one successful and one that fails.
+
 ### Potential exceptions to test for
 
 - `FileNotFoundError`: If your function takes a file path as input.
@@ -178,6 +184,12 @@ def test_<function>(inputs, exception, want):
         ...
         return self.<attributeN> == other.<attributeN>:
     ```
+
+## Documentation
+
+Generally, documentation should be clear and concise without repetitions. Avoid stating what the feature does not do and focus on what it actually does.
+
+Provide documentation for the subcommand that you have developed but adding the subcommand with an overview over the different flags (name, default/required, description) to `docs/references/<subcommand>.md`. Flowcharts should be provided as [mermaid charts](https://mermaid.ai/open-source/intro/). In addition, add any public functions and classes to `docs/references/functions_and_classes.md`. The section should start with a brief description of the function or class and include the required input and output.
 
 ## Running `tsoppy` cli
 
