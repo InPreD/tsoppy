@@ -1759,14 +1759,102 @@ def test_contamination_renderer_skips_empty_filtered_data(
     save_mock.assert_not_called()
 
 
-def test_contamination_renderer_uses_guideline_values(
+@pytest.mark.parametrize(
+    ("spec", "tables", "want_kwargs"),
+    [
+        (
+            # configured contamination USLs are passed to the plot helper
+            {
+                "source": "dna_data_table",
+                "color_var": "RUN",
+                "label_var": None,
+                "title": "Contamination",
+            },
+            {
+                "dna_data_table": _contamination_data(),
+                "dna_guideline_table": _dna_guideline_table(),
+            },
+            {
+                "color_var": "RUN_LABEL",
+                "usl_contamination_score": 1457.0,
+                "usl_contamination_pval": 0.05,
+                "max_contamination_score": 5000,
+            },
+        ),
+        (
+            # NA contamination guidelines use fallback plotting limits
+            {
+                "source": "dna_data_table",
+                "color_var": "RUN",
+                "label_var": None,
+                "title": "Contamination",
+            },
+            {
+                "dna_data_table": _contamination_data(),
+                "dna_guideline_table": _dna_guideline_table(
+                    score="NA",
+                    pvalue="NA",
+                ),
+            },
+            {
+                "usl_contamination_score": 5000.0,
+                "usl_contamination_pval": 0.05,
+            },
+        ),
+        (
+            # observed scores above 5000 expand the contamination x range
+            {
+                "source": "dna_data_table",
+                "color_var": "RUN",
+                "label_var": None,
+                "title": "Contamination",
+            },
+            {
+                "dna_data_table": _contamination_data(
+                    max_score="7200",
+                ),
+                "dna_guideline_table": _dna_guideline_table(),
+            },
+            {
+                "max_contamination_score": 7200.0,
+            },
+        ),
+        (
+            # non-RUN color variables and their styling pass through unchanged
+            {
+                "source": "dna_data_table",
+                "color_var": "highlighted_run",
+                "label_var": "contamination_label",
+                "title": "Highlighted contamination",
+                "color_values": {
+                    "False": "#888686",
+                    "True": "#C02F2F",
+                },
+            },
+            {
+                "dna_data_table": _contamination_data(),
+                "dna_guideline_table": _dna_guideline_table(),
+            },
+            {
+                "color_var": "highlighted_run",
+                "label_var": "contamination_label",
+                "color_values": {
+                    "False": "#888686",
+                    "True": "#C02F2F",
+                },
+            },
+        ),
+    ],
+)
+def test_contamination_renderer_passes_expected_kwargs(
     monkeypatch,
+    spec,
+    tables,
+    want_kwargs,
 ):
-    """Configured contamination USLs are passed to the plot helper."""
-    plot_object = MagicMock()
-
+    """Contamination renderer forwards guideline values and styling to the plot helper."""
     plot_mock = MagicMock(
-        return_value=plot_object,
+        return_value=MagicMock(),
     )
 
     save_mock = MagicMock()
@@ -1784,160 +1872,17 @@ def test_contamination_renderer_uses_guideline_values(
 
     _render_contamination_scatter(
         MagicMock(),
-        {
-            "source": "dna_data_table",
-            "color_var": "RUN",
-            "label_var": None,
-            "title": "Contamination",
-        },
-        {
-            "dna_data_table": _contamination_data(),
-            "dna_guideline_table": _dna_guideline_table(),
-        },
+        spec,
+        tables,
         "localapp",
     )
 
     kwargs = plot_mock.call_args.kwargs
 
-    assert kwargs["color_var"] == "RUN_LABEL"
-    assert kwargs["usl_contamination_score"] == 1457.0
-    assert kwargs["usl_contamination_pval"] == 0.05
-    assert kwargs["max_contamination_score"] == 5000
+    for key, value in want_kwargs.items():
+        assert kwargs[key] == value
 
     save_mock.assert_called_once()
-
-
-def test_contamination_renderer_uses_default_values_for_na_guidelines(
-    monkeypatch,
-):
-    """NA contamination guidelines use fallback plotting limits."""
-    plot_mock = MagicMock(
-        return_value=MagicMock(),
-    )
-
-    monkeypatch.setattr(
-        plotting,
-        "Plot_contamination_scatter",
-        plot_mock,
-    )
-    monkeypatch.setattr(
-        plotting,
-        "_save_plot",
-        MagicMock(),
-    )
-
-    _render_contamination_scatter(
-        MagicMock(),
-        {
-            "source": "dna_data_table",
-            "color_var": "RUN",
-            "label_var": None,
-            "title": "Contamination",
-        },
-        {
-            "dna_data_table": _contamination_data(),
-            "dna_guideline_table": _dna_guideline_table(
-                score="NA",
-                pvalue="NA",
-            ),
-        },
-        "localapp",
-    )
-
-    kwargs = plot_mock.call_args.kwargs
-
-    assert kwargs["usl_contamination_score"] == 5000.0
-
-    assert kwargs["usl_contamination_pval"] == 0.05
-
-
-def test_contamination_renderer_expands_score_axis_above_5000(
-    monkeypatch,
-):
-    """Observed scores above 5000 expand the contamination x range."""
-    plot_mock = MagicMock(
-        return_value=MagicMock(),
-    )
-
-    monkeypatch.setattr(
-        plotting,
-        "Plot_contamination_scatter",
-        plot_mock,
-    )
-    monkeypatch.setattr(
-        plotting,
-        "_save_plot",
-        MagicMock(),
-    )
-
-    _render_contamination_scatter(
-        MagicMock(),
-        {
-            "source": "dna_data_table",
-            "color_var": "RUN",
-            "label_var": None,
-            "title": "Contamination",
-        },
-        {
-            "dna_data_table": _contamination_data(
-                max_score="7200",
-            ),
-            "dna_guideline_table": _dna_guideline_table(),
-        },
-        "localapp",
-    )
-
-    assert plot_mock.call_args.kwargs["max_contamination_score"] == 7200.0
-
-
-def test_contamination_renderer_preserves_non_run_color_variable(
-    monkeypatch,
-):
-    """Non-RUN color variables are passed through unchanged."""
-    plot_mock = MagicMock(
-        return_value=MagicMock(),
-    )
-
-    monkeypatch.setattr(
-        plotting,
-        "Plot_contamination_scatter",
-        plot_mock,
-    )
-    monkeypatch.setattr(
-        plotting,
-        "_save_plot",
-        MagicMock(),
-    )
-
-    _render_contamination_scatter(
-        MagicMock(),
-        {
-            "source": "dna_data_table",
-            "color_var": "highlighted_run",
-            "label_var": "contamination_label",
-            "title": "Highlighted contamination",
-            "color_values": {
-                "False": "#888686",
-                "True": "#C02F2F",
-            },
-        },
-        {
-            "dna_data_table": _contamination_data(),
-            "dna_guideline_table": _dna_guideline_table(),
-        },
-        "localapp",
-    )
-
-    kwargs = plot_mock.call_args.kwargs
-
-    assert kwargs["color_var"] == "highlighted_run"
-
-    assert kwargs["label_var"] == "contamination_label"
-
-    assert kwargs["color_values"] == {
-        "False": "#888686",
-        "True": "#C02F2F",
-    }
 
 
 def test_contamination_renderer_creates_real_pdf(
