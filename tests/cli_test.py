@@ -135,6 +135,41 @@ def test_cli_rejects_both_master_run_selectors(
     assert "--run-id-file" in _clean_output(result)
 
 
+def test_cli_reads_run_id_file(
+    monkeypatch,
+    tmp_path,
+):
+    """Run-ID files ignore blank lines and support comma-separated IDs per
+    line. (Deduplication is MetricPlots's own responsibility, tested in
+    metric_plots_main_test.py, so a repeated ID is intentionally included
+    here to show cli.py forwards it unchanged.)"""
+    mocks = _mock_metric_plotter(monkeypatch)
+
+    run_file = tmp_path / "runs.txt"
+
+    run_file.write_text("\nRUN_B, RUN_C\nRUN_A\nRUN_B\n\n")
+
+    result = runner.invoke(
+        app,
+        _base_args(tmp_path)
+        + [
+            "--run-id-file",
+            str(run_file),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    constructor_kwargs = mocks["constructor"].call_args.kwargs
+
+    assert constructor_kwargs["run_ids"] == [
+        "RUN_B",
+        "RUN_C",
+        "RUN_A",
+        "RUN_B",
+    ]
+
+
 def test_cli_tables_only_does_not_generate_pdf(
     monkeypatch,
     tmp_path,
@@ -292,7 +327,8 @@ def test_cli_reads_plot_run_id_file(
     monkeypatch,
     tmp_path,
 ):
-    """Plot-run files ignore blank lines and deduplicate IDs."""
+    """Plot-run files ignore blank lines, support comma-separated IDs per
+    line, and deduplicate IDs."""
     mocks = _mock_metric_plotter(monkeypatch)
 
     monkeypatch.setattr(
@@ -303,7 +339,7 @@ def test_cli_reads_plot_run_id_file(
 
     plot_file = tmp_path / "plot_runs.txt"
 
-    plot_file.write_text("\nRUN_B\nRUN_A\nRUN_B\n\n")
+    plot_file.write_text("\nRUN_B, RUN_C\nRUN_A\nRUN_B\n\n")
 
     result = runner.invoke(
         app,
@@ -324,6 +360,7 @@ def test_cli_reads_plot_run_id_file(
 
     assert kwargs["plot_run_ids"] == [
         "RUN_B",
+        "RUN_C",
         "RUN_A",
     ]
 

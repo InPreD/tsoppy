@@ -36,6 +36,21 @@ def _parse_run_ids(value: str) -> list[str]:
     return [run_id.strip() for run_id in value.split(",") if run_id.strip()]
 
 
+def _parse_run_id_file(value: str) -> list[str]:
+    """Read run IDs from a file, one or more comma-separated IDs per line."""
+    path = Path(value)
+
+    if not path.is_file():
+        raise typer.BadParameter(f"File '{value}' does not exist or is not a file.")
+
+    return [
+        run_id
+        for line in path.read_text().splitlines()
+        if line.strip()
+        for run_id in _parse_run_ids(line)
+    ]
+
+
 @app.command()
 def version():
     """Print the version of tsoppy."""
@@ -96,18 +111,20 @@ def metric_plots(
         ),
     ] = None,
     run_id_file: Annotated[
-        Path | None,
+        # Stays annotated as str, not Path: Typer re-wraps a Path-annotated
+        # option's parsed value in Path(...) again after the parser= runs,
+        # which crashes since our parser returns a list[str]. _parse_run_id_file
+        # does its own existence check instead of relying on typer.Option's
+        # exists=True (which only applies to Path-annotated options).
+        str | None,
         typer.Option(
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
-            resolve_path=True,
+            parser=_parse_run_id_file,
+            metavar="FILE",
             help=(
                 "Text file containing run IDs for generation of the master metrics "
-                "table, one per line. If neither --run-id-file nor --run-ids is "
-                "provided, all runs matched by --input-glob are included. "
-                "Mutually exclusive with --run-ids."
+                "table, one or more comma-separated per line. If neither "
+                "--run-id-file nor --run-ids is provided, all runs matched by "
+                "--input-glob are included. Mutually exclusive with --run-ids."
             ),
         ),
     ] = None,
@@ -124,16 +141,14 @@ def metric_plots(
         ),
     ] = None,
     plot_run_id_file: Annotated[
-        Path | None,
+        # See the run_id_file option above for why this stays annotated as str.
+        str | None,
         typer.Option(
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
-            resolve_path=True,
+            parser=_parse_run_id_file,
+            metavar="FILE",
             help=(
-                "Text file containing list of run IDs to select for plotting. "
-                "Mutually exclusive with --plot-run-ids."
+                "Text file containing run IDs to select for plotting, one or more "
+                "comma-separated per line. Mutually exclusive with --plot-run-ids."
             ),
         ),
     ] = None,
@@ -207,16 +222,9 @@ def metric_plots(
         logger.error(message)
         raise typer.BadParameter(message)
 
-    # run_ids is already parsed into a list by the option's parser=, if given.
-    resolved_run_ids = run_ids
-
-    if resolved_run_ids is None and run_id_file is not None:
-        resolved_run_ids = [
-            run_id
-            for line in run_id_file.read_text().splitlines()
-            if line.strip()
-            for run_id in _parse_run_ids(line)
-        ]
+    # run_ids/run_id_file are already parsed into a list by the options'
+    # parser=, if given.
+    resolved_run_ids = run_ids if run_ids is not None else run_id_file
 
     metric_plotter = MetricPlots(
         config_yaml=config_yaml,
@@ -230,15 +238,11 @@ def metric_plots(
     logger.info("Metrics master table and joint QC files created.")
 
     if prepare_plot_frames:
-        # plot_run_ids is already parsed into a list by the option's parser=, if given.
-        plotting_run_ids = plot_run_ids
-
-        if plotting_run_ids is None and plot_run_id_file is not None:
-            plotting_run_ids = [
-                line.strip()
-                for line in plot_run_id_file.read_text().splitlines()
-                if line.strip()
-            ]
+        # plot_run_ids/plot_run_id_file are already parsed into a list by the
+        # options' parser=, if given.
+        plotting_run_ids = (
+            plot_run_ids if plot_run_ids is not None else plot_run_id_file
+        )
 
         if plotting_run_ids is not None:
             plotting_run_ids = list(dict.fromkeys(plotting_run_ids))
