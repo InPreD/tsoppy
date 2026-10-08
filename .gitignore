@@ -9,7 +9,6 @@ build/
 dist/
 venv/
 .venv/
-.gitignore
 
 # IDE
 .project
