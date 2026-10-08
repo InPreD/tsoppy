@@ -396,46 +396,27 @@ def test_minimal_bar_spec_rejections(mutate_spec, want_caplog_substring, caplog)
 # ---------------------------------------------------------------------------
 
 
-def test_valid_metric_expr_keeps_valid_values():
-    """Normal metric values pass the valid-metric filter."""
-    frame = pl.DataFrame(
-        {
-            "VALUE": [
-                "1",
-                "2.5",
-                "0",
-            ]
-        }
-    )
+@pytest.mark.parametrize(
+    "values, want",
+    [
+        (
+            # normal metric values pass the valid-metric filter
+            ["1", "2.5", "0"],
+            ["1", "2.5", "0"],
+        ),
+        (
+            # null and literal NA values are treated as missing
+            ["1", None, "NA", "2"],
+            ["1", "2"],
+        ),
+    ],
+)
+def test_valid_metric_expr(values, want):
+    frame = pl.DataFrame({"VALUE": values})
 
     result = frame.filter(_valid_metric_expr("VALUE"))
 
-    assert result["VALUE"].to_list() == [
-        "1",
-        "2.5",
-        "0",
-    ]
-
-
-def test_valid_metric_expr_removes_null_and_na():
-    """Null and literal NA values are treated as missing."""
-    frame = pl.DataFrame(
-        {
-            "VALUE": [
-                "1",
-                None,
-                "NA",
-                "2",
-            ]
-        }
-    )
-
-    result = frame.filter(_valid_metric_expr("VALUE"))
-
-    assert result["VALUE"].to_list() == [
-        "1",
-        "2",
-    ]
+    assert result["VALUE"].to_list() == want
 
 
 def test_get_available_guidelines_returns_lsl_and_usl():
