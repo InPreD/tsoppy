@@ -189,7 +189,7 @@ RUN002
 RUN004
 ```
 
-Blank lines are ignored.
+Blank lines are ignored. A line may also contain comma-separated run IDs.
 
 ## CLI options
 
