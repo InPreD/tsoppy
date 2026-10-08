@@ -88,6 +88,31 @@ def _joint_qc_frame():
     )
 
 
+def _twelve_run_frames():
+    """Create 12 same-workflow runs to exercise the default last-10-runs cutoff."""
+    run_ids = [f"RUN{i:02d}" for i in range(1, 13)]
+
+    master = polars.DataFrame(
+        {
+            "SAMPLE_ID": [f"S{i:02d}" for i in range(1, 13)],
+            "RUN": run_ids,
+            "WORKFLOW_TYPE": ["dragen"] * 12,
+            "WORKFLOW_VERSION": ["2.6.2.4"] * 12,
+            "RECORD_TYPE": ["DNA_SAMPLE"] * 12,
+        }
+    )
+
+    joint_qc = polars.DataFrame(
+        {
+            "RUN_ID": run_ids,
+            "WORKFLOW_TYPE": ["dragen"] * 12,
+            "WORKFLOW_VERSION": ["2.6.2.4"] * 12,
+        }
+    )
+
+    return master, joint_qc
+
+
 def _metric_plots_without_init():
     """Create MetricPlots without filesystem-dependent initialization."""
     return MetricPlots.__new__(MetricPlots)
@@ -168,28 +193,70 @@ def test_run(input_glob, run_ids, expected):
             os.chdir(current_dir)
 
 
-def test_select_plot_data_last_runs():
-    master = _master_frame()
-    joint_qc = _joint_qc_frame()
+@pytest.mark.parametrize(
+    ("master", "joint_qc", "plot_last_runs", "plot_run_ids", "want_runs"),
+    [
+        (
+            # last_runs selects the N most recent runs for the workflow
+            _master_frame(),
+            _joint_qc_frame(),
+            2,
+            None,
+            ["RUN3", "RUN5"],
+        ),
+        (
+            # last_runs beyond what's available clips to all available runs
+            _master_frame(),
+            _joint_qc_frame(),
+            10,
+            None,
+            ["RUN1", "RUN3", "RUN5"],
+        ),
+        (
+            # explicit run IDs are selected regardless of recency
+            _master_frame(),
+            _joint_qc_frame(),
+            None,
+            ["RUN1", "RUN5"],
+            ["RUN1", "RUN5"],
+        ),
+        (
+            # an explicit run ID matching nothing selects no rows
+            _master_frame(),
+            _joint_qc_frame(),
+            None,
+            ["RUN_DOES_NOT_EXIST"],
+            [],
+        ),
+        (
+            # no selector defaults to the last DEFAULT_PLOT_LAST_RUNS (10) runs
+            *_twelve_run_frames(),
+            None,
+            None,
+            [f"RUN{i:02d}" for i in range(3, 13)],
+        ),
+    ],
+)
+def test_select_plot_data(
+    master,
+    joint_qc,
+    plot_last_runs,
+    plot_run_ids,
+    want_runs,
+):
+    """Master and joint-QC rows are both filtered to the same selected runs."""
     metric_plots = _metric_plots_without_init()
 
-    got, _ = metric_plots.select_plot_data(
+    got, got_joint_qc = metric_plots.select_plot_data(
         master=master,
         joint_qc=joint_qc,
         workflow_type="dragen",
-        plot_last_runs=2,
+        plot_last_runs=plot_last_runs,
+        plot_run_ids=plot_run_ids,
     )
 
-    expected = master.filter(
-        polars.col("RUN").is_in(
-            [
-                "RUN3",
-                "RUN5",
-            ]
-        )
-    )
-
-    assert got.equals(expected)
+    assert got["RUN"].to_list() == want_runs
+    assert got_joint_qc["RUN_ID"].to_list() == want_runs
 
 
 def test_no_run_selector_uses_all_runs_from_input_glob():
@@ -216,89 +283,8 @@ def test_no_run_selector_uses_all_runs_from_input_glob():
         ]
 
 
-def test_select_plot_data_defaults_to_last_ten_runs():
-    """Select the last ten workflow runs when no plot selector is provided."""
-
-    run_ids = [f"RUN{i:02d}" for i in range(1, 13)]
-
-    master = polars.DataFrame(
-        {
-            "SAMPLE_ID": [f"S{i:02d}" for i in range(1, 13)],
-            "RUN": run_ids,
-            "WORKFLOW_TYPE": ["dragen"] * 12,
-            "WORKFLOW_VERSION": ["2.6.2.4"] * 12,
-            "RECORD_TYPE": ["DNA_SAMPLE"] * 12,
-        }
-    )
-
-    joint_qc = polars.DataFrame(
-        {
-            "RUN_ID": run_ids,
-            "WORKFLOW_TYPE": ["dragen"] * 12,
-            "WORKFLOW_VERSION": ["2.6.2.4"] * 12,
-        }
-    )
-
-    metric_plots = _metric_plots_without_init()
-
-    got, got_joint_qc = metric_plots.select_plot_data(
-        master=master,
-        joint_qc=joint_qc,
-        workflow_type="dragen",
-    )
-
-    expected_runs = [f"RUN{i:02d}" for i in range(3, 13)]
-
-    assert got["RUN"].to_list() == expected_runs
-    assert got_joint_qc["RUN_ID"].to_list() == expected_runs
-
-
-def test_select_plot_data_last_runs_more_than_available():
-    master = _master_frame()
-    joint_qc = _joint_qc_frame()
-    metric_plots = _metric_plots_without_init()
-
-    got, _ = metric_plots.select_plot_data(
-        master=master,
-        joint_qc=joint_qc,
-        workflow_type="dragen",
-        plot_last_runs=10,
-    )
-
-    expected = master.filter(polars.col("WORKFLOW_TYPE") == "dragen")
-
-    assert got.equals(expected)
-
-
-def test_select_plot_data_explicit_runs():
-    master = _master_frame()
-    joint_qc = _joint_qc_frame()
-    metric_plots = _metric_plots_without_init()
-
-    got, _ = metric_plots.select_plot_data(
-        master=master,
-        joint_qc=joint_qc,
-        workflow_type="dragen",
-        plot_run_ids=[
-            "RUN1",
-            "RUN5",
-        ],
-    )
-
-    expected = master.filter(
-        polars.col("RUN").is_in(
-            [
-                "RUN1",
-                "RUN5",
-            ]
-        )
-        & (polars.col("WORKFLOW_TYPE") == "dragen")
-    )
-
-    assert got.equals(expected)
-
-
 def test_select_plot_data_filters_workflow_first():
+    """Shared run IDs across workflows do not leak between master and joint QC."""
     master = polars.DataFrame(
         {
             "SAMPLE_ID": [
@@ -341,251 +327,140 @@ def test_select_plot_data_filters_workflow_first():
         }
     )
 
-    metric_plots = _metric_plots_without_init()
-
-    got, _ = metric_plots.select_plot_data(
-        master=master,
-        joint_qc=joint_qc,
-        workflow_type="localapp",
-        plot_run_ids=[
-            "RUN1",
-        ],
-    )
-
-    expected = master.filter(polars.col("WORKFLOW_TYPE") == "localapp")
-
-    assert got.equals(expected)
-
-
-def test_select_plot_data_joint_qc_filters_workflow_first():
-    master = polars.DataFrame(
-        {
-            "SAMPLE_ID": [
-                "DRAGEN_SAMPLE",
-                "LOCALAPP_SAMPLE",
-            ],
-            "RUN": [
-                "RUN1",
-                "RUN1",
-            ],
-            "WORKFLOW_TYPE": [
-                "dragen",
-                "localapp",
-            ],
-            "WORKFLOW_VERSION": [
-                "2.6.2.4",
-                "ruo-2.2.0.12",
-            ],
-            "RECORD_TYPE": [
-                "DNA_SAMPLE",
-                "DNA_SAMPLE",
-            ],
-        }
-    )
-
-    joint_qc = polars.DataFrame(
-        {
-            "RUN_ID": [
-                "RUN1",
-                "RUN1",
-            ],
-            "WORKFLOW_TYPE": [
-                "dragen",
-                "localapp",
-            ],
-            "WORKFLOW_VERSION": [
-                "2.6.2.4",
-                "ruo-2.2.0.12",
-            ],
-        }
-    )
-
-    metric_plots = _metric_plots_without_init()
-
-    _, got = metric_plots.select_plot_data(
-        master=master,
-        joint_qc=joint_qc,
-        workflow_type="localapp",
-        plot_run_ids=[
-            "RUN1",
-        ],
-    )
-
-    expected = joint_qc.filter(polars.col("WORKFLOW_TYPE") == "localapp")
-
-    assert got.equals(expected)
-
-
-def test_select_plot_data_missing_explicit_run():
-    master = _master_frame()
-    joint_qc = _joint_qc_frame()
     metric_plots = _metric_plots_without_init()
 
     got, got_joint_qc = metric_plots.select_plot_data(
         master=master,
         joint_qc=joint_qc,
-        workflow_type="dragen",
+        workflow_type="localapp",
         plot_run_ids=[
-            "RUN_DOES_NOT_EXIST",
+            "RUN1",
         ],
     )
 
-    assert got.is_empty()
-    assert got_joint_qc.is_empty()
+    assert got.equals(master.filter(polars.col("WORKFLOW_TYPE") == "localapp"))
 
-
-def test_select_plot_data_filters_both_outputs_consistently():
-    master = _master_frame()
-    joint_qc = _joint_qc_frame()
-    metric_plots = _metric_plots_without_init()
-
-    plot_frame, plot_joint_qc = metric_plots.select_plot_data(
-        master=master,
-        joint_qc=joint_qc,
-        workflow_type="dragen",
-        plot_last_runs=1,
+    assert got_joint_qc.equals(
+        joint_qc.filter(polars.col("WORKFLOW_TYPE") == "localapp")
     )
 
-    assert plot_frame["RUN"].to_list() == ["RUN5"]
 
-    assert plot_joint_qc["RUN_ID"].to_list() == ["RUN5"]
-
-
-def test_add_record_type_uses_samplesheet_sample_type():
-    """RECORD_TYPE comes from the sample sheet, not metric content or SAMPLE_ID text."""
-    samples = polars.DataFrame(
-        {
-            "SAMPLE_ID": [
-                "RNA_LOOKING_ID",
-                "DNA_LOOKING_ID",
+@pytest.mark.parametrize(
+    ("samples", "samplesheet", "want"),
+    [
+        (
+            # RECORD_TYPE comes from the sample sheet, not metric content or SAMPLE_ID text
+            polars.DataFrame(
+                {
+                    "SAMPLE_ID": [
+                        "RNA_LOOKING_ID",
+                        "DNA_LOOKING_ID",
+                    ],
+                    "DNA_METRIC": [
+                        "10",
+                        None,
+                    ],
+                    "RNA_METRIC": [
+                        None,
+                        "20",
+                    ],
+                }
+            ),
+            polars.DataFrame(
+                {
+                    "Sample_ID": [
+                        "RNA_LOOKING_ID",
+                        "DNA_LOOKING_ID",
+                    ],
+                    "Sample_Type": [
+                        "DNA",
+                        "RNA",
+                    ],
+                }
+            ),
+            [
+                "DNA_SAMPLE",
+                "RNA_SAMPLE",
             ],
-            "DNA_METRIC": [
-                "10",
-                None,
+        ),
+        (
+            # a sample absent from the sample sheet falls back to unknown
+            polars.DataFrame(
+                {
+                    "SAMPLE_ID": ["NOT_IN_SAMPLESHEET"],
+                }
+            ),
+            polars.DataFrame(
+                {
+                    "Sample_ID": ["OTHER_SAMPLE"],
+                    "Sample_Type": ["DNA"],
+                }
+            ),
+            ["SAMPLE"],
+        ),
+        (
+            # a sample sheet without a Sample_Type column falls back to unknown
+            polars.DataFrame(
+                {
+                    "SAMPLE_ID": ["SAMPLE01"],
+                }
+            ),
+            polars.DataFrame(
+                {
+                    "Sample_ID": ["SAMPLE01"],
+                }
+            ),
+            ["SAMPLE"],
+        ),
+        (
+            # a Sample_ID mapped to more than one Sample_Type cannot be classified unambiguously
+            polars.DataFrame(
+                {
+                    "SAMPLE_ID": [
+                        "DUPLICATE_ID",
+                        "SOLO_SAMPLE",
+                    ],
+                }
+            ),
+            polars.DataFrame(
+                {
+                    "Sample_ID": [
+                        "DUPLICATE_ID",
+                        "DUPLICATE_ID",
+                        "SOLO_SAMPLE",
+                    ],
+                    "Sample_Type": [
+                        "DNA",
+                        "RNA",
+                        "RNA",
+                    ],
+                }
+            ),
+            [
+                "SAMPLE",
+                "RNA_SAMPLE",
             ],
-            "RNA_METRIC": [
-                None,
-                "20",
-            ],
-        }
-    )
-
-    samplesheet = polars.DataFrame(
-        {
-            "Sample_ID": [
-                "RNA_LOOKING_ID",
-                "DNA_LOOKING_ID",
-            ],
-            "Sample_Type": [
-                "DNA",
-                "RNA",
-            ],
-        }
-    )
-
-    metric_plots = _metric_plots_without_init()
-
-    got = metric_plots._add_record_type(samples, samplesheet)
-
-    assert got["RECORD_TYPE"].to_list() == [
-        "DNA_SAMPLE",
-        "RNA_SAMPLE",
-    ]
-
-
-def test_add_record_type_unmatched_sample_falls_back_to_unknown():
-    samples = polars.DataFrame(
-        {
-            "SAMPLE_ID": ["NOT_IN_SAMPLESHEET"],
-        }
-    )
-
-    samplesheet = polars.DataFrame(
-        {
-            "Sample_ID": ["OTHER_SAMPLE"],
-            "Sample_Type": ["DNA"],
-        }
-    )
-
-    metric_plots = _metric_plots_without_init()
-
-    got = metric_plots._add_record_type(samples, samplesheet)
-
-    assert got["RECORD_TYPE"].to_list() == ["SAMPLE"]
-
-
-def test_add_record_type_missing_sample_type_column_falls_back_to_unknown():
-    samples = polars.DataFrame(
-        {
-            "SAMPLE_ID": ["SAMPLE01"],
-        }
-    )
-
-    samplesheet = polars.DataFrame(
-        {
-            "Sample_ID": ["SAMPLE01"],
-        }
-    )
-
-    metric_plots = _metric_plots_without_init()
-
-    got = metric_plots._add_record_type(samples, samplesheet)
-
-    assert got["RECORD_TYPE"].to_list() == ["SAMPLE"]
-
-
-def test_add_record_type_ambiguous_samplesheet_uses_fallback():
-    """A Sample_ID mapped to more than one Sample_Type cannot be classified unambiguously."""
-    samples = polars.DataFrame(
-        {
-            "SAMPLE_ID": [
-                "DUPLICATE_ID",
-                "SOLO_SAMPLE",
-            ],
-        }
-    )
-
-    samplesheet = polars.DataFrame(
-        {
-            "Sample_ID": [
-                "DUPLICATE_ID",
-                "DUPLICATE_ID",
-                "SOLO_SAMPLE",
-            ],
-            "Sample_Type": [
-                "DNA",
-                "RNA",
-                "RNA",
-            ],
-        }
-    )
-
+        ),
+        (
+            # Sample_Type matching is case- and whitespace-insensitive
+            polars.DataFrame(
+                {
+                    "SAMPLE_ID": ["SAMPLE01"],
+                }
+            ),
+            polars.DataFrame(
+                {
+                    "Sample_ID": ["SAMPLE01"],
+                    "Sample_Type": [" dna "],
+                }
+            ),
+            ["DNA_SAMPLE"],
+        ),
+    ],
+)
+def test_add_record_type(samples, samplesheet, want):
     metric_plots = _metric_plots_without_init()
 
     got = metric_plots._add_record_type(samples, samplesheet)
 
-    assert got["RECORD_TYPE"].to_list() == [
-        "SAMPLE",
-        "RNA_SAMPLE",
-    ]
-
-
-def test_add_record_type_sample_type_is_case_and_whitespace_insensitive():
-    samples = polars.DataFrame(
-        {
-            "SAMPLE_ID": ["SAMPLE01"],
-        }
-    )
-
-    samplesheet = polars.DataFrame(
-        {
-            "Sample_ID": ["SAMPLE01"],
-            "Sample_Type": [" dna "],
-        }
-    )
-
-    metric_plots = _metric_plots_without_init()
-
-    got = metric_plots._add_record_type(samples, samplesheet)
-
-    assert got["RECORD_TYPE"].to_list() == ["DNA_SAMPLE"]
+    assert got["RECORD_TYPE"].to_list() == want
