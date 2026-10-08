@@ -233,19 +233,18 @@ def test_resolve_plot_title(spec, workflow, want):
     assert _resolve_plot_title(spec, workflow) == want
 
 
-def test_workflow_specific_title_resolution_production_specs():
+@pytest.mark.parametrize(
+    "workflow, want_prefix",
+    [
+        ("localapp", "[LocalApp"),
+        ("dragen", "[Dragen"),
+    ],
+)
+def test_workflow_specific_title_resolution_production_specs(workflow, want_prefix):
     """Production workflow-specific titles resolve correctly."""
     q30_spec = PLOT_SPECS["PCT_Q30_R1"]
 
-    assert _resolve_plot_title(
-        q30_spec,
-        "localapp",
-    ).startswith("[LocalApp")
-
-    assert _resolve_plot_title(
-        q30_spec,
-        "dragen",
-    ).startswith("[Dragen")
+    assert _resolve_plot_title(q30_spec, workflow).startswith(want_prefix)
 
 
 # ---------------------------------------------------------------------------
