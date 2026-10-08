@@ -254,7 +254,7 @@ def test_workflow_specific_title_resolution_production_specs(workflow, want_pref
 
 def test_current_plot_specs_validate():
     """The production plot specification set is structurally valid."""
-    _validate_plot_specs(PLOT_SPECS)
+    assert _validate_plot_specs(PLOT_SPECS) is None
 
 
 def test_duplicate_plot_indices_are_rejected(caplog):
