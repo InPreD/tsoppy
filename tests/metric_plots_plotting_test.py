@@ -202,25 +202,35 @@ def _minimal_bar_spec(
 # ---------------------------------------------------------------------------
 
 
-def test_resolve_plot_title_shared_title():
-    """Shared plot titles are returned unchanged."""
-    spec = {"title": "Shared title"}
-
-    assert _resolve_plot_title(spec, "dragen") == "Shared title"
-    assert _resolve_plot_title(spec, "localapp") == "Shared title"
-
-
-def test_resolve_plot_title_workflow_specific():
-    """Workflow-specific titles use the selected workflow."""
-    spec = {
-        "title": {
-            "dragen": "Dragen title",
-            "localapp": "LocalApp title",
-        }
-    }
-
-    assert _resolve_plot_title(spec, "dragen") == "Dragen title"
-    assert _resolve_plot_title(spec, "localapp") == "LocalApp title"
+@pytest.mark.parametrize(
+    "spec, workflow, want",
+    [
+        (
+            # a plain string title is shared across both workflows
+            {"title": "Shared title"},
+            "dragen",
+            "Shared title",
+        ),
+        (
+            {"title": "Shared title"},
+            "localapp",
+            "Shared title",
+        ),
+        (
+            # a per-workflow title dict picks the title for the selected workflow
+            {"title": {"dragen": "Dragen title", "localapp": "LocalApp title"}},
+            "dragen",
+            "Dragen title",
+        ),
+        (
+            {"title": {"dragen": "Dragen title", "localapp": "LocalApp title"}},
+            "localapp",
+            "LocalApp title",
+        ),
+    ],
+)
+def test_resolve_plot_title(spec, workflow, want):
+    assert _resolve_plot_title(spec, workflow) == want
 
 
 def test_workflow_specific_title_resolution_production_specs():
