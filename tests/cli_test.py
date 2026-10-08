@@ -133,44 +133,25 @@ def test_cli_omits_master_run_selector_defers_to_input_glob(
     assert constructor_kwargs["run_ids"] is None
 
 
+@pytest.mark.parametrize(
+    "run_ids_first",
+    [True, False],
+)
 def test_cli_rejects_both_master_run_selectors(
+    run_ids_first,
     tmp_path,
 ):
-    """--run-ids and --run-id-file cannot be combined."""
+    """--run-ids and --run-id-file cannot be combined, regardless of argument order."""
     run_file = tmp_path / "runs.txt"
     run_file.write_text("RUN_A\n")
 
-    result = runner.invoke(
-        app,
-        _base_args(tmp_path)
-        + [
-            "--run-ids",
-            "RUN_A",
-            "--run-id-file",
-            str(run_file),
-        ],
-    )
-
-    assert result.exit_code != 0
-    assert "--run-id-file" in _clean_output(result)
-
-
-def test_cli_rejects_both_master_run_selectors_regardless_of_order(
-    tmp_path,
-):
-    """The check is not order-dependent: --run-id-file may be typed first."""
-    run_file = tmp_path / "runs.txt"
-    run_file.write_text("RUN_A\n")
+    ids_args = ["--run-ids", "RUN_A"]
+    file_args = ["--run-id-file", str(run_file)]
+    extra_args = ids_args + file_args if run_ids_first else file_args + ids_args
 
     result = runner.invoke(
         app,
-        _base_args(tmp_path)
-        + [
-            "--run-id-file",
-            str(run_file),
-            "--run-ids",
-            "RUN_A",
-        ],
+        _base_args(tmp_path) + extra_args,
     )
 
     assert result.exit_code != 0
@@ -229,98 +210,61 @@ def test_cli_plotting_requires_workflow(
     assert "--plot-workflow" in _clean_output(result)
 
 
+@pytest.mark.parametrize(
+    "last_runs_first",
+    [True, False],
+)
 def test_cli_rejects_last_runs_with_explicit_plot_runs(
+    last_runs_first,
     tmp_path,
 ):
-    """--plot-last-runs cannot be combined with explicit plot IDs."""
+    """--plot-last-runs cannot be combined with explicit plot IDs, regardless of order."""
+    last_runs_args = ["--plot-last-runs", "2"]
+    plot_run_ids_args = ["--plot-run-ids", "RUN_A"]
+    extra_args = (
+        last_runs_args + plot_run_ids_args
+        if last_runs_first
+        else plot_run_ids_args + last_runs_args
+    )
+
     result = runner.invoke(
         app,
         _base_args(tmp_path)
-        + [
-            "--run-ids",
-            "RUN_A,RUN_B",
-            "--plot-last-runs",
-            "2",
-            "--plot-run-ids",
-            "RUN_A",
-            "--plot-workflow",
-            "dragen",
-        ],
+        + ["--run-ids", "RUN_A,RUN_B"]
+        + extra_args
+        + ["--plot-workflow", "dragen"],
     )
 
     assert result.exit_code != 0
     assert "--plot-last-runs" in _clean_output(result)
 
 
-def test_cli_rejects_last_runs_with_explicit_plot_runs_regardless_of_order(
-    tmp_path,
-):
-    """The check is not order-dependent: --plot-run-ids may be typed first."""
-    result = runner.invoke(
-        app,
-        _base_args(tmp_path)
-        + [
-            "--run-ids",
-            "RUN_A,RUN_B",
-            "--plot-run-ids",
-            "RUN_A",
-            "--plot-last-runs",
-            "2",
-            "--plot-workflow",
-            "dragen",
-        ],
-    )
-
-    assert result.exit_code != 0
-    assert "--plot-last-runs" in _clean_output(result)
-
-
+@pytest.mark.parametrize(
+    "plot_run_ids_first",
+    [True, False],
+)
 def test_cli_rejects_both_explicit_plot_run_selectors(
+    plot_run_ids_first,
     tmp_path,
 ):
-    """Plot run IDs cannot come from both CLI string and file."""
+    """Plot run IDs cannot come from both CLI string and file, regardless of order."""
     plot_file = tmp_path / "plot_runs.txt"
     plot_file.write_text("RUN_A\n")
 
-    result = runner.invoke(
-        app,
-        _base_args(tmp_path)
-        + [
-            "--run-ids",
-            "RUN_A,RUN_B",
-            "--plot-run-ids",
-            "RUN_A",
-            "--plot-run-id-file",
-            str(plot_file),
-            "--plot-workflow",
-            "dragen",
-        ],
+    plot_run_ids_args = ["--plot-run-ids", "RUN_A"]
+    plot_run_id_file_args = ["--plot-run-id-file", str(plot_file)]
+    extra_args = (
+        plot_run_ids_args + plot_run_id_file_args
+        if plot_run_ids_first
+        else plot_run_id_file_args + plot_run_ids_args
     )
 
-    assert result.exit_code != 0
-    assert "--plot-run-id-file" in _clean_output(result)
-
-
-def test_cli_rejects_both_explicit_plot_run_selectors_regardless_of_order(
-    tmp_path,
-):
-    """The check is not order-dependent: --plot-run-id-file may be typed first."""
-    plot_file = tmp_path / "plot_runs.txt"
-    plot_file.write_text("RUN_A\n")
-
     result = runner.invoke(
         app,
         _base_args(tmp_path)
-        + [
-            "--run-ids",
-            "RUN_A,RUN_B",
-            "--plot-run-id-file",
-            str(plot_file),
-            "--plot-run-ids",
-            "RUN_A",
-            "--plot-workflow",
-            "dragen",
-        ],
+        + ["--run-ids", "RUN_A,RUN_B"]
+        + extra_args
+        + ["--plot-workflow", "dragen"],
     )
 
     assert result.exit_code != 0

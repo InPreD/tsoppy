@@ -137,29 +137,23 @@ def test_plot_bar_metric_draws():
     plt.close(figure)
 
 
-def test_plot_bar_metric_preserves_x_category_order():
-    """Sample categories retain their input ordering."""
+@pytest.mark.parametrize(
+    "scale_name, column_name",
+    [
+        ("x", "PLOT_SAMPLE_ID"),
+        ("fill", "PLOT_RUN"),
+    ],
+)
+def test_plot_bar_metric_preserves_category_order(scale_name, column_name):
+    """Sample and run legend categories retain their input/first-occurrence order."""
     data = _bar_data()
 
     plot = _basic_bar_plot(data)
 
-    x_scale = plot.scales.get_scales("x")
+    scale = plot.scales.get_scales(scale_name)
 
-    assert list(x_scale.limits) == (
-        data.get_column("PLOT_SAMPLE_ID").unique(maintain_order=True).to_list()
-    )
-
-
-def test_plot_bar_metric_preserves_fill_category_order():
-    """Run legend categories retain their first-occurrence order."""
-    data = _bar_data()
-
-    plot = _basic_bar_plot(data)
-
-    fill_scale = plot.scales.get_scales("fill")
-
-    assert list(fill_scale.limits) == (
-        data.get_column("PLOT_RUN").unique(maintain_order=True).to_list()
+    assert list(scale.limits) == (
+        data.get_column(column_name).unique(maintain_order=True).to_list()
     )
 
 
@@ -299,40 +293,24 @@ def test_plot_bar_metric_nan_max_does_not_fail_tick_generation():
     assert isinstance(plot, ggplot)
 
 
-def test_plot_bar_metric_single_sample_draws():
-    """Bar plotting also works with only one sample."""
+@pytest.mark.parametrize(
+    "sample_count",
+    [
+        1,  # a single sample
+        8,  # multiple run categories
+    ],
+)
+def test_plot_bar_metric_draws_for_sample_count(sample_count):
+    """Bar plotting renders for both a single sample and many run categories."""
     data = pl.DataFrame(
         {
             "PLOT_SAMPLE_ID": [
-                "001 | SAMPLE_A",
+                f"{index:03d} | SAMPLE_{index}" for index in range(1, sample_count + 1)
             ],
-            "VALUE": [
-                10.0,
-            ],
+            "VALUE": [float(index * 10) for index in range(1, sample_count + 1)],
             "PLOT_RUN": [
-                "001 | RUN_A",
+                f"{index:03d} | RUN_{index}" for index in range(1, sample_count + 1)
             ],
-        }
-    )
-
-    plot = _basic_bar_plot(data)
-
-    figure = plot.draw()
-
-    assert figure is not None
-
-    plt.close(figure)
-
-
-def test_plot_bar_metric_many_runs_draws():
-    """Multiple run categories can be rendered."""
-    data = pl.DataFrame(
-        {
-            "PLOT_SAMPLE_ID": [
-                f"{index:03d} | SAMPLE_{index}" for index in range(1, 9)
-            ],
-            "VALUE": [float(index * 10) for index in range(1, 9)],
-            "PLOT_RUN": [f"{index:03d} | RUN_{index}" for index in range(1, 9)],
         }
     )
 
