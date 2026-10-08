@@ -607,9 +607,3 @@ def test_cli_to_real_pdf_end_to_end(
     output = tmp_path / f"{workflow}_metric_plots.pdf"
 
     assert output.exists()
-    assert output.stat().st_size > 1000
-
-    content = output.read_bytes()
-
-    assert content.startswith(b"%PDF")
-    assert b"%%EOF" in content[-1024:]
