@@ -419,20 +419,27 @@ def test_valid_metric_expr(values, want):
     assert result["VALUE"].to_list() == want
 
 
-def test_get_available_guidelines_returns_lsl_and_usl():
-    """Both available threshold types are returned."""
-
+@pytest.mark.parametrize(
+    "threshold_values, want",
+    [
+        (
+            # both available threshold types are returned
+            ["2", "8"],
+            [("LSL_Guideline", 2.0), ("USL_Guideline", 8.0)],
+        ),
+        (
+            # unavailable threshold values are not plotted
+            ["NA", "8"],
+            [("USL_Guideline", 8.0)],
+        ),
+    ],
+)
+def test_get_available_guidelines(threshold_values, want):
     tables = {
         "dna_guideline_table": pl.DataFrame(
             {
-                "SAMPLE_ID": [
-                    "LSL_Guideline",
-                    "USL_Guideline",
-                ],
-                "VALUE": [
-                    "2",
-                    "8",
-                ],
+                "SAMPLE_ID": ["LSL_Guideline", "USL_Guideline"],
+                "VALUE": threshold_values,
             }
         )
     }
@@ -447,64 +454,14 @@ def test_get_available_guidelines_returns_lsl_and_usl():
         },
     }
 
-    result = _get_available_guidelines(
-        tables,
-        spec,
-    )
+    result = _get_available_guidelines(tables, spec)
 
-    assert len(result) == 2
-
+    assert len(result) == len(want)
     assert len({guideline["sample_id"] for guideline in result}) == len(result)
-
     assert [guideline["sample_id"] for guideline in result] == [
-        "LSL_Guideline",
-        "USL_Guideline",
+        sample_id for sample_id, _ in want
     ]
-
-    assert [guideline["value"] for guideline in result] == [
-        2.0,
-        8.0,
-    ]
-
-
-def test_get_available_guidelines_skips_na_threshold():
-    """Unavailable threshold values are not plotted."""
-
-    tables = {
-        "dna_guideline_table": pl.DataFrame(
-            {
-                "SAMPLE_ID": [
-                    "LSL_Guideline",
-                    "USL_Guideline",
-                ],
-                "VALUE": [
-                    "NA",
-                    "8",
-                ],
-            }
-        )
-    }
-
-    spec = {
-        "source": "dna_data_table",
-        "y_var": "VALUE",
-        "value_spec": {
-            "operation": "cast",
-            "column": "VALUE",
-            "dtype": pl.Float64,
-        },
-    }
-
-    result = _get_available_guidelines(
-        tables,
-        spec,
-    )
-
-    assert len(result) == 1
-
-    assert result[0]["sample_id"] == "USL_Guideline"
-
-    assert result[0]["value"] == 8.0
+    assert [guideline["value"] for guideline in result] == [value for _, value in want]
 
 
 # ---------------------------------------------------------------------------
@@ -1346,28 +1303,30 @@ def test_build_tables_strips_workflow_whitespace():
     assert tables["dna_sample_count"] == 2
 
 
-def test_build_tables_rejects_unknown_workflow(caplog):
-    """Unsupported workflows raise ValueError."""
+@pytest.mark.parametrize(
+    "workflow, want_caplog_substring",
+    [
+        (
+            # unsupported workflows raise ValueError
+            "unknown",
+            "Unsupported workflow",
+        ),
+        (
+            # a workflow with no matching metrics cannot be plotted
+            "localapp",
+            "No metrics rows available",
+        ),
+    ],
+)
+def test_build_tables_rejects_workflow(workflow, want_caplog_substring, caplog):
     with pytest.raises(ValueError):
         _build_tables(
             joint_qc_table=_joint_qc_frame(),
             metrics_table=_metrics_frame(),
-            workflow="unknown",
+            workflow=workflow,
         )
 
-    assert "Unsupported workflow" in caplog.text
-
-
-def test_build_tables_rejects_empty_selected_workflow(caplog):
-    """A workflow with no matching metrics cannot be plotted."""
-    with pytest.raises(ValueError):
-        _build_tables(
-            joint_qc_table=_joint_qc_frame(),
-            metrics_table=_metrics_frame(),
-            workflow="localapp",
-        )
-
-    assert "No metrics rows available" in caplog.text
+    assert want_caplog_substring in caplog.text
 
 
 def test_build_tables_extracts_threshold_guidelines():
@@ -1574,7 +1533,16 @@ def test_all_disabled_plot_indices_are_zero():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    "pagecount, want_page_text",
+    [
+        (2, "Page 3"),
+        (0, "Page 1"),
+    ],
+)
 def test_save_plot_draws_saves_numbers_and_closes(
+    pagecount,
+    want_page_text,
     monkeypatch,
 ):
     """_save_plot draws, numbers, saves and closes the figure."""
@@ -1584,7 +1552,7 @@ def test_save_plot_draws_saves_numbers_and_closes(
     plot.draw.return_value = figure
 
     pdf_handle = MagicMock()
-    pdf_handle.get_pagecount.return_value = 2
+    pdf_handle.get_pagecount.return_value = pagecount
 
     close_mock = MagicMock()
 
@@ -1604,7 +1572,7 @@ def test_save_plot_draws_saves_numbers_and_closes(
     figure.text.assert_called_once_with(
         0.985,
         0.015,
-        "Page 3",
+        want_page_text,
         ha="right",
         va="bottom",
         fontsize=8,
@@ -1616,32 +1584,6 @@ def test_save_plot_draws_saves_numbers_and_closes(
     )
 
     close_mock.assert_called_once_with(figure)
-
-
-def test_save_plot_first_page_number_is_one(
-    monkeypatch,
-):
-    """An empty PDF begins numbering at page one."""
-    figure = MagicMock()
-
-    plot = MagicMock()
-    plot.draw.return_value = figure
-
-    pdf_handle = MagicMock()
-    pdf_handle.get_pagecount.return_value = 0
-
-    monkeypatch.setattr(
-        plotting.plt,
-        "close",
-        MagicMock(),
-    )
-
-    _save_plot(
-        pdf_handle,
-        plot,
-    )
-
-    assert figure.text.call_args.args[2] == "Page 1"
 
 
 # ---------------------------------------------------------------------------
@@ -2085,11 +2027,22 @@ def test_generate_qc_plots_renders_enabled_specs_in_index_order(
     ]
 
 
-def test_generate_qc_plots_skips_dna_plot_without_dna_samples(
+@pytest.mark.parametrize(
+    "dna_sample_count, rna_sample_count, want_rendered_name",
+    [
+        # DNA-only plots are skipped when no DNA samples exist
+        (0, 1, "RNA"),
+        # RNA-only plots are skipped when no RNA samples exist
+        (1, 0, "DNA"),
+    ],
+)
+def test_generate_qc_plots_skips_plot_without_required_samples(
+    dna_sample_count,
+    rna_sample_count,
+    want_rendered_name,
     monkeypatch,
     tmp_path,
 ):
-    """DNA-only plots are skipped when no DNA samples exist."""
     monkeypatch.setattr(
         plotting,
         "_validate_plot_specs",
@@ -2101,8 +2054,8 @@ def test_generate_qc_plots_skips_dna_plot_without_dna_samples(
         "_build_tables",
         MagicMock(
             return_value={
-                "dna_sample_count": 0,
-                "rna_sample_count": 1,
+                "dna_sample_count": dna_sample_count,
+                "rna_sample_count": rna_sample_count,
             }
         ),
     )
@@ -2154,79 +2107,7 @@ def test_generate_qc_plots_skips_dna_plot_without_dna_samples(
 
     assert render_mock.call_count == 1
 
-    assert render_mock.call_args.args[1] == "RNA"
-
-
-def test_generate_qc_plots_skips_rna_plot_without_rna_samples(
-    monkeypatch,
-    tmp_path,
-):
-    """RNA-only plots are skipped when no RNA samples exist."""
-    monkeypatch.setattr(
-        plotting,
-        "_validate_plot_specs",
-        MagicMock(),
-    )
-
-    monkeypatch.setattr(
-        plotting,
-        "_build_tables",
-        MagicMock(
-            return_value={
-                "dna_sample_count": 1,
-                "rna_sample_count": 0,
-            }
-        ),
-    )
-
-    monkeypatch.setattr(
-        plotting,
-        "PLOT_SPECS",
-        {
-            "DNA": {
-                "dragen": {
-                    "plot": True,
-                    "index": 1,
-                },
-                "requires_samples": "dna",
-            },
-            "RNA": {
-                "dragen": {
-                    "plot": True,
-                    "index": 2,
-                },
-                "requires_samples": "rna",
-            },
-        },
-    )
-
-    render_mock = MagicMock()
-
-    monkeypatch.setattr(
-        plotting,
-        "_render_plot",
-        render_mock,
-    )
-
-    fake_pdf = MagicMock()
-    fake_pdf.__enter__.return_value = MagicMock()
-
-    monkeypatch.setattr(
-        plotting,
-        "PdfPages",
-        MagicMock(return_value=fake_pdf),
-    )
-
-    Generate_qc_plots(
-        metrics_table=_metrics_frame(),
-        joint_qc_table=_joint_qc_frame(),
-        workflow="dragen",
-        output_pdf=(tmp_path / "test.pdf"),
-    )
-
-    assert render_mock.call_count == 1
-
-    assert render_mock.call_args.args[1] == "DNA"
+    assert render_mock.call_args.args[1] == want_rendered_name
 
 
 def test_generate_qc_plots_renders_run_plot_without_samples(
