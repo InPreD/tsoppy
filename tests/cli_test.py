@@ -14,11 +14,6 @@ from tsoppy.cli import app
 runner = CliRunner()
 
 
-def test_placeholder():
-    """Unit test for the placeholder command in the CLI module."""
-    assert True
-
-
 def _clean_output(result) -> str:
     """Remove terminal styling from CLI output."""
     return unstyle(result.output)

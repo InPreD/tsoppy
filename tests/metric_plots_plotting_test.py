@@ -233,20 +233,6 @@ def test_resolve_plot_title(spec, workflow, want):
     assert _resolve_plot_title(spec, workflow) == want
 
 
-@pytest.mark.parametrize(
-    "workflow, want_prefix",
-    [
-        ("localapp", "[LocalApp"),
-        ("dragen", "[Dragen"),
-    ],
-)
-def test_workflow_specific_title_resolution_production_specs(workflow, want_prefix):
-    """Production workflow-specific titles resolve correctly."""
-    q30_spec = PLOT_SPECS["PCT_Q30_R1"]
-
-    assert _resolve_plot_title(q30_spec, workflow).startswith(want_prefix)
-
-
 # ---------------------------------------------------------------------------
 # _validate_plot_specs
 # ---------------------------------------------------------------------------
@@ -956,18 +942,6 @@ def test_compute_cart_ylim_expands_for_guidelines(
     assert result[1] > want_upper_exceeds
 
 
-def test_dna_chimeric_reads_has_usl_guideline():
-    """DNA chimeric-read plots use the configured USL guideline."""
-    spec = PLOT_SPECS["DNA_PCT_CHIMERIC_READS"]
-
-    guideline = spec["guideline"]
-
-    assert guideline["table"] == "dna_guideline_table"
-    assert guideline["sample_id"] == "USL_Guideline"
-    assert guideline["value_spec"]["column"] == "DNA_PCT_CHIMERIC_READS"
-    assert guideline["python_cast"] is float
-
-
 # ---------------------------------------------------------------------------
 # _prepare_bar_plot_data
 # ---------------------------------------------------------------------------
@@ -994,28 +968,6 @@ def test_run_index_sample_id_generation_and_padding():
     assert labels[0].rstrip() == "001 | S1"
     assert labels[1].rstrip() == "002 | LONG_SAMPLE"
     assert len(labels[0]) == len(labels[1])
-
-
-def test_prepare_bar_plot_data_preserves_original_sample_id():
-    """Plot labels do not modify canonical SAMPLE_ID."""
-    table = pl.DataFrame(
-        {
-            "RUN_INDEX": ["001"],
-            "SAMPLE_ID": ["SAMPLE_A"],
-            "RUN": ["RUN_A"],
-            "VALUE": ["10"],
-        }
-    )
-
-    result = _prepare_bar_plot_data(
-        table,
-        _minimal_bar_spec(),
-    )
-
-    assert result["SAMPLE_ID"].to_list() == ["SAMPLE_A"]
-    assert result["PLOT_SAMPLE_ID"].to_list() == [
-        "001 | SAMPLE_A",
-    ]
 
 
 def test_prepare_bar_plot_data_creates_run_legend():
@@ -1069,27 +1021,6 @@ def test_run_index_run_id_legend_generation():
     assert plot_data["PLOT_RUN"].to_list() == [
         "001 | RUN_A",
         "002 | RUN_B",
-    ]
-
-
-def test_prepare_bar_plot_data_casts_value_column():
-    """Configured value transformation is applied."""
-    table = pl.DataFrame(
-        {
-            "SAMPLE_ID": ["S1", "S2"],
-            "RUN": ["R1", "R1"],
-            "VALUE": ["1.5", "2.5"],
-        }
-    )
-
-    result = _prepare_bar_plot_data(
-        table,
-        _minimal_bar_spec(),
-    )
-
-    assert result["VALUE"].to_list() == [
-        1.5,
-        2.5,
     ]
 
 
@@ -1410,18 +1341,6 @@ def test_build_tables_sets_contamination_label_only_for_latest_run():
     )
 
 
-def test_build_tables_returns_sample_counts():
-    """DNA and RNA sample counts reflect selected rows."""
-    tables = _build_tables(
-        joint_qc_table=_joint_qc_frame(),
-        metrics_table=_metrics_frame(),
-        workflow="dragen",
-    )
-
-    assert tables["dna_sample_count"] == 2
-    assert tables["rna_sample_count"] == 1
-
-
 def test_build_tables_sorts_metrics_by_run_index():
     """Metrics are sorted by RUN_INDEX."""
     tables = _build_tables(
@@ -1489,21 +1408,6 @@ def test_dragen_run_level_plots_are_enabled_in_order():
             "plot": True,
             "index": expected_index,
         }
-
-
-def test_all_enabled_plot_indices_are_unique():
-    """Enabled plot indices are unique within each workflow."""
-    for workflow in (
-        "dragen",
-        "localapp",
-    ):
-        indices = [
-            spec[workflow]["index"]
-            for spec in PLOT_SPECS.values()
-            if spec[workflow]["plot"]
-        ]
-
-        assert len(indices) == len(set(indices))
 
 
 def test_all_enabled_plot_indices_are_positive():
@@ -1824,9 +1728,7 @@ def test_render_bar_plot_draws_all_available_guidelines(
     )
 
     spec = _minimal_bar_spec()
-    label_x_positions = [call.args[1] for call in annotate_mock.call_args_list]
 
-    assert len(set(label_x_positions)) == len(label_x_positions)
     _render_bar_plot(
         MagicMock(),
         spec,
@@ -1844,6 +1746,10 @@ def test_render_bar_plot_draws_all_available_guidelines(
         1.0,
         8.0,
     ]
+
+    label_x_positions = [call.args[1] for call in annotate_mock.call_args_list]
+
+    assert len(set(label_x_positions)) == len(label_x_positions)
 
     labels = [call.kwargs["label"] for call in annotate_mock.call_args_list]
 

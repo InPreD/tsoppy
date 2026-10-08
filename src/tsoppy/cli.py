@@ -43,28 +43,6 @@ def version():
 
 
 @app.command()
-def placeholder(
-    user_name: Annotated[
-        str,
-        typer.Option("--name", "-n"),
-    ],
-    user_id: Annotated[
-        str,
-        typer.Option("--id", "-i"),
-    ],
-    verbose: Annotated[
-        bool,
-        typer.Option("--verbose", "-v"),
-    ] = False,
-):
-    """Demonstrate how to use Typer for CLI applications."""
-    if verbose:
-        print(f"{user_name} has the following id: {user_id}")
-    else:
-        print(f"{user_name}: {user_id}")
-
-
-@app.command()
 def metric_plots(
     input_glob: Annotated[
         str,

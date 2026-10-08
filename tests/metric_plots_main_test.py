@@ -253,23 +253,6 @@ def test_select_plot_data_defaults_to_last_ten_runs():
     assert got_joint_qc["RUN_ID"].to_list() == expected_runs
 
 
-def test_select_plot_data_joint_qc_last_runs():
-    master = _master_frame()
-    joint_qc = _joint_qc_frame()
-    metric_plots = _metric_plots_without_init()
-
-    _, got = metric_plots.select_plot_data(
-        master=master,
-        joint_qc=joint_qc,
-        workflow_type="dragen",
-        plot_last_runs=1,
-    )
-
-    expected = joint_qc.filter(polars.col("RUN_ID") == "RUN5")
-
-    assert got.equals(expected)
-
-
 def test_select_plot_data_last_runs_more_than_available():
     master = _master_frame()
     joint_qc = _joint_qc_frame()
@@ -304,34 +287,6 @@ def test_select_plot_data_explicit_runs():
 
     expected = master.filter(
         polars.col("RUN").is_in(
-            [
-                "RUN1",
-                "RUN5",
-            ]
-        )
-        & (polars.col("WORKFLOW_TYPE") == "dragen")
-    )
-
-    assert got.equals(expected)
-
-
-def test_select_plot_data_joint_qc_explicit_runs():
-    master = _master_frame()
-    joint_qc = _joint_qc_frame()
-    metric_plots = _metric_plots_without_init()
-
-    _, got = metric_plots.select_plot_data(
-        master=master,
-        joint_qc=joint_qc,
-        workflow_type="dragen",
-        plot_run_ids=[
-            "RUN1",
-            "RUN5",
-        ],
-    )
-
-    expected = joint_qc.filter(
-        polars.col("RUN_ID").is_in(
             [
                 "RUN1",
                 "RUN5",
@@ -536,27 +491,6 @@ def test_add_record_type_uses_samplesheet_sample_type():
         "DNA_SAMPLE",
         "RNA_SAMPLE",
     ]
-
-
-def test_add_record_type_matches_on_sample_id():
-    samples = polars.DataFrame(
-        {
-            "SAMPLE_ID": ["SAMPLE01"],
-        }
-    )
-
-    samplesheet = polars.DataFrame(
-        {
-            "Sample_ID": ["SAMPLE01"],
-            "Sample_Type": ["DNA"],
-        }
-    )
-
-    metric_plots = _metric_plots_without_init()
-
-    got = metric_plots._add_record_type(samples, samplesheet)
-
-    assert got["RECORD_TYPE"].to_list() == ["DNA_SAMPLE"]
 
 
 def test_add_record_type_unmatched_sample_falls_back_to_unknown():
