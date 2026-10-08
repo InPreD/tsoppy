@@ -157,6 +157,15 @@ def metric_plots(
             ),
         ),
     ] = None,
+    plot_output: Annotated[
+        Path | None,
+        typer.Option(
+            help=(
+                "Path to write the QC plot PDF to. Defaults to "
+                "'<plot-workflow>_metric_plots.pdf' in the current directory."
+            ),
+        ),
+    ] = None,
 ):
     """Create metrics tables and optionally generate QC plots."""
     logger.info("Creating metrics master table and joint QC.")
@@ -254,7 +263,7 @@ def metric_plots(
             f"{plot_joint_qc.height} joint QC rows for {plot_workflow.value} plotting."
         )
 
-        output_pdf = Path(f"{plot_workflow.value}_metric_plots.pdf")
+        output_pdf = plot_output or Path(f"{plot_workflow.value}_metric_plots.pdf")
 
         Generate_qc_plots(
             metrics_table=plot_frame,

@@ -396,6 +396,45 @@ def test_cli_passes_selected_frames_to_plot_generator(
     assert generate_kwargs["output_pdf"] == Path(expected_filename)
 
 
+def test_cli_plot_output_overrides_default_pdf_path(
+    monkeypatch,
+    tmp_path,
+):
+    """--plot-output overrides the default <workflow>_metric_plots.pdf path."""
+    _mock_metric_plotter(monkeypatch)
+
+    generate_mock = MagicMock()
+
+    monkeypatch.setattr(
+        cli_module,
+        "Generate_qc_plots",
+        generate_mock,
+    )
+
+    custom_output = tmp_path / "custom" / "report.pdf"
+
+    result = runner.invoke(
+        app,
+        _base_args(tmp_path)
+        + [
+            "--run-ids",
+            "RUN_A",
+            "--plot-last-runs",
+            "2",
+            "--plot-workflow",
+            "dragen",
+            "--plot-output",
+            str(custom_output),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    generate_kwargs = generate_mock.call_args.kwargs
+
+    assert generate_kwargs["output_pdf"] == custom_output
+
+
 def _real_pdf_metrics_frame(
     workflow: str,
 ) -> pl.DataFrame:

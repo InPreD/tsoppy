@@ -204,6 +204,7 @@ Blank lines are ignored.
 | `--plot-run-id-file` | Optional plot selector | Text file containing run IDs to select for plotting |
 | `--plot-last-runs` | Optional plot selector; integer ≥ 1 | Plot the most recent `N` runs for the selected workflow |
 | `--plot-workflow` | Required when plotting is requested | Workflow to plot: `dragen` or `localapp` |
+| `--plot-output` | Optional; default: `<plot-workflow>_metric_plots.pdf` in the current directory | Path to write the QC plot PDF to |
 | `--help` | Optional | Show the command help and exit |
 
 The plot selectors `--plot-run-ids`, `--plot-run-id-file`, and `--plot-last-runs` are mutually exclusive.
@@ -221,7 +222,9 @@ When plotting is requested with --plot-workflow, it also writes a workflow-speci
 
 `dragen_metric_plots.pdf` or `localapp_metric_plots.pdf`
 
-There is no --workdir or output-directory option. Workflow managers such as Nextflow are expected to manage the process working directory and publish outputs afterwards.
+Its path can be overridden with `--plot-output`.
+
+There is no --workdir or output-directory option for `master_metrics_table.tsv` and `joint_sequencing_QC_file.tsv`. Workflow managers such as Nextflow are expected to manage the process working directory and publish those outputs afterwards.
 
 ### `master_metrics_table.tsv`
 
