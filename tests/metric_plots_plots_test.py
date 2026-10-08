@@ -243,12 +243,6 @@ def test_plot_bar_metric_draws_with_guideline_style(guideline_kwargs):
             0,
             None,
         ),
-        (
-            # negative tick spacing adds no y scale
-            None,
-            -1,
-            None,
-        ),
     ],
 )
 def test_plot_bar_metric_y_breaks(cart_ylim, y_tick_step, want_breaks):

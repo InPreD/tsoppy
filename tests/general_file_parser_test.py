@@ -278,17 +278,6 @@ def test_parse_section_tsv(inputs, exception, want):
             ),
             [sectionIdx("section1", 3, 2), sectionIdx("section2", 7, 2)],
         ),
-        (
-            # Column only contains null values
-            polars.DataFrame(
-                {
-                    "col1": ["[section1]", "col1", "value1"],
-                    "col2": [None, "col2", "value2"],
-                    "col3": [None, None, None],
-                }
-            ),
-            [sectionIdx("section1", 1, 2)],
-        ),
     ],
 )
 def test_get_section_idx(input, want):

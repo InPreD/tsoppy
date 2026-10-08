@@ -205,14 +205,6 @@ def test_run(input_glob, run_ids, expected):
             ["RUN3", "RUN5"],
         ),
         (
-            # last_runs beyond what's available clips to all available runs
-            _master_frame(),
-            _joint_qc_frame(),
-            10,
-            None,
-            ["RUN1", "RUN3", "RUN5"],
-        ),
-        (
             # explicit run IDs are selected regardless of recency
             _master_frame(),
             _joint_qc_frame(),

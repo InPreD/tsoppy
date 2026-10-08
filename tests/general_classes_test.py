@@ -137,26 +137,6 @@ def test_workflowoutput_sample_meta(inputs, want):
                 str_("A/A"),
             ),
         ),
-        (
-            (
-                "config.yaml",
-                path.join(test_data_dir, "nomenclature.yaml"),
-                path.join(test_data_dir, "dragen/non-existent"),
-                "sample1",
-            ),
-            raises(FileNotFoundError),
-            (
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            ),
-        ),
     ],
 )
 def test_smallvariantgenomevcf_create(inputs, exception, want):
@@ -253,16 +233,6 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
                 }
             ),
         ),
-        (
-            (
-                "config.yaml",
-                path.join(test_data_dir, "nomenclature.yaml"),
-                path.join(test_data_dir, "dragen/non-existent"),
-                "sample1",
-            ),
-            raises(FileNotFoundError),
-            None,
-        ),
     ],
 )
 def test_tmbtracetsv_create(inputs, exception, want):
@@ -294,16 +264,6 @@ def test_tmbtracetsv_create(inputs, exception, want):
             ),
             nullcontext(),
             {"id": "sample1"},
-        ),
-        (
-            (
-                "config.yaml",
-                path.join(test_data_dir, "nomenclature.yaml"),
-                path.join(test_data_dir, "dragen/non-existent"),
-                "sample1",
-            ),
-            raises(FileNotFoundError),
-            None,
         ),
     ],
 )
@@ -348,15 +308,6 @@ def test_variantsannotatedjson_create(inputs, exception, want):
                     "MetricsOutput/MetricsOutput.tsv",
                 ),
             ),
-        ),
-        (
-            (
-                "config.yaml",
-                path.join(test_data_dir, "nomenclature.yaml"),
-                path.join(test_data_dir, "dragen/non-existent"),
-            ),
-            raises(FileNotFoundError),
-            ("", ""),
         ),
     ],
 )

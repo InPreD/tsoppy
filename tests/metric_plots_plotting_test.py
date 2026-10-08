@@ -1067,55 +1067,33 @@ def test_run_index_sample_id_generation_and_padding():
     assert len(labels[0]) == len(labels[1])
 
 
-def test_prepare_bar_plot_data_creates_run_legend():
-    """Run legend labels include RUN_INDEX and RUN."""
+@pytest.mark.parametrize(
+    "run_column",
+    [
+        "RUN",
+        "RUN_ID",
+    ],
+)
+def test_prepare_bar_plot_data_creates_run_legend(run_column):
+    """Run legend labels include RUN_INDEX before either supported run column."""
     table = pl.DataFrame(
         {
             "RUN_INDEX": ["001", "002"],
             "SAMPLE_ID": ["S1", "S2"],
-            "RUN": ["RUN_A", "RUN_B"],
+            run_column: ["RUN_A", "RUN_B"],
             "VALUE": [1.0, 2.0],
         }
     )
+
+    spec = _minimal_bar_spec()
+    spec["fill_var"] = run_column
 
     result = _prepare_bar_plot_data(
-        table,
-        _minimal_bar_spec(),
-    )
-
-    assert result["PLOT_RUN"].to_list() == [
-        "001 | RUN_A",
-        "002 | RUN_B",
-    ]
-
-
-def test_run_index_run_id_legend_generation():
-    """Run legend labels include RUN_INDEX before RUN_ID."""
-    table = pl.DataFrame(
-        {
-            "RUN_INDEX": ["001", "002"],
-            "RUN_ID": ["RUN_A", "RUN_B"],
-            "VALUE": [1.0, 2.0],
-        }
-    )
-
-    spec = {
-        "x_var": "RUN_ID",
-        "y_var": "VALUE",
-        "fill_var": "RUN_ID",
-        "value_spec": {
-            "operation": "cast",
-            "column": "VALUE",
-            "dtype": pl.Float64,
-        },
-    }
-
-    plot_data = _prepare_bar_plot_data(
         table,
         spec,
     )
 
-    assert plot_data["PLOT_RUN"].to_list() == [
+    assert result["PLOT_RUN"].to_list() == [
         "001 | RUN_A",
         "002 | RUN_B",
     ]
@@ -1289,8 +1267,15 @@ def test_record_type_controls_dna_rna_selection():
     }
 
 
-def test_build_tables_filters_workflow_case_insensitively():
-    """Workflow matching is case-insensitive."""
+@pytest.mark.parametrize(
+    "workflow",
+    [
+        "DRAGEN",  # case-insensitive match
+        "  dragen  ",  # whitespace-insensitive match
+    ],
+)
+def test_build_tables_normalizes_workflow_input(workflow):
+    """Workflow matching ignores case and surrounding whitespace."""
     metrics = pl.concat(
         [
             _metrics_frame("dragen"),
@@ -1308,7 +1293,7 @@ def test_build_tables_filters_workflow_case_insensitively():
     tables = _build_tables(
         joint_qc_table=joint,
         metrics_table=metrics,
-        workflow="DRAGEN",
+        workflow=workflow,
     )
 
     assert set(
@@ -1318,17 +1303,6 @@ def test_build_tables_filters_workflow_case_insensitively():
     assert set(
         tables["joint_qc_table"]["WORKFLOW_TYPE"].str.to_lowercase().to_list()
     ) == {"dragen"}
-
-
-def test_build_tables_strips_workflow_whitespace():
-    """Workflow input is normalized before matching."""
-    tables = _build_tables(
-        joint_qc_table=_joint_qc_frame(),
-        metrics_table=_metrics_frame(),
-        workflow="  DRAGEN  ",
-    )
-
-    assert tables["dna_sample_count"] == 2
 
 
 @pytest.mark.parametrize(
