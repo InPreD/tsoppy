@@ -7,8 +7,6 @@ import pytest
 from plotnine import ggplot
 
 from tsoppy.metric_plots.plots import (
-    HV_LINE_ALPHA,
-    HV_LINE_COLOR,
     TABLEAU_20,
     Plot_bar_metric,
     Plot_contamination_scatter,
@@ -118,16 +116,11 @@ def _basic_contamination_plot(
 # ---------------------------------------------------------------------------
 
 
-def test_plot_bar_metric_returns_ggplot():
-    """Bar plotting helper returns a plotnine ggplot object."""
-    plot = _basic_bar_plot()
-
-    assert isinstance(plot, ggplot)
-
-
 def test_plot_bar_metric_draws():
     """A representative bar plot renders successfully."""
     plot = _basic_bar_plot()
+
+    assert isinstance(plot, ggplot)
 
     figure = plot.draw()
 
@@ -157,116 +150,122 @@ def test_plot_bar_metric_preserves_category_order(scale_name, column_name):
     )
 
 
-def test_plot_bar_metric_without_guideline_has_one_layer():
-    """Basic bar plot contains only the bar layer."""
-    plot = _basic_bar_plot()
+@pytest.mark.parametrize(
+    ("guideline_kwargs", "want_layers"),
+    [
+        (
+            # no guideline configured
+            {},
+            1,
+        ),
+        (
+            # a configured guideline adds line and text annotation layers
+            {
+                "hline_y": 25.0,
+                "hline_label": "USL_Guideline: 25",
+            },
+            3,
+        ),
+    ],
+)
+def test_plot_bar_metric_layer_count(guideline_kwargs, want_layers):
+    """Plot layer count reflects whether a guideline is configured."""
+    plot = _basic_bar_plot(**guideline_kwargs)
 
-    assert len(plot.layers) == 1
-
-
-def test_plot_bar_metric_adds_guideline_layers():
-    """Horizontal guideline adds line and text annotation layers."""
-    plot = _basic_bar_plot(
-        hline_y=25.0,
-        hline_label="USL_Guideline: 25",
-    )
-
-    assert len(plot.layers) == 3
+    assert len(plot.layers) == want_layers
 
     figure = plot.draw()
     assert figure is not None
 
     plt.close(figure)
-
-
-def test_plot_bar_metric_guideline_accepts_custom_style():
-    """Guideline rendering accepts configured styling parameters."""
-    plot = _basic_bar_plot(
-        hline_y=25.0,
-        hline_alpha=0.25,
-        hline_color="blue",
-        hline_size=2.0,
-        hline_label="Configured guideline",
-        ann_y_offset=2.5,
-    )
-
-    figure = plot.draw()
-
-    assert figure is not None
-
-    plt.close(figure)
-
-
-def test_plot_bar_metric_guideline_none_style_uses_defaults():
-    """None alpha/color values fall back to module guideline defaults."""
-    plot = _basic_bar_plot(
-        hline_y=25.0,
-        hline_alpha=None,
-        hline_color=None,
-        hline_label="Guideline",
-    )
-
-    figure = plot.draw()
-
-    assert figure is not None
-    assert HV_LINE_ALPHA is not None
-    assert HV_LINE_COLOR is not None
-
-    plt.close(figure)
-
-
-def test_plot_bar_metric_adds_requested_y_breaks():
-    """Positive y_tick_step creates explicit y-axis breaks."""
-    plot = _basic_bar_plot(
-        y_tick_step=10,
-    )
-
-    y_scale = plot.scales.get_scales("y")
-
-    assert list(y_scale.breaks) == [
-        0.0,
-        10.0,
-        20.0,
-        30.0,
-    ]
-
-
-def test_plot_bar_metric_y_breaks_use_cartesian_upper_limit():
-    """Configured upper plotting limit controls generated ticks."""
-    plot = _basic_bar_plot(
-        cart_ylim=(0, 50),
-        y_tick_step=10,
-    )
-
-    y_scale = plot.scales.get_scales("y")
-
-    assert list(y_scale.breaks) == [
-        0.0,
-        10.0,
-        20.0,
-        30.0,
-        40.0,
-        50.0,
-    ]
 
 
 @pytest.mark.parametrize(
-    "tick_step",
+    "guideline_kwargs",
     [
-        None,
-        0,
-        -1,
+        (
+            # explicit custom styling
+            {
+                "hline_y": 25.0,
+                "hline_alpha": 0.25,
+                "hline_color": "blue",
+                "hline_size": 2.0,
+                "hline_label": "Configured guideline",
+                "ann_y_offset": 2.5,
+            }
+        ),
+        (
+            # None alpha/color values fall back to module guideline defaults
+            {
+                "hline_y": 25.0,
+                "hline_alpha": None,
+                "hline_color": None,
+                "hline_label": "Guideline",
+            }
+        ),
     ],
 )
-def test_plot_bar_metric_non_positive_tick_step_adds_no_y_scale(
-    tick_step,
-):
-    """Missing or non-positive tick spacing does not add a y scale."""
-    plot = _basic_bar_plot(
-        y_tick_step=tick_step,
-    )
+def test_plot_bar_metric_draws_with_guideline_style(guideline_kwargs):
+    """Guideline rendering accepts both explicit and default styling parameters."""
+    plot = _basic_bar_plot(**guideline_kwargs)
 
-    assert plot.scales.get_scales("y") is None
+    figure = plot.draw()
+
+    assert figure is not None
+
+    plt.close(figure)
+
+
+@pytest.mark.parametrize(
+    ("cart_ylim", "y_tick_step", "want_breaks"),
+    [
+        (
+            # positive tick spacing creates explicit y-axis breaks
+            None,
+            10,
+            [0.0, 10.0, 20.0, 30.0],
+        ),
+        (
+            # configured upper plotting limit controls generated ticks
+            (0, 50),
+            10,
+            [0.0, 10.0, 20.0, 30.0, 40.0, 50.0],
+        ),
+        (
+            # missing tick spacing adds no y scale
+            None,
+            None,
+            None,
+        ),
+        (
+            # zero tick spacing adds no y scale
+            None,
+            0,
+            None,
+        ),
+        (
+            # negative tick spacing adds no y scale
+            None,
+            -1,
+            None,
+        ),
+    ],
+)
+def test_plot_bar_metric_y_breaks(cart_ylim, y_tick_step, want_breaks):
+    """Y-axis breaks follow the configured tick step and cartesian limit."""
+    kwargs = {"y_tick_step": y_tick_step}
+
+    if cart_ylim is not None:
+        kwargs["cart_ylim"] = cart_ylim
+
+    plot = _basic_bar_plot(**kwargs)
+
+    y_scale = plot.scales.get_scales("y")
+
+    if want_breaks is None:
+        assert y_scale is None
+    else:
+        assert list(y_scale.breaks) == want_breaks
 
 
 def test_plot_bar_metric_nan_max_does_not_fail_tick_generation():
@@ -328,16 +327,11 @@ def test_plot_bar_metric_draws_for_sample_count(sample_count):
 # ---------------------------------------------------------------------------
 
 
-def test_plot_contamination_scatter_returns_ggplot():
-    """Contamination helper returns a plotnine ggplot object."""
-    plot = _basic_contamination_plot()
-
-    assert isinstance(plot, ggplot)
-
-
 def test_plot_contamination_scatter_draws():
     """Representative contamination data renders successfully."""
     plot = _basic_contamination_plot()
+
+    assert isinstance(plot, ggplot)
 
     figure = plot.draw()
 
@@ -347,42 +341,44 @@ def test_plot_contamination_scatter_draws():
     plt.close(figure)
 
 
-def test_plot_contamination_scatter_without_labels_has_six_layers():
-    """Base contamination plot contains expected geometry layers."""
-    plot = _basic_contamination_plot()
-
-    assert len(plot.layers) == 6
-
-
-def test_plot_contamination_scatter_with_labels_adds_layer():
-    """Sample-label rendering adds one geom_text layer."""
+@pytest.mark.parametrize(
+    ("label_var", "want_layers"),
+    [
+        (
+            None,
+            6,
+        ),
+        (
+            # sample-label rendering adds one geom_text layer
+            "contamination_label",
+            7,
+        ),
+    ],
+)
+def test_plot_contamination_scatter_layer_count(label_var, want_layers):
+    """Plot layer count reflects whether sample labels are configured."""
     plot = Plot_contamination_scatter(
         data=_contamination_data(),
-        color_var="highlighted_run",
-        label_var="contamination_label",
-        guide_title="Latest run",
-        title="Highlighted run",
+        color_var="RUN_LABEL",
+        label_var=label_var,
+        guide_title="Run",
+        title="Contamination test",
         max_contamination_score=5000,
         usl_contamination_score=1457,
         usl_contamination_pval=0.05,
-        color_values={
-            "False": "#888686",
-            "True": "#C02F2F",
-        },
     )
 
-    assert len(plot.layers) == 7
+    assert len(plot.layers) == want_layers
 
     figure = plot.draw()
-
     assert figure is not None
 
     plt.close(figure)
 
 
-def test_plot_contamination_scatter_custom_colors_draw():
-    """Explicit run-color mappings are supported."""
-    plot = Plot_contamination_scatter(
+def _custom_colors_contamination_plot():
+    """Build a plot using explicit run-color mappings."""
+    return Plot_contamination_scatter(
         data=_contamination_data(),
         color_var="highlighted_run",
         label_var=None,
@@ -397,7 +393,71 @@ def test_plot_contamination_scatter_custom_colors_draw():
         },
     )
 
-    figure = plot.draw()
+
+def _large_score_range_contamination_plot():
+    """Build a plot with contamination scores above the default 5000 floor."""
+    data = _contamination_data().with_columns(
+        pl.Series(
+            "DNA_CONTAMINATION_SCORE",
+            [
+                100.0,
+                750.0,
+                7200.0,
+            ],
+        )
+    )
+
+    return Plot_contamination_scatter(
+        data=data,
+        color_var="RUN_LABEL",
+        label_var=None,
+        guide_title="Run",
+        title="Large contamination score",
+        max_contamination_score=7200,
+        usl_contamination_score=1457,
+        usl_contamination_pval=0.05,
+    )
+
+
+def _single_sample_contamination_plot():
+    """Build a plot from a single-sample dataset."""
+    data = pl.DataFrame(
+        {
+            "DNA_CONTAMINATION_SCORE": [
+                100.0,
+            ],
+            "DNA_CONTAMINATION_P_VALUE": [
+                0.01,
+            ],
+            "RUN_LABEL": [
+                "001 | RUN_A",
+            ],
+        }
+    )
+
+    return Plot_contamination_scatter(
+        data=data,
+        color_var="RUN_LABEL",
+        label_var=None,
+        guide_title="Run",
+        title="Single sample",
+        max_contamination_score=5000,
+        usl_contamination_score=1457,
+        usl_contamination_pval=0.05,
+    )
+
+
+@pytest.mark.parametrize(
+    "build_plot",
+    [
+        _custom_colors_contamination_plot,
+        _large_score_range_contamination_plot,
+        _single_sample_contamination_plot,
+    ],
+)
+def test_plot_contamination_scatter_draws_under_varied_conditions(build_plot):
+    """Contamination scatter renders under varied data and styling conditions."""
+    figure = build_plot().draw()
 
     assert figure is not None
 
@@ -425,71 +485,6 @@ def test_plot_contamination_scatter_preserves_run_order():
     assert list(color_scale.limits) == (
         data.get_column("RUN_LABEL").unique(maintain_order=True).to_list()
     )
-
-
-def test_plot_contamination_scatter_large_score_range_draws():
-    """Contamination scores above 5000 can be plotted."""
-    data = _contamination_data().with_columns(
-        pl.Series(
-            "DNA_CONTAMINATION_SCORE",
-            [
-                100.0,
-                750.0,
-                7200.0,
-            ],
-        )
-    )
-
-    plot = Plot_contamination_scatter(
-        data=data,
-        color_var="RUN_LABEL",
-        label_var=None,
-        guide_title="Run",
-        title="Large contamination score",
-        max_contamination_score=7200,
-        usl_contamination_score=1457,
-        usl_contamination_pval=0.05,
-    )
-
-    figure = plot.draw()
-
-    assert figure is not None
-
-    plt.close(figure)
-
-
-def test_plot_contamination_scatter_single_sample_draws():
-    """Contamination scatter supports a single sample."""
-    data = pl.DataFrame(
-        {
-            "DNA_CONTAMINATION_SCORE": [
-                100.0,
-            ],
-            "DNA_CONTAMINATION_P_VALUE": [
-                0.01,
-            ],
-            "RUN_LABEL": [
-                "001 | RUN_A",
-            ],
-        }
-    )
-
-    plot = Plot_contamination_scatter(
-        data=data,
-        color_var="RUN_LABEL",
-        label_var=None,
-        guide_title="Run",
-        title="Single sample",
-        max_contamination_score=5000,
-        usl_contamination_score=1457,
-        usl_contamination_pval=0.05,
-    )
-
-    figure = plot.draw()
-
-    assert figure is not None
-
-    plt.close(figure)
 
 
 @pytest.mark.parametrize(
