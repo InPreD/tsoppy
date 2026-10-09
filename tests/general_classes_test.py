@@ -359,7 +359,7 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
                         [801, 6],
                     ],
                     "DP": [190, 371, 256, 438, 123, 546, 1243, 186, 244, 807],
-                    "VF": [
+                    "AF": [
                         0.0054,
                         0.5064,
                         0.042,

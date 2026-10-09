@@ -305,6 +305,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
                 .rename({"filter": "Illumina_variant_class"})
                 .drop("Class")
                 .select(col_order)
+                .rename({"VF": "AF"})
             )
 
         return full_df
