@@ -359,16 +359,6 @@ The run is part of the master run list but has no data for the selected `--plot-
 Invalid value: --plot-workflow is required when plotting is requested.
 ```
 
-A plot selector (`--plot-last-runs`, `--plot-run-ids`, or `--plot-run-id-file`) was given without `--plot-workflow`, so the command cannot tell which workflow's runs to plot. Add:
-
-```bash
---plot-workflow dragen
-```
-
-or:
-
-```bash
---plot-workflow localapp
-```
+A plot selector (`--plot-last-runs`, `--plot-run-ids`, or `--plot-run-id-file`) was given without `--plot-workflow`, so the command cannot tell which workflow's runs to plot. Add `--plot-workflow dragen` or `--plot-workflow localapp`.
 
 For internal processing and extension guidance, see [`docs/references/metric_plots_architecture.md`](../references/metric_plots_architecture.md).
