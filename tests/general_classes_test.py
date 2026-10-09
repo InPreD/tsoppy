@@ -380,7 +380,7 @@ def test_smallvariantgenomevcf_merge(inputs, exception, want):
     with exception:
         workflow_output = WorkflowOutput(*inputs[:2])
         vcf_obj = SmallVariantGenomeVcf.create(workflow_output, inputs[2])
-        _ = vcf_obj.merge(workflow_output, inputs[2])
+        _ = vcf_obj.merge(workflow_output)
         assert_frame_equal(left=vcf_obj.merged_table, right=want, check_dtypes=False)
 
 

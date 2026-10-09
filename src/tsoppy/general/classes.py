@@ -135,12 +135,12 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         json_obj = VariantsAnnotatedJson.create(workflow_output, self.sample_id)
 
         if output_path:
-            SmallVariantGenomeVcf.create(self, self.sample_id)._write_vcf(
+            self.create(workflow_output, self.sample_id)._write_vcf(
                 tmb_obj, json_obj, output_path
             )
         else:
-            self.merged_table = SmallVariantGenomeVcf.create(
-                self, self.sample_id
+            self.merged_table = self.create(
+                workflow_output, self.sample_id
             )._to_dataframe(tmb_obj, json_obj)
             return self.merged_table
 
