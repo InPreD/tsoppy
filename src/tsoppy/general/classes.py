@@ -127,19 +127,21 @@ class SmallVariantGenomeVcf(WorkflowOutput):
     def merge(
         self,
         workflow_output: WorkflowOutput,
-        sample_id: str,
         output_path: str | Path | None = None,
     ) -> None | polars.DataFrame:
         """Merge VCF enriched with TMB and Nirvana annotations and either save to file or return polars dataframe."""
 
-        vcf_obj = self.create(workflow_output, sample_id)
-        tmb_obj = TmbTraceTsv.create(workflow_output, sample_id)
-        json_obj = VariantsAnnotatedJson.create(workflow_output, sample_id)
+        tmb_obj = TmbTraceTsv.create(workflow_output, self.sample_id)
+        json_obj = VariantsAnnotatedJson.create(workflow_output, self.sample_id)
 
         if output_path:
-            vcf_obj._write_vcf(tmb_obj, json_obj, output_path)
+            SmallVariantGenomeVcf.create(self, self.sample_id)._write_vcf(
+                tmb_obj, json_obj, output_path
+            )
         else:
-            self.merged_table = vcf_obj._to_dataframe(tmb_obj, json_obj)
+            self.merged_table = SmallVariantGenomeVcf.create(
+                self, self.sample_id
+            )._to_dataframe(tmb_obj, json_obj)
             return self.merged_table
 
     def _write_vcf(
