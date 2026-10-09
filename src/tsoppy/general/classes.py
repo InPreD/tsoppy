@@ -411,3 +411,69 @@ class VariantsAnnotatedJson(WorkflowOutput):
         else:
             with open(self.path, "r") as file:
                 self.data = msgspec.json.decode(file.read())
+
+
+class MetricsOutputTsv(WorkflowOutput):
+    """Input class for MetricsOutput TSV files produced by different workflows.
+
+    Attributes:
+        path: Path to MetricsOutput.tsv (Path)
+        headers: Parsed header values (list[str])
+        sections: Parsed MetricsOutput sections (dict[str, polars.DataFrame])
+    """
+
+    def __init__(
+        self,
+        config_yaml: str | Path,
+        inpred_nomenclature: str | Path,
+        root_path: str | Path,
+    ):
+        """Initialize MetricsOutputTsv."""
+        super().__init__(
+            config_yaml,
+            inpred_nomenclature,
+            root_path,
+        )
+        self._parse()
+
+    @classmethod
+    def create(cls, workflow_output: WorkflowOutput):
+        """Create MetricsOutputTsv from an existing WorkflowOutput."""
+        obj = cls.__new__(cls)
+        obj.__dict__.update(workflow_output.__dict__)
+        obj._parse()
+        return obj
+
+    def _parse(self):
+        """Parse MetricsOutput.tsv."""
+        self.path = Path(
+            os.path.join(
+                self.root,
+                self.config.metrics_output_tsv[self.workflow_id],
+            )
+        )
+
+        if not self.path.is_file():
+            logger.error(f"MetricsOutput TSV missing: File {self.path} does not exist.")
+            raise FileNotFoundError
+
+        self.headers, self.sections = Parse_section_tsv(
+            str(self.path),
+            ["Header"],
+        )
+
+    def __eq__(self, other):
+        """Assess if two instances of this class are equal."""
+        if not isinstance(other, MetricsOutputTsv):
+            return False
+        if not super().__eq__(other):
+            return False
+        if self.path != other.path:
+            return False
+        if self.headers != other.headers:
+            return False
+        if self.sections.keys() != other.sections.keys():
+            return False
+        return all(
+            self.sections[name].equals(other.sections[name]) for name in self.sections
+        )

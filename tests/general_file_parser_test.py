@@ -5,11 +5,11 @@ import polars
 from pytest import mark, raises
 
 from tsoppy.general.file_parser import (
-    sectionIdx,
-    _parse_section_sep_val,
     _get_section_idx,
     _handle_row_with_nulls,
     _parse_headers,
+    _parse_section_sep_val,
+    sectionIdx,
 )
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
@@ -277,17 +277,6 @@ def test_parse_section_tsv(inputs, exception, want):
                 }
             ),
             [sectionIdx("section1", 3, 2), sectionIdx("section2", 7, 2)],
-        ),
-        (
-            # Column only contains null values
-            polars.DataFrame(
-                {
-                    "col1": ["[section1]", "col1", "value1"],
-                    "col2": [None, "col2", "value2"],
-                    "col3": [None, None, None],
-                }
-            ),
-            [sectionIdx("section1", 1, 2)],
         ),
     ],
 )

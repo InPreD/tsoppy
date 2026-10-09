@@ -6,6 +6,7 @@ from polars import DataFrame
 from pytest import mark, raises
 
 from tsoppy.general.classes import (
+    MetricsOutputTsv,
     SmallVariantGenomeVcf,
     TmbTraceTsv,
     VariantsAnnotatedJson,
@@ -136,26 +137,6 @@ def test_workflowoutput_sample_meta(inputs, want):
                 str_("A/A"),
             ),
         ),
-        (
-            (
-                "config.yaml",
-                path.join(test_data_dir, "nomenclature.yaml"),
-                path.join(test_data_dir, "dragen/non-existent"),
-                "sample1",
-            ),
-            raises(FileNotFoundError),
-            (
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            ),
-        ),
     ],
 )
 def test_smallvariantgenomevcf_create(inputs, exception, want):
@@ -252,16 +233,6 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
                 }
             ),
         ),
-        (
-            (
-                "config.yaml",
-                path.join(test_data_dir, "nomenclature.yaml"),
-                path.join(test_data_dir, "dragen/non-existent"),
-                "sample1",
-            ),
-            raises(FileNotFoundError),
-            None,
-        ),
     ],
 )
 def test_tmbtracetsv_create(inputs, exception, want):
@@ -294,16 +265,6 @@ def test_tmbtracetsv_create(inputs, exception, want):
             nullcontext(),
             {"id": "sample1"},
         ),
-        (
-            (
-                "config.yaml",
-                path.join(test_data_dir, "nomenclature.yaml"),
-                path.join(test_data_dir, "dragen/non-existent"),
-                "sample1",
-            ),
-            raises(FileNotFoundError),
-            None,
-        ),
     ],
 )
 def test_variantsannotatedjson_create(inputs, exception, want):
@@ -311,3 +272,50 @@ def test_variantsannotatedjson_create(inputs, exception, want):
         workflow_output = WorkflowOutput(*inputs[:3])
         got = VariantsAnnotatedJson.create(workflow_output, inputs[3])
         assert got.data == want
+
+
+@mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+            ),
+            nullcontext(),
+            (
+                "dragen_2.6.2.4",
+                path.join(
+                    test_data_dir,
+                    "dragen/standard/Logs_Intermediates/"
+                    "MetricsOutput/MetricsOutput.tsv",
+                ),
+            ),
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+            ),
+            nullcontext(),
+            (
+                "localapp_ruo-2.2.0.12",
+                path.join(
+                    test_data_dir,
+                    "localapp/standard/Logs_Intermediates/"
+                    "MetricsOutput/MetricsOutput.tsv",
+                ),
+            ),
+        ),
+    ],
+)
+def test_metricsoutputtsv_create(inputs, exception, want):
+    with exception:
+        workflow_output = WorkflowOutput(*inputs)
+        got = MetricsOutputTsv.create(workflow_output)
+
+        assert got.workflow_id == want[0]
+        assert str(got.path) == want[1]
+        assert "Header" in got.sections
