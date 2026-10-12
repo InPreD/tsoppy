@@ -228,7 +228,7 @@ class WorkflowOutput:
         """Return all samples present in samplsheet."""
         return self.samples["Sample_ID"].to_list()
 
-    def sample_meta(self, sample_id: str) -> dict[str:str]:
+    def sample_meta(self, sample_id: str) -> dict[str, str] | None:
         """Parse meta information from sample id and return as dict"""
         match = re.search(self.sample_id_rex, sample_id)
         if not match:
@@ -521,7 +521,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
 
     def _parse(self):
         """Parse the small variant genome VCF file"""
-        fmt = self.config.small_variant_genome_vcf[self.workflow_id()]
+        fmt = self.config.small_variant_genome_vcf[self.workflow_id]
         self.path = Path(
             os.path.join(self.root, fmt.format(self.sample_id, self.sample_id))
         )
