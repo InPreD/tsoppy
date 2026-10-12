@@ -21,33 +21,89 @@ test_data_dir = "tests/test_data/general_classes"
     "inputs, exception, want",
     [
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/standard")),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+            ),
             nullcontext(),
-            "dragen_2.6.2.4",
+            ("dragen_2.6.2.4", "sample1"),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/standard")),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+            ),
             nullcontext(),
-            "localapp_ruo-2.2.0.12",
+            ("localapp_ruo-2.2.0.12", "sample1"),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/non-existent")),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/non-existent"),
+            ),
             raises(FileNotFoundError),
-            "",
+            ("", ""),
         ),
     ],
 )
 def test_workflowoutput_init(inputs, exception, want):
     with exception:
         got = WorkflowOutput(*inputs)
-        assert got.workflow_id() == want
+        assert got.workflow_id == want[0]
+        assert got.sample_exists(want[1])
+
+
+@mark.parametrize(
+    "inputs, want",
+    [
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "IPH0001-D01-P01-A00",
+            ),
+            {
+                "project": "InPreD HUS",
+                "patient": "0001",
+                "nucleic_acid_input_type": "DNA",
+                "assay_type": "TSO500 DNA",
+                "sample_type": "Primary tumor, naive",
+                "library_preparation_attempt": "First try",
+                "biological_replicate": "1",
+                "sample_material": "Archived (FFPE)",
+                "tumor_site": "Cancer origo incerta",
+            },
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "sample1",
+            ),
+            None,
+        ),
+    ],
+)
+def test_workflowoutput_sample_meta(inputs, want):
+    got = WorkflowOutput(*inputs[:3])
+    assert got.sample_meta(inputs[3]) == want
 
 
 @mark.parametrize(
     "inputs, exception, want",
     [
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "sample1",
+            ),
             nullcontext(),
             (
                 "chr1",
@@ -59,43 +115,15 @@ def test_workflowoutput_init(inputs, exception, want):
                 False_,
                 float32(-1),
                 str_("A/A"),
-                {
-                    "fileformat": "VCFv4.2",
-                    "FILTER": {"PASS": {"Description": '"All filters passed"'}},
-                    "ALT": {
-                        "NON_REF": {
-                            "Description": '"Represents any possible alternative allele at this location"'
-                        }
-                    },
-                    "FORMAT": {
-                        "AD": {
-                            "Number": "R",
-                            "Type": "Integer",
-                            "Description": '"Allelic depths (counting only informative reads out of the total reads) for the ref and alt alleles in the order listed"',
-                        },
-                        "DP": {
-                            "Number": "1",
-                            "Type": "Integer",
-                            "Description": '"Approximate read depth (reads with MQ=255 or with bad mates are filtered)"',
-                        },
-                        "GT": {
-                            "Number": "1",
-                            "Type": "String",
-                            "Description": '"Genotype"',
-                        },
-                        "SQ": {
-                            "Number": "A",
-                            "Type": "Float",
-                            "Description": '"Somatic quality"',
-                        },
-                    },
-                    "contig": {"chr1": {"length": "249250621"}},
-                    "reference": "file://hashtable/reference.bin",
-                },
             ),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+                "sample1",
+            ),
             nullcontext(),
             (
                 "chr1",
@@ -107,76 +135,17 @@ def test_workflowoutput_init(inputs, exception, want):
                 False_,
                 float32(0),
                 str_("A/A"),
-                {
-                    "fileformat": "VCFv4.1",
-                    "FILTER": {"PASS": {"Description": '"All filters passed"'}},
-                    "ALT": {
-                        "NON_REF": {
-                            "Description": '"Represents any possible alternative allele at this location"'
-                        }
-                    },
-                    "FORMAT": {
-                        "AD": {
-                            "Number": None,
-                            "Type": "Integer",
-                            "Description": '"Allele Depth"',
-                        },
-                        "DP": {
-                            "Number": "1",
-                            "Type": "Integer",
-                            "Description": '"Total Depth Used For Variant Calling"',
-                        },
-                        "GT": {
-                            "Number": "1",
-                            "Type": "String",
-                            "Description": '"Genotype"',
-                        },
-                        "SQ": {
-                            "Number": "A",
-                            "Type": "Float",
-                            "Description": '"Somatic quality"',
-                        },
-                        "GQ": {
-                            "Number": "1",
-                            "Type": "Integer",
-                            "Description": '"Genotype Quality"',
-                        },
-                        "VF": {
-                            "Number": None,
-                            "Type": "Float",
-                            "Description": '"Variant Frequency"',
-                        },
-                        "NL": {
-                            "Number": "1",
-                            "Type": "Integer",
-                            "Description": '"Applied BaseCall Noise Level"',
-                        },
-                        "SB": {
-                            "Number": "1",
-                            "Type": "Float",
-                            "Description": '"StrandBias Score"',
-                        },
-                        "NC": {
-                            "Number": "1",
-                            "Type": "Float",
-                            "Description": '"Fraction of bases which were uncalled or with basecall quality below the minimum threshold"',
-                        },
-                        "US": {
-                            "Number": None,
-                            "Type": "Integer",
-                            "Description": '"Supporting read type counts"',
-                        },
-                    },
-                    "contig": {"chr1": {"length": "249250621"}},
-                    "reference": "/opt/illumina/resources/genomes/hg19_hardPAR",
-                },
             ),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/non-existent"),
+                "sample1",
+            ),
             raises(FileNotFoundError),
             (
-                None,
                 None,
                 None,
                 None,
@@ -192,8 +161,8 @@ def test_workflowoutput_init(inputs, exception, want):
 )
 def test_smallvariantgenomevcf_create(inputs, exception, want):
     with exception:
-        workflow_output = WorkflowOutput(*inputs[:2])
-        got = SmallVariantGenomeVcf.create(workflow_output, inputs[2])
+        workflow_output = WorkflowOutput(*inputs[:3])
+        got = SmallVariantGenomeVcf.create(workflow_output, inputs[3])
         got_variants = list(got.vcf)
         assert len(got_variants) == 1
         got_variant = got_variants[0]
@@ -206,14 +175,18 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
         assert got_variant.gt_phases[0] == want[6]
         assert got_variant.gt_quals[0] == want[7]
         assert got_variant.gt_bases[0] == want[8]
-        assert got.header_dict == want[9]
 
 
 @mark.parametrize(
     "inputs, exception, want",
     [
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/standard"), "sample2"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "sample2",
+            ),
             nullcontext(),
             DataFrame(
                 {
@@ -294,7 +267,12 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
             ),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/standard"), "sample2"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+                "sample2",
+            ),
             nullcontext(),
             DataFrame(
                 {
@@ -378,8 +356,8 @@ def test_smallvariantgenomevcf_create(inputs, exception, want):
 )
 def test_smallvariantgenomevcf_merge(inputs, exception, want):
     with exception:
-        workflow_output = WorkflowOutput(*inputs[:2])
-        vcf_obj = SmallVariantGenomeVcf.create(workflow_output, inputs[2])
+        workflow_output = WorkflowOutput(*inputs[:3])
+        vcf_obj = SmallVariantGenomeVcf.create(workflow_output, inputs[3])
         _ = vcf_obj.merge(workflow_output)
         assert_frame_equal(left=vcf_obj.merged_table, right=want, check_dtypes=False)
 
@@ -388,7 +366,12 @@ def test_smallvariantgenomevcf_merge(inputs, exception, want):
     "inputs, exception, want",
     [
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "sample1",
+            ),
             nullcontext(),
             DataFrame(
                 {
@@ -423,7 +406,12 @@ def test_smallvariantgenomevcf_merge(inputs, exception, want):
             ),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+                "sample1",
+            ),
             nullcontext(),
             DataFrame(
                 {
@@ -451,7 +439,12 @@ def test_smallvariantgenomevcf_merge(inputs, exception, want):
             ),
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/non-existent"),
+                "sample1",
+            ),
             raises(FileNotFoundError),
             None,
         ),
@@ -459,8 +452,8 @@ def test_smallvariantgenomevcf_merge(inputs, exception, want):
 )
 def test_tmbtracetsv_create(inputs, exception, want):
     with exception:
-        workflow_output = WorkflowOutput(*inputs[:2])
-        got = TmbTraceTsv.create(workflow_output, inputs[2])
+        workflow_output = WorkflowOutput(*inputs[:3])
+        got = TmbTraceTsv.create(workflow_output, inputs[3])
         assert got.table.equals(want)
 
 
@@ -468,17 +461,32 @@ def test_tmbtracetsv_create(inputs, exception, want):
     "inputs, exception, want",
     [
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "sample1",
+            ),
             nullcontext(),
             {"id": "sample1"},
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "localapp/standard"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+                "sample1",
+            ),
             nullcontext(),
             {"id": "sample1"},
         ),
         (
-            ("config.yaml", path.join(test_data_dir, "dragen/non-existent"), "sample1"),
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/non-existent"),
+                "sample1",
+            ),
             raises(FileNotFoundError),
             None,
         ),
@@ -486,6 +494,6 @@ def test_tmbtracetsv_create(inputs, exception, want):
 )
 def test_variantsannotatedjson_create(inputs, exception, want):
     with exception:
-        workflow_output = WorkflowOutput(*inputs[:2])
-        got = VariantsAnnotatedJson.create(workflow_output, inputs[2])
+        workflow_output = WorkflowOutput(*inputs[:3])
+        got = VariantsAnnotatedJson.create(workflow_output, inputs[3])
         assert got.data == want

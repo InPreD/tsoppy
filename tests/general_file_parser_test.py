@@ -5,7 +5,8 @@ import polars
 from pytest import mark, raises
 
 from tsoppy.general.file_parser import (
-    Parse_section_tsv,
+    sectionIdx,
+    _parse_section_sep_val,
     _get_section_idx,
     _handle_row_with_nulls,
     _parse_headers,
@@ -19,8 +20,29 @@ test_data_dir = "tests/test_data/general_file_parser"
     "inputs, exception, want",
     [
         (
-            # Standard case with one section and headers
-            (path.join(test_data_dir, "parse_section_tsv/standard.tsv"), []),
+            # Standard tsv case with one section and headers
+            (
+                path.join(test_data_dir, "parse_section_sep_val/standard_tsv.tsv"),
+                [],
+                "\t",
+            ),
+            nullcontext(),
+            (
+                ["header1"],
+                {
+                    "section1": polars.DataFrame(
+                        {"col1": ["value1", "value2"], "col2": ["value3", "value4"]}
+                    )
+                },
+            ),
+        ),
+        (
+            # Standard csv case with one section and headers
+            (
+                path.join(test_data_dir, "parse_section_sep_val/standard_csv.tsv"),
+                [],
+                ",",
+            ),
             nullcontext(),
             (
                 ["header1"],
@@ -33,7 +55,11 @@ test_data_dir = "tests/test_data/general_file_parser"
         ),
         (
             # Standard case with multiple sections and headers
-            (path.join(test_data_dir, "parse_section_tsv/multiple_sections.tsv"), []),
+            (
+                path.join(test_data_dir, "parse_section_sep_val/multiple_sections.tsv"),
+                [],
+                "\t",
+            ),
             nullcontext(),
             (
                 ["header1"],
@@ -49,7 +75,11 @@ test_data_dir = "tests/test_data/general_file_parser"
         ),
         (
             # No headers
-            (path.join(test_data_dir, "parse_section_tsv/no_headers.tsv"), []),
+            (
+                path.join(test_data_dir, "parse_section_sep_val/no_headers.tsv"),
+                [],
+                "\t",
+            ),
             nullcontext(),
             (
                 [],
@@ -61,8 +91,30 @@ test_data_dir = "tests/test_data/general_file_parser"
             ),
         ),
         (
+            # Empty section
+            (
+                path.join(test_data_dir, "parse_section_sep_val/empty_section.tsv"),
+                [],
+                "\t",
+            ),
+            nullcontext(),
+            (
+                [],
+                {
+                    "empty": polars.DataFrame(),
+                    "section1": polars.DataFrame(
+                        {"col1": ["value1", "value2"], "col2": ["value3", "value4"]}
+                    ),
+                },
+            ),
+        ),
+        (
             # Extra empty lines between sections and headers
-            (path.join(test_data_dir, "parse_section_tsv/extra_empty_lines.tsv"), []),
+            (
+                path.join(test_data_dir, "parse_section_sep_val/extra_empty_lines.tsv"),
+                [],
+                "\t",
+            ),
             nullcontext(),
             (
                 ["header1"],
@@ -75,7 +127,11 @@ test_data_dir = "tests/test_data/general_file_parser"
         ),
         (
             # Columns containing only null values
-            (path.join(test_data_dir, "parse_section_tsv/null_columns.tsv"), []),
+            (
+                path.join(test_data_dir, "parse_section_sep_val/null_columns.tsv"),
+                [],
+                "\t",
+            ),
             nullcontext(),
             (
                 ["header1"],
@@ -90,9 +146,10 @@ test_data_dir = "tests/test_data/general_file_parser"
             # Empty first column name
             (
                 path.join(
-                    test_data_dir, "parse_section_tsv/empty_first_column_name.tsv"
+                    test_data_dir, "parse_section_sep_val/empty_first_column_name.tsv"
                 ),
                 [],
+                "\t",
             ),
             nullcontext(),
             (
@@ -106,7 +163,11 @@ test_data_dir = "tests/test_data/general_file_parser"
         ),
         (
             # Key-value pairs instead of tabular data
-            (path.join(test_data_dir, "parse_section_tsv/key_value.tsv"), ["section1"]),
+            (
+                path.join(test_data_dir, "parse_section_sep_val/key_value.tsv"),
+                ["section1"],
+                "\t",
+            ),
             nullcontext(),
             (
                 ["header1"],
@@ -119,13 +180,17 @@ test_data_dir = "tests/test_data/general_file_parser"
         ),
         (
             # Non-existent file
-            (path.join(test_data_dir, "parse_section_tsv/non-existent.tsv"), []),
+            (
+                path.join(test_data_dir, "parse_section_sep_val/non-existent.tsv"),
+                [],
+                "\t",
+            ),
             raises(FileNotFoundError),
             ([], {}),
         ),
         (
             # Empty file
-            (path.join(test_data_dir, "parse_section_tsv/empty.tsv"), []),
+            (path.join(test_data_dir, "parse_section_sep_val/empty.tsv"), [], "\t"),
             raises(polars.exceptions.NoDataError),
             ([], {}),
         ),
@@ -133,7 +198,7 @@ test_data_dir = "tests/test_data/general_file_parser"
 )
 def test_parse_section_tsv(inputs, exception, want):
     with exception:
-        got = Parse_section_tsv(inputs[0], inputs[1])
+        got = _parse_section_sep_val(*inputs)
         assert got[0] == want[0]
         for key in want[1].keys():
             assert key in got[1]
@@ -151,7 +216,7 @@ def test_parse_section_tsv(inputs, exception, want):
                     "col2": [None, "col2", "value2"],
                 }
             ),
-            [("section1", 1, 2)],
+            [sectionIdx("section1", 1, 2)],
         ),
         (
             # Standard case with one section and headers
@@ -161,7 +226,7 @@ def test_parse_section_tsv(inputs, exception, want):
                     "col2": [None, None, None, "col2", "value2"],
                 }
             ),
-            [("section1", 3, 2)],
+            [sectionIdx("section1", 3, 2)],
         ),
         (
             # Extra empty lines prior the top section, no headers
@@ -171,7 +236,7 @@ def test_parse_section_tsv(inputs, exception, want):
                     "col2": [None, None, None, "col2", "value2"],
                 }
             ),
-            [("section1", 3, 2)],
+            [sectionIdx("section1", 3, 2)],
         ),
         (
             # Missing column name in one section
@@ -181,7 +246,7 @@ def test_parse_section_tsv(inputs, exception, want):
                     "col2": [None, None, None, "col2", "value2"],
                 }
             ),
-            [("section1", 3, 2)],
+            [sectionIdx("section1", 3, 2)],
         ),
         (
             # Multiple sections with extra empty lines
@@ -211,7 +276,7 @@ def test_parse_section_tsv(inputs, exception, want):
                     ],
                 }
             ),
-            [("section1", 3, 2), ("section2", 7, 2)],
+            [sectionIdx("section1", 3, 2), sectionIdx("section2", 7, 2)],
         ),
         (
             # Column only contains null values
@@ -222,7 +287,7 @@ def test_parse_section_tsv(inputs, exception, want):
                     "col3": [None, None, None],
                 }
             ),
-            [("section1", 1, 2)],
+            [sectionIdx("section1", 1, 2)],
         ),
     ],
 )
@@ -247,7 +312,7 @@ def test_get_section_idx(input, want):
     ],
 )
 def test_parse_headers(inputs, want):
-    got = _parse_headers(inputs[0], inputs[1])
+    got = _parse_headers(*inputs)
     assert got == want
 
 
