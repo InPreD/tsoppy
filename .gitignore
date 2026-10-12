@@ -1,9 +1,23 @@
-*.egg-info
-.mypy_cache
-.ruff_cache
-__pycache__
-build
-dist
-venv
+# Python build/cache
+*.egg-info/
+*.pyc
+*.pyo
+.mypy_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+build/
+dist/
+venv/
+
+# IDE
 .project
 .pydevproject
+.vscode/
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.swp
+*.tmp
