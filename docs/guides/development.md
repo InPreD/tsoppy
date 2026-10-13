@@ -27,10 +27,10 @@ Open the [`Command Palette`](https://code.visualstudio.com/api/ux-guidelines/com
 
 ## Recommended workflow
 
-1. Create an [issue](https://github.com/InPreD/tsoppy/issues/new) which is assigned to yourself, labeled as `enhancement` and of type `feature`. Include an adequate description, feature spec and link to any relevant old TSOPPI code or other documents.
+1. Create an [issue](https://github.com/InPreD/tsoppy/issues/new), using the `Feature Specification` issue template, which is assigned to yourself, labeled as `enhancement` and of type `feature`. Include an adequate description, feature spec and link to any relevant old TSOPPI code or other documents.
 1. In the issue, use the `Create a branch` shortcut to create a new feature branch which should **always** branch off `develop`.
 1. Check out your new branch locally and follow this guide for designing a subpackage.
-1. Commit your changes often and as logically structured parts. Use [commit message conventions](https://inpred.github.io/24-03_bioinfo_ws/#19). If the changes become extensive rather split your work into logical parts and commit it to several branches to make the reviewing process easier.
+1. Commit your changes often and as logically structured parts. Use [commit message conventions](https://inpred.github.io/24-03_bioinfo_ws/#19). If the changes become extensive, rather split your work into logical parts and commit it to several branches to make the reviewing process easier.
 1. Before pushing, ensure that `ruff format --check` is happy with formatting.
 1. When you are done with the work or want to get feedback, open a [pull request](https://github.com/InPreD/tsoppy/pulls). Your branches should be `base: develop` and `compare: <your feature branch>`. Assign yourself as assignee and include reviewers that can give you feedback on code quality and functionality.
 1. Keep an eye on the github actions passing to make sure your unit tests work and your code is linted.
@@ -51,7 +51,7 @@ read json/toml/yaml | [msgspec](https://jcristharif.com/msgspec/index.html)
 testing | [pytest](https://docs.pytest.org/en/stable/)
 vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
 
-The use of different packages for individual cases should be discussed, e.g. in an issue. If you want to argue for adoption of a package globally you can open an issue, create a pull request and submit an ADR with your reasoning and the predicted consequences. Include relevant reviewers in the PR.
+The use of different packages for individual cases should be discussed, e.g. in an issue. If you want to argue for adoption of a package globally you can open an issue, create a pull request and submit an [ADR](../decisions/adr-000-template.md) with your reasoning and the predicted consequences. Include relevant reviewers in the PR.
 
 ## Repository structure
 
