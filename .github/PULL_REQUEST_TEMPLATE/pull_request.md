@@ -19,4 +19,4 @@ assignees: ''
 - [ ] Code changes are according to [project guidelines](../../docs/guides/development.md)
 - [ ] If AI was used to generate code, tests and/or documentation, the generated parts were reviewed and edited/shortened
 - [ ] Appropriate unit tests were provided
-- [ ] All checks have cleared
+- [ ] All GitHub Action checks have cleared
