@@ -1,0 +1,14 @@
+blank_issues_enabled: true
+issue_templates:
+  - name: Bug Report
+    description: Report a bug in the application
+    title: "[Bug]: "
+    labels:
+      - bug
+    body: "./ISSUE_TEMPLATE/bug_report.md"
+  - name: Feature Specification
+    description: Create a new feature specification
+    title: "[Feature Spec]: "
+    labels:
+      - feature
+    body: "./ISSUE_TEMPLATE/feature_specification.md"
