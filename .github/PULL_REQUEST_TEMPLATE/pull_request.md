@@ -12,7 +12,7 @@ assignees: ''
 
 ### Related Issue(s)
 
-<!--Link to issue(s) describing the changes.-->
+<!--Link to issue(s) that motivated the changes.-->
 
 ### Checklist
 
