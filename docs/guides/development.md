@@ -84,7 +84,6 @@ The use of different packages for individual cases should be discussed, e.g. in 
 │   │           └── <test case name>.<file extension>
 │   ├── __init__.py
 │   └── <subpackage>_<module>_test.py
-├── .gitignore -> ignore files that should not be committed
 ├── CODEOWNERS -> specifying who is responsible
 ├── Dockerfile -> build recipe for docker
 ├── LICENSE -> license that we agreed on in InPreD bioinfo group
@@ -163,7 +162,7 @@ def test_<function>(inputs, exception, want):
 > [!WARNING]
 > Please keep in mind that the example is simplified and you need to adapt the tests to your needs. Start by defining your test cases and expected output and then modify the unit test accordingly.
 
-To avoid repetitive code, structure your tests in a way that you can have one test per function/method and provide all cases to that test. Furthermore, testing high level functions/methods should not include all test cases that were already tested for the low level functions/methods called by these high level functions/methods. For example, a function `read_csv()` has five different test cases, two successful ones and three that fail. If the function `get_data()` calls `read_csv()` we do not need to test all five cases again but rather only one successful and one that fails.
+To avoid repetitive code, structure your tests in a way that you can have one test per function/method and provide all cases to that test. Furthermore, testing high level functions/methods should not include all test cases that were already tested for the low level functions/methods called by these high level functions/methods. For example, a function `read_csv()` has five different test cases, two successful ones and three that fail. If the function `get_data()` calls `read_csv()`, we do not need to test all five cases again but rather only one successful and one that fails.
 
 ### Potential exceptions to test for
 
@@ -189,7 +188,7 @@ To avoid repetitive code, structure your tests in a way that you can have one te
 
 Generally, documentation should be clear and concise without repetitions. Avoid stating what the feature does not do and focus on what it actually does.
 
-Provide documentation for the subcommand that you have developed but adding the subcommand with an overview over the different flags (name, default/required, description) to `docs/references/<subcommand>.md`. Flowcharts should be provided as [mermaid charts](https://mermaid.ai/open-source/intro/). In addition, add any public functions and classes to `docs/references/functions_and_classes.md`. The section should start with a brief description of the function or class and include the required input and output.
+Provide documentation for the subcommand that you have developed by adding the subcommand with an overview over the different flags (name, default/required, description) to `docs/references/<subcommand>.md`. Flowcharts should be provided as [mermaid charts](https://mermaid.ai/open-source/intro/). In addition, add any public functions and classes to `docs/references/functions_and_classes.md`. The section should start with a brief description of the function or class and include the required input and output.
 
 ## Running `tsoppy` cli
 
