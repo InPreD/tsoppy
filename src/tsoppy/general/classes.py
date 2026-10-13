@@ -228,7 +228,7 @@ class WorkflowOutput:
         """Return all samples present in samplsheet."""
         return self.samples["Sample_ID"].to_list()
 
-    def sample_meta(self, sample_id: str) -> dict[str:str]:
+    def sample_meta(self, sample_id: str) -> dict[str, str] | None:
         """Parse meta information from sample id and return as dict"""
         match = re.search(self.sample_id_rex, sample_id)
         if not match:
@@ -268,10 +268,20 @@ class SmallVariantGenomeVcf(WorkflowOutput):
     """Input class for small variant genome VCF files produced by different workflows.
 
     Attributes:
+        header_rex: Regex to parse top level key value pairs in VCF object header (str)
+        header_subrex: Regex to parse sub level key value pairs in VCF object header (str)
         path: Path to vcf (Path)
         sample_id: Sample identifier (str)
         vcf: Parsed VCF object (cyvcf2.VCF)
+        merged_table: Merged small variant data (polars.DataFrame)
     """
+
+    # Define regex patterns for parsing VCF header lines and storing in a dictionary
+    header_dict = {}
+    # Top level Regex (i.e. '##key=value')
+    header_rex = r"##(?P<key>\w+)=(?P<value>.+)"
+    # Sub level Regex (parsing the top-level "value" field)
+    header_subrex = r"(\w+)=([\w\d]+|\".+\")?"
 
     def __init__(
         self,
@@ -298,6 +308,217 @@ class SmallVariantGenomeVcf(WorkflowOutput):
             obj._parse()
             return obj
 
+    def merge(
+        self,
+        workflow_output: WorkflowOutput,
+        output_path: str | Path | None = None,
+    ) -> None | polars.DataFrame:
+        """Merge VCF enriched with TMB and Nirvana annotations and either save to file or return polars dataframe."""
+
+        tmb_obj = TmbTraceTsv.create(workflow_output, self.sample_id)
+        json_obj = VariantsAnnotatedJson.create(workflow_output, self.sample_id)
+
+        # Write to output path if specified, otherwise return merged table as polars dataframe
+        if output_path:
+            self._write_vcf(tmb_obj, json_obj, output_path)
+        else:
+            self.merged_table = self._to_dataframe(tmb_obj, json_obj)
+            return self.merged_table
+
+    def _write_vcf(
+        self,
+        tmb_obj: TmbTraceTsv,
+        json_obj: VariantsAnnotatedJson,
+        output_path: str | Path,
+    ):
+        """Write a merged VCF with TMB and Nirvana annotations."""
+
+        # Specify new INFO fields to be added to the VCF header
+        info_headers = (
+            {
+                "ID": "variant_ID",
+                "Number": "1",
+                "Type": "String",
+                "Description": "Variant identifier, composed of CHROM, POS, REF and ALT fields",
+            },
+            {
+                "ID": "variant_type",
+                "Number": "1",
+                "Type": "String",
+                "Description": "Type of genomic change: 'MNV', 'SNV', 'insertion', 'deletion' or 'indel'",
+            },
+            {
+                "ID": "overlapping_genes",
+                "Number": ".",
+                "Type": "String",
+                "Description": "List of genes overlapping the variant site, as reported by Nirvana in form of HGNC gene symbols",
+            },
+            {
+                "ID": "Illumina_variant_class",
+                "Number": "1",
+                "Type": "String",
+                "Description": "Variant classification provided by initial Illumina pipeline analysis: 'Germline_DB', 'Germline_Proxi', 'Somatic', 'Blacklist', 'VCF_filtered'",
+            },
+        )
+
+        for info in info_headers:
+            self.vcf.add_info_to_header(info)
+
+        # Create dictionaries for TMB and Nirvana annotations for mapping overlaps
+        tmb_by_variant = tmb_obj.variant_dict
+        tmb_df = tmb_obj.class_table
+        json_by_variant = json_obj.variant_dict
+
+        # Ensure output path is a Path object for cyvcf2.Writer
+        out_path = Path(output_path)
+        writer = cyvcf2.Writer(out_path, self.vcf)
+        for variant in self.vcf:
+            # Skip variants with no alternate allele or only <NON_REF> alternate allele
+            if not variant.ALT or variant.ALT == ["<NON_REF>"]:
+                continue
+
+            # Generate variant ID and add annotations to INFO fields
+            variant_id = get_variant_id(
+                variant.CHROM, variant.POS, variant.REF, variant.ALT[0]
+            )
+            variant.INFO["variant_ID"] = variant_id
+
+            # Get variant type and overlapping genes from Nirvana annotations
+            variant_type, genes = (
+                json_by_variant[variant_id]
+                if variant_id in json_by_variant
+                else ("", [])
+            )
+            variant.INFO["variant_type"] = variant_type
+            variant.INFO["overlapping_genes"] = ",".join(genes)
+
+            # Determine Illumina variant class based on TMB annotations and VCF filter status
+            if variant_id in tmb_by_variant:
+                variant_class = (
+                    tmb_df.filter(polars.col("variant_ID") == variant_id)
+                    .select("Class")
+                    .item()
+                )
+            elif variant.FILTER == "excluded_regions" or variant.FILTER == "Blacklist":
+                variant_class = "Blacklist"
+            else:
+                variant_class = "VCF_filtered"
+
+            variant.INFO["Illumina_variant_class"] = variant_class
+
+            writer.write_record(variant)
+
+        writer.close()
+        self.vcf.close()
+        logger.info(f"Merged VCF file saved to '{out_path}'")
+
+    def _to_dataframe(
+        self, tmb_obj: TmbTraceTsv, json_obj: VariantsAnnotatedJson
+    ) -> polars.DataFrame:
+        """Return merged variant data as a Polars dataframe."""
+
+        # Create dictionary for storing variant information from VCF, TMB, and Nirvana annotations, to be converted to a Polars dataframe
+        json_by_variant = json_obj.variant_dict
+        var_stats = ["AD", "DP", "AF" if self.workflow_type == "dragen" else "VF"]
+        cols = (
+            ["variant_ID", "variant_type", "overlapping_genes"] + var_stats + ["filter"]
+        )
+        var_dict = {c: [] for c in cols}
+
+        # Iterate over variants in the VCF file
+        for variant in self.vcf:
+            # Skip variants with no alternate allele or only <NON_REF> alternate allele
+            if not variant.ALT or variant.ALT == ["<NON_REF>"]:
+                continue
+
+            # Generate variant ID and add annotations to INFO fields
+            variant_id = get_variant_id(
+                variant.CHROM, variant.POS, variant.REF, variant.ALT[0]
+            )
+
+            # Get variant type and overlapping genes from Nirvana annotations
+            variant_type, genes = (
+                json_by_variant[variant_id]
+                if variant_id in json_by_variant
+                else ("", [])
+            )
+
+            # Add variant information to the dictionary for conversion to Polars dataframe
+            var_dict["variant_ID"].append(variant_id)
+            var_dict["variant_type"].append(variant_type)
+            var_dict["overlapping_genes"].append(genes)
+            var_dict["filter"].append(variant.FILTER)
+            for stat in var_stats:
+                var_dict[stat].append(variant.format(stat)[0])
+
+        # Convert raw variant information dictionary to a Polars dataframe
+        df = polars.DataFrame(data=var_dict)
+
+        # Check for single-element list columns (e.g. DP-column), remove list structure if found
+        explode_cols = [
+            name
+            for name, dtype in df.schema.items()
+            if isinstance(dtype, polars.Array) and dtype.shape == (1,)
+        ]
+        if explode_cols:
+            df = df.explode(explode_cols, empty_as_null=True)
+
+        # Join the VCF dataframe with the TMB class table on variant_ID
+        joined_df = df.join(
+            tmb_obj.class_table,
+            left_on="variant_ID",
+            right_on="variant_ID",
+            how="left",
+            maintain_order="left",
+        )
+
+        # Define the column order for the final merged dataframe
+        col_order = [
+            "variant_ID",
+            "variant_type",
+            "Illumina_variant_class",
+            "overlapping_genes",
+        ] + var_stats
+
+        if self.workflow_type == "dragen":
+            full_df = (
+                # Fill null entries in 'filter' column with TMB class (all VCF PASS-variants)
+                joined_df.with_columns(
+                    polars.col("filter")
+                    .fill_null(polars.col("Class"))
+                    # Replace 'excluded_regions' with 'Blacklist'
+                    .replace({"excluded_regions": "Blacklist"}),
+                )
+                # Replace any remaining filters with 'VCF_filtered'
+                .with_columns(
+                    polars.when(polars.col("filter").str.contains(r"^[a-z]"))
+                    .then(polars.lit("VCF_filtered"))
+                    .otherwise(polars.col("filter"))
+                    .alias("Illumina_variant_class")
+                )
+                .select(col_order)
+            )
+        else:
+            full_df = (
+                # Save 'Blacklist' and 'VCF_filtered' in the 'filter' column
+                joined_df.with_columns(
+                    polars.when(polars.col("filter") == "Blacklist")
+                    .then(polars.lit("Blacklist"))
+                    .when(polars.col("filter").is_not_null())
+                    .then(polars.lit("VCF_filtered"))
+                    .otherwise(polars.col("filter"))
+                    .alias("filter")
+                )
+                # Replace null-values in 'filter' column with TMB class (all VCF PASS-variants) and rename column
+                .with_columns(polars.col("filter").fill_null(polars.col("Class")))
+                .rename({"filter": "Illumina_variant_class"})
+                .select(col_order)
+                # Rename VF to AF for consistency with dragen output
+                .rename({"VF": "AF"})
+            )
+
+        return full_df
+
     def _parse(self):
         """Parse the small variant genome VCF file"""
         fmt = self.config.small_variant_genome_vcf[self.workflow_id]
@@ -310,6 +531,41 @@ class SmallVariantGenomeVcf(WorkflowOutput):
             )
             raise FileNotFoundError
         self.vcf = cyvcf2.VCF(self.path)
+        self._parse_header()
+
+    def _parse_header(self):
+        """Parse VCF header into dict"""
+        for match in re.finditer(self.header_rex, self.vcf.raw_header):
+            # Use named capture groups to split line into key and value (i.e. '##key=value')
+            key = match.groupdict()["key"]
+            value = match.groupdict()["value"]
+
+            # Handle command line arguments separately, as they can occur multiple times (specific for LocalApp as for now).
+            if key.lower().endswith("_cmdline"):
+                # Store multiple command line arguments as a list
+                self.header_dict.setdefault(key, []).append(value)
+                continue
+
+            # Check if value containes additional key value pairs in the 'value' field (i.e. '##key=<subkey1=subvalue1,subkey2=subvalue2,...>')
+            if not bool(re.search(self.header_subrex, value)):
+                self.header_dict[key] = value
+            else:
+                # Parse each 'key=value' pairs into dict (e.g {'ID': 'DP', 'Number': '1', 'Type': 'Integer', 'Description': 'Approximate read depth'})
+                item = dict()
+                for match2 in re.finditer(self.header_subrex, value):
+                    g = match2.groups()
+                    item[g[0]] = g[1]
+
+                # Use ID value as subkey if it exists, else store the key value pairs in a list under the top level key
+                if "ID" not in item:
+                    if key not in self.header_dict:
+                        self.header_dict[key] = list()
+                    self.header_dict[key].append(item)
+                else:
+                    if key not in self.header_dict:
+                        self.header_dict[key] = dict()
+                    subkey = item.pop("ID")
+                    self.header_dict[key][subkey] = item
 
 
 class TmbTraceTsv(WorkflowOutput):
@@ -319,6 +575,8 @@ class TmbTraceTsv(WorkflowOutput):
         path: Path to vcf (Path)
         table: Parsed rows of the TMB trace file (polars.DataFrame)
         sample_id: Sample identifier (str)
+        variant_dict: Variant ID mapped to parsed table (dict)
+        class_table: Two-column table with Variant ID and Illumina variant class
     """
 
     def __init__(
@@ -358,6 +616,35 @@ class TmbTraceTsv(WorkflowOutput):
             )
             raise FileNotFoundError
         self.table = polars.read_csv(self.path, separator="\t")
+        self.class_table = self._get_variant_class_table()
+        self.variant_dict = {
+            get_variant_id(
+                row["Chromosome"], row["Position"], row["RefCall"], row["AltCall"]
+            ): row
+            for row in self.table.iter_rows(named=True)
+        }
+
+    def _get_variant_class_table(self):
+        """Create a two-column table with Variant ID and Illumina variant class from the TMB trace file."""
+        # Create a new column 'variant_ID' by concatenating Chromosome, Position, RefCall, and AltCall
+        tmb_df = self.table.with_columns(
+            (
+                polars.concat_str(["Chromosome", "Position", "RefCall"], separator=":")
+                + polars.lit(">")
+                + polars.col("AltCall").cast(polars.String)
+            ).alias("variant_ID")
+        )
+        # Determine Illumina variant class based on workflow type and TMB annotations
+        if self.workflow_type == "localapp":
+            tmb_df = tmb_df.with_columns(
+                polars.when(polars.col("GermlineFilterDatabase"))
+                .then(polars.lit("Germline_DB"))
+                .when(polars.col("GermlineFilterProxi"))
+                .then(polars.lit("Germline_Proxi"))
+                .otherwise(polars.lit("Somatic"))
+                .alias("Status")
+            )
+        return tmb_df.select(["variant_ID", "Status"]).rename({"Status": "Class"})
 
 
 class VariantsAnnotatedJson(WorkflowOutput):
@@ -367,6 +654,7 @@ class VariantsAnnotatedJson(WorkflowOutput):
         path: Path to vcf (Path)
         data: Parsed JSON data (dict)
         sample_id: Sample identifier (str)
+        variant_dict: Variant ID mapped to type and overlapping genes (dict)
     """
 
     def __init__(
@@ -411,3 +699,43 @@ class VariantsAnnotatedJson(WorkflowOutput):
         else:
             with open(self.path, "r") as file:
                 self.data = msgspec.json.decode(file.read())
+        self.variant_dict = self._get_variant_dict()
+
+    def _get_variant_dict(self) -> dict[str, tuple[str | None, list[str]]]:
+        """Create a dictionary mapping variant IDs to their type and overlapping genes from the annotated JSON data."""
+        json_by_variant = {}
+        for position in self.data.get("positions", []):
+            # Get variant type
+            variants = position.get("variants", [{}])
+            variant_type = variants[0].get("variantType", None)  # if variants else None
+
+            # Get overlapping genes
+            genes = (
+                sorted(
+                    {
+                        transcript["hgnc"]
+                        for transcript in variants[0].get("transcripts", [])
+                        if transcript.get("hgnc")
+                    }
+                )
+                if variants
+                else []
+            )
+
+            # Generate variant IDs for each alternate allele
+            for alternate in position.get("altAlleles", []):
+                variant_id = get_variant_id(
+                    position["chromosome"],
+                    position["position"],
+                    position["refAllele"],
+                    alternate,
+                )
+                json_by_variant[variant_id] = (variant_type, genes)
+        return json_by_variant
+
+
+def get_variant_id(
+    chromosome: str, position: int, reference: str, alternate: str
+) -> str:
+    """Create the shared variant identifier used by the key variant sources."""
+    return f"{chromosome}:{position}:{reference}>{alternate}"
