@@ -68,24 +68,14 @@ test_scatter_plot_data = pl.DataFrame(
     "inputs, wants",
     [
         (
-            (
-                test_bar_plot_data,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None
-            ),
+            (test_bar_plot_data, None, None, None, None, None, None, None, None),
             (
                 ggplot,
                 1,
                 "x",
                 "PLOT_SAMPLE_ID",
-                ['001 | SAMPLE_A', '001 | SAMPLE_B', '002 | SAMPLE_C']
-            )
+                ["001 | SAMPLE_A", "001 | SAMPLE_B", "002 | SAMPLE_C"],
+            ),
         ),
         (
             (
@@ -103,15 +93,9 @@ test_scatter_plot_data = pl.DataFrame(
                 None,
                 None,
                 None,
-                None
+                None,
             ),
-            (
-                ggplot,
-                1,
-                "x",
-                "PLOT_SAMPLE_ID",
-                ['001 | SAMPLE_A']
-            )
+            (ggplot, 1, "x", "PLOT_SAMPLE_ID", ["001 | SAMPLE_A"]),
         ),
         (
             (
@@ -123,7 +107,7 @@ test_scatter_plot_data = pl.DataFrame(
                 25.0,
                 2.5,
                 None,
-                None
+                None,
             ),
             (
                 ggplot,
@@ -131,7 +115,7 @@ test_scatter_plot_data = pl.DataFrame(
                 "fill",
                 "PLOT_RUN",
                 True,
-            )
+            ),
         ),
         (
             (
@@ -151,7 +135,7 @@ test_scatter_plot_data = pl.DataFrame(
                 "y",
                 "PLOT_SAMPLE_ID",
                 [0.0, 10.0, 20.0, 30.0],
-            )
+            ),
         ),
         (
             (
@@ -171,7 +155,7 @@ test_scatter_plot_data = pl.DataFrame(
                 "y",
                 "PLOT_SAMPLE_ID",
                 [0.0, 10.0, 20.0, 30.0, 40.0, 50.0],
-            )
+            ),
         ),
         (
             (
@@ -191,7 +175,7 @@ test_scatter_plot_data = pl.DataFrame(
                 "y",
                 "PLOT_SAMPLE_ID",
                 None,
-            )
+            ),
         ),
         (
             (
@@ -211,7 +195,7 @@ test_scatter_plot_data = pl.DataFrame(
                 "y",
                 "PLOT_SAMPLE_ID",
                 None,
-            )
+            ),
         ),
         (
             (
@@ -243,7 +227,7 @@ test_scatter_plot_data = pl.DataFrame(
                 "y",
                 "PLOT_SAMPLE_ID",
                 None,
-            )
+            ),
         ),
     ],
 )
@@ -264,15 +248,16 @@ def test_plot_bar_metric(inputs, wants):
         hline_y=inputs[5],
         ann_y_offset=inputs[6],
         y_tick_step=inputs[7],
-        cart_ylim=inputs[8]
+        cart_ylim=inputs[8],
     )
     assert isinstance(got, wants[0])
     assert len(got.layers) == wants[1]
     scales = got.scales.get_scales(wants[2])
     if scales:
         if scales.limits:
-            assert list(scales.limits) == (inputs[0].get_column(
-                wants[3]).unique(maintain_order=True).to_list())
+            assert list(scales.limits) == (
+                inputs[0].get_column(wants[3]).unique(maintain_order=True).to_list()
+            )
         if scales.breaks:
             assert scales.breaks == wants[4]
 
@@ -302,8 +287,8 @@ def test_plot_bar_metric(inputs, wants):
             (
                 ggplot,
                 6,
-                ['001 | RUN_A', '002 | RUN_B'],
-            )
+                ["001 | RUN_A", "002 | RUN_B"],
+            ),
         ),
         (
             (
@@ -332,8 +317,8 @@ def test_plot_bar_metric(inputs, wants):
             (
                 ggplot,
                 6,
-                ['001 | RUN_A'],
-            )
+                ["001 | RUN_A"],
+            ),
         ),
         (
             (
@@ -350,8 +335,8 @@ def test_plot_bar_metric(inputs, wants):
             (
                 ggplot,
                 7,
-                ['001 | RUN_A', '002 | RUN_B'],
-            )
+                ["001 | RUN_A", "002 | RUN_B"],
+            ),
         ),
         (
             (
@@ -371,8 +356,8 @@ def test_plot_bar_metric(inputs, wants):
             (
                 ggplot,
                 6,
-                ['True', 'False'],
-            )
+                ["True", "False"],
+            ),
         ),
         (
             (
@@ -398,8 +383,8 @@ def test_plot_bar_metric(inputs, wants):
             (
                 ggplot,
                 6,
-                ['001 | RUN_A', '002 | RUN_B'],
-            )
+                ["001 | RUN_A", "002 | RUN_B"],
+            ),
         ),
     ],
 )
