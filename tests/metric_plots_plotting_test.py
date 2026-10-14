@@ -782,8 +782,7 @@ def test_build_filter_expression(inputs, exception, wants, caplog):
 )
 def test_build_value_expression(inputs, exception, wants, caplog):
     with exception:
-        got = inputs[0].select(_build_value_expression(
-            inputs[1], alias_name="RESULT"))
+        got = inputs[0].select(_build_value_expression(inputs[1], alias_name="RESULT"))
         assert got["RESULT"].to_list() == wants[0]
 
     assert wants[1] in caplog.text
@@ -870,8 +869,7 @@ def test_build_value_expression(inputs, exception, wants, caplog):
         ),
         (
             # missing guideline ID columns are handled gracefully
-            {"guidelines": pl.DataFrame(
-                {"OTHER": ["USL_Guideline"], "VALUE": ["10"]})},
+            {"guidelines": pl.DataFrame({"OTHER": ["USL_Guideline"], "VALUE": ["10"]})},
             {
                 "table": "guidelines",
                 "sample_id": "USL_Guideline",
@@ -1200,8 +1198,7 @@ def test_prepare_bar_plot_data(table, spec, want):
 
     if "PLOT_SAMPLE_ID" in result.columns:
         print(result["PLOT_SAMPLE_ID"].to_list())
-        assert result["PLOT_SAMPLE_ID"].to_list(
-        ) == want["expected_sample_ids"]
+        assert result["PLOT_SAMPLE_ID"].to_list() == want["expected_sample_ids"]
 
     if "PLOT_RUN" in result.columns:
         assert result["PLOT_RUN"].to_list() == want["expected_run_labels"]
@@ -1245,8 +1242,7 @@ def test_prepare_bar_plot_data(table, spec, want):
                     )
                     .insert_column(9, pl.Series("highlighted_run", ["True", "False"]))
                     .insert_column(
-                        10, pl.Series("contamination_label",
-                                      ["DNA_LATEST", ""])
+                        10, pl.Series("contamination_label", ["DNA_LATEST", ""])
                     ),
                     "rna_data_table": test_metrics_frame_table.slice(1, 1),
                     "dna_sample_count": 2,
@@ -1278,8 +1274,7 @@ def test_prepare_bar_plot_data(table, spec, want):
                         2,
                         pl.Series(
                             "RUN_INDEX",
-                            ["010", "010", "002"] +
-                            test_run_index_column_guideline,
+                            ["010", "010", "002"] + test_run_index_column_guideline,
                         ),
                     )
                     .sort("RUN_INDEX"),
@@ -1296,8 +1291,7 @@ def test_prepare_bar_plot_data(table, spec, want):
                     "data_table": pl.concat(
                         [
                             test_metrics_frame_table.slice(0, 3).replace_column(
-                                2, pl.Series(
-                                    "RUN_INDEX", ["010", "010", "002"])
+                                2, pl.Series("RUN_INDEX", ["010", "010", "002"])
                             ),
                             test_metrics_frame_guideline_table.slice(2, 1),
                         ]
@@ -1355,8 +1349,7 @@ def test_prepare_bar_plot_data(table, spec, want):
                     )
                     .insert_column(9, pl.Series("highlighted_run", ["True", "False"]))
                     .insert_column(
-                        10, pl.Series("contamination_label",
-                                      ["DNA_LATEST", ""])
+                        10, pl.Series("contamination_label", ["DNA_LATEST", ""])
                     ),
                     "rna_data_table": test_metrics_frame_table.slice(1, 1),
                     "dna_sample_count": 2,
@@ -1397,8 +1390,7 @@ def test_prepare_bar_plot_data(table, spec, want):
                     )
                     .insert_column(9, pl.Series("highlighted_run", ["True", "False"]))
                     .insert_column(
-                        10, pl.Series("contamination_label",
-                                      ["DNA_LATEST", ""])
+                        10, pl.Series("contamination_label", ["DNA_LATEST", ""])
                     ),
                     "rna_data_table": test_metrics_frame_table.slice(1, 1),
                     "dna_sample_count": 2,
@@ -1504,12 +1496,9 @@ def test_render_contamination_scatter(
                 )
                 .insert_column(9, pl.Series("highlighted_run", ["True", "False"]))
                 .insert_column(
-                    10, pl.Series("contamination_label",
-                                  ["DNA_LATEST", ""])
+                    10, pl.Series("contamination_label", ["DNA_LATEST", ""])
                 ),
-                "dna_guideline_table": test_metrics_frame_guideline_table.slice(
-                    0, 2
-                ),
+                "dna_guideline_table": test_metrics_frame_guideline_table.slice(0, 2),
             },
             "localapp",
         )
@@ -1529,7 +1518,7 @@ def test_render_contamination_scatter(
                 "dragen",
             ),
             nullcontext(),
-            ""
+            "",
         ),
         (
             (
@@ -1550,7 +1539,7 @@ def test_render_contamination_scatter(
                 "localapp",
             ),
             nullcontext(),
-            ""
+            "",
         ),
         (
             (
@@ -1559,8 +1548,8 @@ def test_render_contamination_scatter(
                 "unknown",
             ),
             raises(ValueError),
-            "Unsupported workflow"
-        )
+            "Unsupported workflow",
+        ),
     ],
 )
 def test_generate_qc_plots(
