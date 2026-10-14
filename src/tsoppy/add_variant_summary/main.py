@@ -48,7 +48,7 @@ def Summarise_variant_output(
 
     with open(output_file, "w") as out_file:
         _write_header(out_file, cvo.headers)
-        for file_path, sections in zip(cvo.files, cvo.sections):
+        for sections in cvo.sections.values():
             for row in _parse_sample(sections, cvo.workflow_type):
                 out_file.write("\t".join(row) + "\n")
 

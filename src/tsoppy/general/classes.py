@@ -136,8 +136,7 @@ class WorkflowOutput:
         """Initialize WorkflowOutput."""
         self.root = Path(root_path)
         with open(config_yaml, "r") as yaml_file:
-            self.config = msgspec.yaml.decode(
-                yaml_file.read(), type=WorkflowConfig)
+            self.config = msgspec.yaml.decode(yaml_file.read(), type=WorkflowConfig)
         with open(inpred_nomenclature, "r") as yaml_file:
             self.nomenclature = msgspec.yaml.decode(
                 yaml_file.read(), type=InPredNomenclature
@@ -194,8 +193,7 @@ class WorkflowOutput:
         _, sections = Parse_section_csv(samplesheet_path, [])
 
         # Find and check that there is only one Data section present
-        data_sections = [section for section in list(
-            sections) if "Data" in section]
+        data_sections = [section for section in list(sections) if "Data" in section]
         if len(data_sections) != 1:
             logger.error(
                 f"Expected one data section in samplesheet {samplesheet_path} - got {len(data_sections)}."
@@ -219,8 +217,7 @@ class WorkflowOutput:
         else:
             choices = list(code_dict.choices.keys())
             if choice not in choices:
-                logger.warning(
-                    f"{choice} is not valid - expected any: {choices}")
+                logger.warning(f"{choice} is not valid - expected any: {choices}")
                 return choice
             else:
                 return code_dict.choices[choice]
@@ -337,9 +334,10 @@ class CombinedVariantOutputTsv(WorkflowOutput):
     """Input class for combined variant output TSV files produced by different workflows.
 
     Attributes:
-        files: Paths to all combined variant output TSV files (list[Path])
-        sections: Parsed sections of each combined variant output TSV file
-            (list[dict[str, polars.DataFrame]])
+        files: Paths to all combined variant output TSV files, keyed by pair id
+            (dict[str, Path])
+        sections: Parsed sections of each combined variant output TSV file, keyed by
+            pair id (dict[str, dict[str, polars.DataFrame]])
         headers: Header lines at the top of the combined variant output TSV (list[str])
     """
 
@@ -355,8 +353,8 @@ class CombinedVariantOutputTsv(WorkflowOutput):
         fmt = self.config.combined_variant_output_tsv[self.workflow_id]
 
         # Build the path for each pair and report files that are missing
-        self.files = []
-        self.sections = []
+        self.files: dict[str, Path] = {}
+        self.sections: dict[str, dict[str, polars.DataFrame]] = {}
         self.headers = None
         for pair_id in self.pair_id_list:
             path = Path(os.path.join(self.root, fmt.format(pair_id, pair_id)))
@@ -366,12 +364,11 @@ class CombinedVariantOutputTsv(WorkflowOutput):
                     f"File {path} does not exist."
                 )
                 continue
-            headers, sections = Parse_section_tsv(
-                str(path), self.KEY_VALUE_SECTIONS)
+            headers, sections = Parse_section_tsv(str(path), self.KEY_VALUE_SECTIONS)
             if self.headers is None:
                 self.headers = headers
-            self.files.append(path)
-            self.sections.append(sections)
+            self.files[pair_id] = path
+            self.sections[pair_id] = sections
 
         if not self.files:
             logger.error(

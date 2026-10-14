@@ -380,3 +380,18 @@ def test_combinedvariantoutputtsv_create(inputs, exception, want):
         workflow_output = WorkflowOutput(*inputs[:3])
         got = CombinedVariantOutputTsv.create(workflow_output)
         assert got.workflow_type == want
+        assert list(got.sections) == ["sample1"]
+
+
+def test_combinedvariantoutputtsv_missing_file(caplog):
+    workflow_output = WorkflowOutput(
+        "config.yaml",
+        path.join(test_data_dir, "nomenclature.yaml"),
+        path.join(test_data_dir, "dragen/standard"),
+    )
+    workflow_output.samples = DataFrame(
+        {"Sample_ID": ["sample1"], "Pair_ID": ["missing_P"]}
+    )
+    with raises(FileNotFoundError):
+        CombinedVariantOutputTsv.create(workflow_output)
+    assert any("missing_P" in record.message for record in caplog.records)
