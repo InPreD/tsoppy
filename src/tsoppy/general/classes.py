@@ -331,59 +331,50 @@ class SmallVariantGenomeVcf(WorkflowOutput):
 
 
 class CombinedVariantOutputTsv(WorkflowOutput):
-    """Input class for combined variant output TSV files produced by different workflows.
+    """Input class for a combined variant output TSV file produced by a workflow.
 
     Attributes:
-        files: Paths to all combined variant output TSV files, keyed by pair id
-            (dict[str, Path])
-        sections: Parsed sections of each combined variant output TSV file, keyed by
-            pair id (dict[str, dict[str, polars.DataFrame]])
+        path: Path to the combined variant output TSV (Path)
+        pair_id: Pair identifier used in the path (str)
         headers: Header lines at the top of the combined variant output TSV (list[str])
+        sections: Parsed sections of the combined variant output TSV file (dict[str, polars.DataFrame])
     """
 
     # Section names that are key-value pairs:
     KEY_VALUE_SECTIONS = ["TMB", "MSI", "GIS", "Analysis Details"]
 
-    def __init__(self, config_yaml, inpred_nomenclature, root_path):
+    def __init__(self, config_yaml, inpred_nomenclature, root_path, pair_id: str):
         super().__init__(config_yaml, inpred_nomenclature, root_path)
+        self.pair_id = pair_id
         self._parse()
 
-    def _parse(self):
-        """Find and parse all combined variant output TSV files."""
-        fmt = self.config.combined_variant_output_tsv[self.workflow_id]
-
-        # Build the path for each pair and report files that are missing
-        self.files: dict[str, Path] = {}
-        self.sections: dict[str, dict[str, polars.DataFrame]] = {}
-        self.headers = None
-        for pair_id in self.pair_id_list:
-            path = Path(os.path.join(self.root, fmt.format(pair_id, pair_id)))
-            if not path.is_file():
-                logger.error(
-                    f"Combined variant output TSV missing for {pair_id}: "
-                    f"File {path} does not exist."
-                )
-                continue
-            headers, sections = Parse_section_tsv(str(path), self.KEY_VALUE_SECTIONS)
-            if self.headers is None:
-                self.headers = headers
-            self.files[pair_id] = path
-            self.sections[pair_id] = sections
-
-        if not self.files:
-            logger.error(
-                f"No combined variant output TSV files found for any pair: "
-                f"{self.pair_id_list}."
-            )
-            raise FileNotFoundError
-
     @classmethod
-    def create(cls, workflow_output: WorkflowOutput):
+    def create(cls, workflow_output: WorkflowOutput, pair_id: str):
         """Create CombinedVariantOutputTsv from an existing WorkflowOutput."""
+        if pair_id not in workflow_output.pair_id_list:
+            logger.error(f"Pair {pair_id} does not exist")
+            raise ValueError
         obj = cls.__new__(cls)
         obj.__dict__.update(workflow_output.__dict__)
+        obj.pair_id = pair_id
         obj._parse()
         return obj
+
+    def _parse(self):
+        """Parse the combined variant output TSV for this pair."""
+        fmt = self.config.combined_variant_output_tsv[self.workflow_id]
+        self.path = Path(
+            os.path.join(self.root, fmt.format(self.pair_id, self.pair_id))
+        )
+        if not self.path.is_file():
+            logger.error(
+                f"Combined variant output TSV missing for {self.pair_id}: "
+                f"File {self.path} does not exist."
+            )
+            raise FileNotFoundError
+        self.headers, self.sections = Parse_section_tsv(
+            str(self.path), self.KEY_VALUE_SECTIONS
+        )
 
 
 class TmbTraceTsv(WorkflowOutput):

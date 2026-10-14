@@ -378,9 +378,10 @@ def test_variantsannotatedjson_create(inputs, exception, want):
 def test_combinedvariantoutputtsv_create(inputs, exception, want):
     with exception:
         workflow_output = WorkflowOutput(*inputs[:3])
-        got = CombinedVariantOutputTsv.create(workflow_output)
+        got = CombinedVariantOutputTsv.create(workflow_output, "sample1")
         assert got.workflow_type == want
-        assert list(got.sections) == ["sample1"]
+        assert got.pair_id == "sample1"
+        assert "TMB" in got.sections
 
 
 def test_combinedvariantoutputtsv_missing_file(caplog):
@@ -393,5 +394,5 @@ def test_combinedvariantoutputtsv_missing_file(caplog):
         {"Sample_ID": ["sample1"], "Pair_ID": ["missing_P"]}
     )
     with raises(FileNotFoundError):
-        CombinedVariantOutputTsv.create(workflow_output)
+        CombinedVariantOutputTsv.create(workflow_output, "missing_P")
     assert any("missing_P" in record.message for record in caplog.records)

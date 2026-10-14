@@ -7,7 +7,7 @@ from string import Template
 
 import polars
 
-from tsoppy.general.classes import CombinedVariantOutputTsv
+from tsoppy.general.classes import CombinedVariantOutputTsv, WorkflowOutput
 
 logger = logging.getLogger(__name__)
 
@@ -45,13 +45,31 @@ def Summarise_variant_output(
     results_directory: str | Path,
     output_file: str | Path,
 ) -> None:
-    """Find all *_CombinedVariantOutput.tsv files in a directory tree and parse their results into a summary table."""
-    cvo = CombinedVariantOutputTsv(config_yaml, inpred_nomenclature, results_directory)
+    """Summarise the combined variant output files in a directory tree into one table."""
+    workflow_output = WorkflowOutput(
+        config_yaml, inpred_nomenclature, results_directory
+    )
+
+    # One combined variant output file per pair; report the ones that are missing
+    # and skip them, but fail if no file could be parsed at all.
+    cvo_files = []
+    for pair_id in workflow_output.pair_id_list:
+        try:
+            cvo_files.append(CombinedVariantOutputTsv.create(workflow_output, pair_id))
+        except FileNotFoundError:
+            continue  # already logged by CombinedVariantOutputTsv._parse
+
+    if not cvo_files:
+        logger.error(
+            f"No combined variant output TSV files found for any pair: "
+            f"{workflow_output.pair_id_list}."
+        )
+        raise FileNotFoundError
 
     with open(output_file, "w") as out_file:
-        _write_header(out_file, cvo.headers)
-        for sections in cvo.sections.values():
-            for row in _parse_sample(sections, cvo.workflow_type):
+        _write_header(out_file, cvo_files[0].headers)
+        for cvo in cvo_files:
+            for row in _parse_sample(cvo.sections, cvo.workflow_type):
                 out_file.write("\t".join(row) + "\n")
 
 
