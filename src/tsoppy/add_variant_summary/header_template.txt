@@ -1,0 +1,12 @@
+# Field formats:
+# - Tumor mutation burden (TMB): Total TMB (number of passing eligible variants)
+# - Microsatellite instability (MSI): Percent Unstable MSI Sites (unstable/usable)
+# - Gene amplifications (LocalApp) / Copy Number Variants (CNV) (DRAGEN V2): gene (fold_change, copy_number_variant, absolute_copy_number (DRAGEN V2 only))
+# - Loss of Heterozygosity (LOH): gene (absolute_copy_number, minor_copy_number)
+# - Splice variants: gene[affected_exon] (breakpoint_1-breakpoint_2) supporting/ref_reads
+# - Fusions: gene_1-gene_2 (breakpoint_1-breakpoint_2) supporting/ref_gene_1/ref_gene_2
+# - Genomic Instability Score (GIS) (DRAGEN V2 only): Genomic Instability Score, from the [GIS] section
+# - Tumor fraction (DRAGEN V2 only): Tumor Fraction, from the [GIS] section
+# - Ploidy (DRAGEN V2 only): Ploidy, from the [GIS] section
+# - Large Rearrangements: gene (DRAGEN V2 only)
+$columns

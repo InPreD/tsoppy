@@ -1,7 +1,9 @@
 """Create the variant summary table using the combined variant output files (cvo) for each sample."""
 
 import logging
+from importlib.resources import files
 from pathlib import Path
+from string import Template
 
 import polars
 
@@ -115,37 +117,12 @@ def _format_rna_row(sections: dict[str, polars.DataFrame]) -> list[str]:
 
 
 def _write_header(out_file, headers: list[str]) -> None:
-    for h in headers:
-        out_file.write(f"# {h}\n")
-    out_file.write("# Field formats:\n")
-    out_file.write(
-        "# - Tumor mutation burden (TMB): Total TMB (number of passing eligible variants)\n"
+    """Write the source banners, the field-format description and the table header."""
+    template = Template(
+        files("tsoppy.add_variant_summary").joinpath("header_template.txt").read_text()
     )
-    out_file.write(
-        "# - Microsatellite instability (MSI): Percent Unstable MSI Sites (unstable/usable)\n"
-    )
-    out_file.write(
-        "# - Gene amplifications (LocalApp) / Copy Number Variants (CNV) (DRAGEN V2): gene (fold_change, copy_number_variant, absolute_copy_number (DRAGEN V2 only))\n"
-    )
-    out_file.write(
-        "# - Loss of Heterozygosity (LOH): gene (absolute_copy_number, minor_copy_number)\n"
-    )
-    out_file.write(
-        "# - Splice variants: gene[affected_exon] (breakpoint_1-breakpoint_2) supporting/ref_reads\n"
-    )
-    out_file.write(
-        "# - Fusions: gene_1-gene_2 (breakpoint_1-breakpoint_2) supporting/ref_gene_1/ref_gene_2\n"
-    )
-    out_file.write(
-        "# - Genomic Instability Score (GIS) (DRAGEN V2 only): Genomic Instability Score, "
-        "from the [GIS] section\n"
-    )
-    out_file.write(
-        "# - Tumor fraction (DRAGEN V2 only): Tumor Fraction, from the [GIS] section\n"
-    )
-    out_file.write("# - Ploidy (DRAGEN V2 only): Ploidy, from the [GIS] section\n")
-    out_file.write("# - Large Rearrangements: gene (DRAGEN V2 only)\n")
-    out_file.write("\t".join(HEADER) + "\n")
+    out_file.write("".join(f"# {header}\n" for header in headers))
+    out_file.write(template.substitute(columns="\t".join(HEADER)))
 
 
 def _parse_sample(

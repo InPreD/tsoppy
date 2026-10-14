@@ -4,6 +4,7 @@ import polars
 from pytest import mark
 
 from tsoppy.add_variant_summary.main import (
+    HEADER,
     _detect_data_type,
     _format_cnv,
     _format_dna_row,
@@ -16,6 +17,7 @@ from tsoppy.add_variant_summary.main import (
     _format_splice_vars,
     _format_tmb,
     _parse_sample,
+    _write_header,
 )
 
 
@@ -403,3 +405,14 @@ def test_format_rna_row(sections, want):
 )
 def test_parse_sample(sections, workflow_type, want):
     assert _parse_sample(sections, workflow_type) == want
+
+
+def test_write_header(tmp_path):
+    out_file = tmp_path / "header.tsv"
+    with open(out_file, "w") as file_handle:
+        _write_header(file_handle, ["Pipeline: DRAGEN", "Version: 2.6.2.4"])
+    text = out_file.read_text()
+    assert text.startswith("# Pipeline: DRAGEN\n# Version: 2.6.2.4\n")
+    assert "# Field formats:\n" in text
+    # catches a missing final newline
+    assert text.endswith("\t".join(HEADER) + "\n")
