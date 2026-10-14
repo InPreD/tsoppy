@@ -136,7 +136,8 @@ class WorkflowOutput:
         """Initialize WorkflowOutput."""
         self.root = Path(root_path)
         with open(config_yaml, "r") as yaml_file:
-            self.config = msgspec.yaml.decode(yaml_file.read(), type=WorkflowConfig)
+            self.config = msgspec.yaml.decode(
+                yaml_file.read(), type=WorkflowConfig)
         with open(inpred_nomenclature, "r") as yaml_file:
             self.nomenclature = msgspec.yaml.decode(
                 yaml_file.read(), type=InPredNomenclature
@@ -193,7 +194,8 @@ class WorkflowOutput:
         _, sections = Parse_section_csv(samplesheet_path, [])
 
         # Find and check that there is only one Data section present
-        data_sections = [section for section in list(sections) if "Data" in section]
+        data_sections = [section for section in list(
+            sections) if "Data" in section]
         if len(data_sections) != 1:
             logger.error(
                 f"Expected one data section in samplesheet {samplesheet_path} - got {len(data_sections)}."
@@ -217,7 +219,8 @@ class WorkflowOutput:
         else:
             choices = list(code_dict.choices.keys())
             if choice not in choices:
-                logger.warning(f"{choice} is not valid - expected any: {choices}")
+                logger.warning(
+                    f"{choice} is not valid - expected any: {choices}")
                 return choice
             else:
                 return code_dict.choices[choice]
@@ -230,6 +233,21 @@ class WorkflowOutput:
     def sample_list(self) -> list[str]:
         """Return all samples present in samplsheet."""
         return self.samples["Sample_ID"].to_list()
+
+    @property
+    def pair_id_list(self) -> list[str]:
+        """Return all Pair_ID present in samplesheet, use Sample_ID if Pair_ID not present."""
+        if "Pair_ID" in self.samples.columns:
+            return (
+                self.samples["Pair_ID"]
+                .unique(maintain_order=True)
+                .drop_nulls()
+                .to_list()
+            )
+        logger.warning(
+            "Pair_ID column is missing from samplesheet, using Sample_ID instead."
+        )
+        return self.sample_list
 
     def sample_meta(self, sample_id: str) -> dict[str:str]:
         """Parse meta information from sample id and return as dict"""
@@ -322,6 +340,7 @@ class CombinedVariantOutputTsv(WorkflowOutput):
         files: Paths to all combined variant output TSV files (list[Path])
         sections: Parsed sections of each combined variant output TSV file
             (list[dict[str, polars.DataFrame]])
+        headers: Header lines at the top of the combined variant output TSV (list[str])
     """
 
     # Section names that are key-value pairs:
@@ -333,25 +352,33 @@ class CombinedVariantOutputTsv(WorkflowOutput):
 
     def _parse(self):
         """Find and parse all combined variant output TSV files."""
-        glob_pattern = self.config.combined_variant_output_tsv[self.workflow_id]
+        fmt = self.config.combined_variant_output_tsv[self.workflow_id]
 
-        self.files = sorted(Path(self.root).glob(glob_pattern))
-        if not self.files:
-            logging.error(
-                f"No Combined Variant Output TSV files found matching {glob_pattern}."
-            )
-            raise FileNotFoundError
-
-        # Parse each file into its sections
+        # Build the path for each pair and report files that are missing
+        self.files = []
         self.sections = []
         self.headers = None
-        for file_path in self.files:
+        for pair_id in self.pair_id_list:
+            path = Path(os.path.join(self.root, fmt.format(pair_id, pair_id)))
+            if not path.is_file():
+                logger.error(
+                    f"Combined variant output TSV missing for {pair_id}: "
+                    f"File {path} does not exist."
+                )
+                continue
             headers, sections = Parse_section_tsv(
-                str(file_path), self.KEY_VALUE_SECTIONS
-            )
+                str(path), self.KEY_VALUE_SECTIONS)
             if self.headers is None:
                 self.headers = headers
+            self.files.append(path)
             self.sections.append(sections)
+
+        if not self.files:
+            logger.error(
+                f"No combined variant output TSV files found for any pair: "
+                f"{self.pair_id_list}."
+            )
+            raise FileNotFoundError
 
     @classmethod
     def create(cls, workflow_output: WorkflowOutput):

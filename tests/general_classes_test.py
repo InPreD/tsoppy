@@ -57,6 +57,35 @@ def test_workflowoutput_init(inputs, exception, want):
 
 
 @mark.parametrize(
+    "samples, want",
+    [
+        # Pair_ID differs from Sample_ID (the _P convention)
+        (
+            DataFrame({"Sample_ID": ["sample1"], "Pair_ID": ["sample1_P"]}),
+            ["sample1_P"],
+        ),
+        # DNA and RNA rows of the same pair collapse to a single id
+        (
+            DataFrame({"Sample_ID": ["sample1", "sample2"], "Pair_ID": ["p1", "p1"]}),
+            ["p1"],
+        ),
+        # Pair_ID column absent -> falls back to Sample_ID
+        (DataFrame({"Sample_ID": ["sample1", "sample2"]}), ["sample1", "sample2"]),
+    ],
+)
+def test_workflowoutput_pair_id_list(samples, want):
+    # Root only needs to be valid to construct WorkflowOutput; samples are replaced
+    # below so this test does not depend on fixture contents.
+    got = WorkflowOutput(
+        "config.yaml",
+        path.join(test_data_dir, "nomenclature.yaml"),
+        path.join(test_data_dir, "dragen/standard"),
+    )
+    got.samples = samples
+    assert got.pair_id_list == want
+
+
+@mark.parametrize(
     "inputs, want",
     [
         (

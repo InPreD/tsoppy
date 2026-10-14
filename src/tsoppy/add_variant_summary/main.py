@@ -46,11 +46,10 @@ def Summarise_variant_output(
     """Find all *_CombinedVariantOutput.tsv files in a directory tree and parse their results into a summary table."""
     cvo = CombinedVariantOutputTsv(config_yaml, inpred_nomenclature, results_directory)
 
-    workflow_type = cvo.workflow_type  # detect workflow type
     with open(output_file, "w") as out_file:
         _write_header(out_file, cvo.headers)
         for file_path, sections in zip(cvo.files, cvo.sections):
-            for row in _parse_sample(sections, workflow_type):
+            for row in _parse_sample(sections, cvo.workflow_type):
                 out_file.write("\t".join(row) + "\n")
 
 
@@ -102,16 +101,16 @@ def _format_rna_row(sections: dict[str, polars.DataFrame]) -> list[str]:
 
     return [
         sample_id,
-        "NA",  # TMB
-        "NA",  # MSI
+        "NA",  # TMB (DNA only)
+        "NA",  # MSI (DNA only)
         "NA",  # gene_amplifications (DNA only)
         "NA",  # LOH (DNA only)
         _format_splice_vars(sections),
         _format_fusions(sections),
-        "NA",  # GIS
-        "NA",  # Tumor fraction
-        "NA",  # Ploidy
-        "NA",  # Large Rearrangements
+        "NA",  # GIS (DNA only)
+        "NA",  # Tumor fraction (DNA only)
+        "NA",  # Ploidy (DNA only)
+        "NA",  # Large Rearrangements (DNA only)
     ]
 
 
