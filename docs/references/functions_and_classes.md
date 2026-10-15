@@ -52,3 +52,17 @@ The function parses a sectioned tsv file and returns potential headers and a dic
         })
     }
     ```
+
+## Classes
+
+### `tsoppy.general.classes.WorkflowOutput`
+
+Represents a workflow output directory and provides the workflow-aware context needed to locate downstream files.
+
+### `tsoppy.general.classes.MetricsOutputTsv`
+
+Parses individual `MetricsOutput.tsv` files and exposes their metric sections together with workflow type and version.
+
+### `tsoppy.metric_plots.main.MetricPlots`
+
+Normalizes metrics from different TSO500 workflows into a common representation. Combines selected runs, assigns run metadata, creates the master metrics table and joint sequencing QC table, and selects data for plotting.
