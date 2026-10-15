@@ -133,8 +133,7 @@ class WorkflowOutput:
         """Initialize WorkflowOutput."""
         self.root = Path(root_path)
         with open(config_yaml, "r") as yaml_file:
-            self.config = msgspec.yaml.decode(
-                yaml_file.read(), type=WorkflowConfig)
+            self.config = msgspec.yaml.decode(yaml_file.read(), type=WorkflowConfig)
         with open(inpred_nomenclature, "r") as yaml_file:
             self.nomenclature = msgspec.yaml.decode(
                 yaml_file.read(), type=InPredNomenclature
@@ -191,8 +190,7 @@ class WorkflowOutput:
         _, sections = Parse_section_csv(samplesheet_path, [])
 
         # Find and check that there is only one Data section present
-        data_sections = [section for section in list(
-            sections) if "Data" in section]
+        data_sections = [section for section in list(sections) if "Data" in section]
         if len(data_sections) != 1:
             logger.error(
                 f"Expected one data section in samplesheet {samplesheet_path} - got {len(data_sections)}."
@@ -216,8 +214,7 @@ class WorkflowOutput:
         else:
             choices = list(code_dict.choices.keys())
             if choice not in choices:
-                logger.warning(
-                    f"{choice} is not valid - expected any: {choices}")
+                logger.warning(f"{choice} is not valid - expected any: {choices}")
                 return choice
             else:
                 return code_dict.choices[choice]
@@ -319,8 +316,7 @@ class SmallVariantGenomeVcf(WorkflowOutput):
         """Merge VCF enriched with TMB and Nirvana annotations and either save to file or return polars dataframe."""
 
         tmb_obj = TmbTraceTsv.create(workflow_output, self.sample_id)
-        json_obj = VariantsAnnotatedJson.create(
-            workflow_output, self.sample_id)
+        json_obj = VariantsAnnotatedJson.create(workflow_output, self.sample_id)
 
         # Write to output path if specified, otherwise return merged table as polars dataframe
         if output_path:
@@ -423,11 +419,9 @@ class SmallVariantGenomeVcf(WorkflowOutput):
 
         # Create dictionary for storing variant information from VCF, TMB, and Nirvana annotations, to be converted to a Polars dataframe
         json_by_variant = json_obj.variant_dict
-        var_stats = ["AD", "DP",
-                     "AF" if self.workflow_type == "dragen" else "VF"]
+        var_stats = ["AD", "DP", "AF" if self.workflow_type == "dragen" else "VF"]
         cols = (
-            ["variant_ID", "variant_type", "overlapping_genes"] +
-            var_stats + ["filter"]
+            ["variant_ID", "variant_type", "overlapping_genes"] + var_stats + ["filter"]
         )
         var_dict = {c: [] for c in cols}
 
@@ -635,8 +629,7 @@ class TmbTraceTsv(WorkflowOutput):
         # Create a new column 'variant_ID' by concatenating Chromosome, Position, RefCall, and AltCall
         tmb_df = self.table.with_columns(
             (
-                polars.concat_str(
-                    ["Chromosome", "Position", "RefCall"], separator=":")
+                polars.concat_str(["Chromosome", "Position", "RefCall"], separator=":")
                 + polars.lit(">")
                 + polars.col("AltCall").cast(polars.String)
             ).alias("variant_ID")
@@ -714,8 +707,7 @@ class VariantsAnnotatedJson(WorkflowOutput):
         for position in self.data.get("positions", []):
             # Get variant type
             variants = position.get("variants", [{}])
-            variant_type = variants[0].get(
-                "variantType", None)  # if variants else None
+            variant_type = variants[0].get("variantType", None)  # if variants else None
 
             # Get overlapping genes
             genes = (
@@ -790,8 +782,7 @@ class MetricsOutputTsv(WorkflowOutput):
         )
 
         if not self.path.is_file():
-            logger.error(
-                f"MetricsOutput TSV missing: File {self.path} does not exist.")
+            logger.error(f"MetricsOutput TSV missing: File {self.path} does not exist.")
             raise FileNotFoundError
 
         self.headers, self.sections = Parse_section_tsv(
