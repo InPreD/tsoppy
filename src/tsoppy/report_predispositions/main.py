@@ -4,16 +4,19 @@ This module filters an input list of small variants and outputs a table containi
 
 import logging
 import re
+from collections import defaultdict
 from pathlib import Path
 from string import Template
 
+
 import polars as pl
 
-from tsoppy.general.classes import SmallVariantGenomeVcf, TmbTraceTsv, VariantsAnnotatedJson
+from tsoppy.general.classes import (
+    SmallVariantGenomeVcf,
+    WorkflowOutput
+)
 
 logger = logging.getLogger(__name__)
-
-# TODO: implement lookup_predisposition_variants
 
 
 def validate_uniqueness(df: pl.DataFrame, column: str):
@@ -43,7 +46,7 @@ def validate_tumor_purity_range(tumor_purity: float):
         return
 
 
-def load_data_from_cancer_susceptibility_genes_table(
+def load_data_from_cancer_susceptibility_genes_file(
     file_path: Path, column_list: list[str], gene_name_column: str
 ) -> tuple[dict[str, dict[str, str]], str]:
     """
@@ -81,46 +84,135 @@ def load_data_from_cancer_susceptibility_genes_table(
     return (cancer_susceptibility_genes_dict, source)
 
 
+def generate_predisposition_column_format_description(
+    cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
+    gene_name_column: str,
+    sample_id: str
+) -> str:
+
+    # put together column names
+    string_format = "[" + gene_name_column + "]"
+
+    unique_inner_keys = sorted(
+        {inner_key for inner_dict in cancer_susceptibility_genes_dict.values() for inner_key in inner_dict})
+
+    for key in unique_inner_keys:
+        string_format = string_format + "_[" + key + "]"
+
+    description = "# [" + sample_id + \
+        "] Column format of gene_predispositions:\n"
+    description = description + \
+        "# [" + sample_id + "]    a list of character strings of the form:\n"
+    description = description + \
+        "# [" + sample_id + "]    " + string_format + "\n"
+    description = description + "# [" + sample_id + "]    where:\n"
+
+    # for each column of the input data (except for the gene names):
+    #  collect possible values,
+    #  generate string to print out to description
+
+    # initialize a dictionary where every new key automatically starts with an empty set()
+    unique_values_per_key = defaultdict(set)
+
+    # iterate through all inner dictionaries
+    for inner_dict in cancer_susceptibility_genes_dict.values():
+        for inner_key, inner_value in inner_dict.items():
+            # add the value to the set corresponding to this specific inner key
+            unique_values_per_key[inner_key].add(inner_value)
+
+    # convert back to a standard dict
+    all_keys_values = {k: sorted(list(v))
+                       for k, v in unique_values_per_key.items()}
+
+    # add the info to the description string
+    for key in sorted(all_keys_values.keys()):
+        description = description + \
+            "# [" + sample_id + "]        " + key + ": "
+        description = description + \
+            "[ " + " | ".join(all_keys_values[key]) + " ]"
+
+    return description
+
+
+def get_small_variant_calls_file_path(
+    sample_id: str,
+    config_yaml: str | Path,
+    inpred_nomenclature: str | Path,
+    root_path: str | Path
+) -> Path:
+    """
+    Return Path to the small variant calls file path.
+    """
+
+    small_variants = SmallVariantGenomeVcf(
+        config_yaml, inpred_nomenclature, root_path, sample_id)
+
+    return small_variants.path
+
+
 def lookup_predisposition_variants(
     cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
     sample_id: str,
     config_yaml: str | Path,
     inpred_nomenclature: str | Path,
     root_path: str | Path
-):
+) -> pl.DataFrame:
     """
-    Look up predispositions and store all the relevant info.
+    Look up predispositions, store all the info from SmallVariantGenomeVcf merged_table and the gene predispositions in the output pl.DataFrame.
     """
 
-    predispositions = dict()
-
+    workflow_output = WorkflowOutput(
+        config_yaml, inpred_nomenclature, root_path)
     small_variants = SmallVariantGenomeVcf(
         config_yaml, inpred_nomenclature, root_path, sample_id)
+    merged_variant_info_pldf = small_variants.merge(workflow_output)
 
-    # TODO: add nirvana annotation to the small_variants (method to be implemented in classes.py, possibly part of create? so nothing to do here)
-    # TODO: iterate through the annotated variants, store the variants overlapping with genes in the cancer_susceptibility_genes_dict into predispositions
+    cancer_susceptibility_genes = list(cancer_susceptibility_genes_dict.keys())
 
-    #    # define names of columns of the output file
-    #    column_names = [
-    #        "Sample_ID",
-    #        "Gene_symbol",
-    #        "Ensembl_transcript_ID",
-    #        "RefSeq_mRNA",
-    #        "Genomic_location",
-    #        "DNA_change",
-    #        "cDNA_change",
-    #        "Protein_change",
-    #        "Depth_tumor_DNA",
-    #        "AF_tumor_DNA",
-    #        "Depth_normal_DNA",
-    #        "AF_normal_DNA",
-    #        "Depth_tumor_RNA",
-    #        "AF_tumor_RNA",
-    #        "TCGA_frequency",
-    #        "ICGC_PCAWG_occurrence",
-    #        "Gene_predisposition"]
+    # select only variants overlapping at least one predisposition gene
+    predispositions_basic_pldf = merged_variant_info_pldf.filter(
+        pl.col("overlapping_genes").list.set_intersection(
+            cancer_susceptibility_genes).list.len() > 0
+    )
 
-    return predispositions
+    # add gene_predisposition column (containing empty list) into the data frame
+    predispositions_pldf = predispositions_basic_pldf.with_columns(
+        gene_predispositions=pl.lit([]).cast(pl.List(pl.String))
+    )
+
+    # transform the data frame into a a dictionary
+    predispositions_dict = {
+        row.pop("variant_id"): row for row in predispositions_pldf.to_dicts()
+    }
+
+    # iterate through all variant_ids
+    #   iterate through all overlapping_genes
+    #       if overlapping_gene in cancer_susceptibility_genes
+    #       then append gene_actionability_age for the overlapping_gene
+    for variant_id in predispositions_dict.keys():
+        for overlapping_gene in predispositions_dict[variant_id]["overlapping_genes"]:
+            if (overlapping_gene in cancer_susceptibility_genes):
+                predisposition_str = overlapping_gene
+                for k in sorted(cancer_susceptibility_genes):
+                    predisposition_str = predisposition_str + "_" + \
+                        cancer_susceptibility_genes_dict[overlapping_gene][k]
+                predispositions_dict[variant_id]["gene_predisposition"].append(
+                    predisposition_str
+                )
+
+    # transfrom predispositions_dict to pl.DataFrame
+
+    # transform the nested predispositions_dict into a list of dicts
+    # using **fields to unpack the rest of the dictionary values
+    rows = [
+        {"variant_id": variant_id, **fields}
+        for variant_id, fields in predispositions_dict.items()
+    ]
+
+    # transform to dataframe
+    predispositions_final_pldf = pl.DataFrame(rows)
+
+    return predispositions_final_pldf
 
 
 def get_genomic_location(variant_id: str) -> str:
@@ -143,7 +235,8 @@ def print_predisposition_variants_to_output_file(
     small_variant_calls: Path,
     length_of_targeted_coding_regions: float,
     tumor_purity: float,
-    predisposition_variants: dict[str, dict[str, str | int | float]],
+    predisposition_variants: pl.DataFrame,
+    predisposition_column_format_description: str,
     output_file: Path,
 ):
     """
@@ -151,43 +244,32 @@ def print_predisposition_variants_to_output_file(
     """
 
     header_lines_versions = Template(
-        """# [$sample_id] Version string: $version_string
+        """  # [$sample_id] Version string: $version_string
 """
     )
 
     header_lines_cancer_susceptibility_data_source = Template(
-        """# [$sample_id] Cancer susceptibility genes are defined in:
+        """  # [$sample_id] Cancer susceptibility genes are defined in:
 # [$sample_id]    file: $cancer_susceptibility_genes
 # [$sample_id]    source: $source
 """
     )
 
     header_lines_small_variant_info_data_source = Template(
-        """# [$sample_id] Small variant calls are defined in: $small_variant_calls
+        """  # [$sample_id] Small variant calls are defined in: $small_variant_calls
 """
     )
 
     header_lines_length_of_targeted_coding_regions = Template(
-        """# [$sample_id] Cumulative length of all the targeted coding regions (in millions of bases): $length_of_targeted_coding_regions
+        """  # [$sample_id] Cumulative length of all the targeted coding regions (in millions of bases): $length_of_targeted_coding_regions
 """
     )
 
     header_lines_tumor_purity = Template(
-        """# [$sample_id] Tumor purity (as a fraction between 0 and 1): $tumor_purity
+        """  # [$sample_id] Tumor purity (as a fraction between 0 and 1): $tumor_purity
 # [$sample_id]    The tumor purity is provided as an input parameter for tsoppy.
 """
     )
-
-    header_lines_gene_predisposition = Template(
-        """# [$sample_id] Gene_predisposition column format:
-# [$sample_id]    [Actionability]_[Age]
-# [$sample_id]    where:
-# [$sample_id]        Actionability: [ MA-CSG | HA-CSG | SA-CSG ]
-# [$sample_id]        - MA-CSG = most actionable cancer susceptibility gene, HA-CSG = highly actionable csg, SA-CSG = standardly actionable csg
-# [$sample_id]        Age: [ Allages | Age<30 ]
-"""
-    )
-    # all the info in the Gene_predisposition column come from the cancer susceptibility genes input file
 
     # open output file for writing
     with open(output_file, "w") as output:
@@ -237,26 +319,12 @@ def print_predisposition_variants_to_output_file(
         output.write(
             header_lines_tumor_purity.safe_substitute(tumor_purity_info))
 
-        gene_predisposition_info = {"sample_id": sample_id}
-        output.write(
-            header_lines_gene_predisposition.safe_substitute(gene_predisposition_info))
-
-    # transform the nested dict into a list of dicts
-    # using **fields to unpack the rest of the dictionary values
-    rows = [
-        {"variant_id": variant_id, **fields}
-        for variant_id, fields in predisposition_variants.items()
-    ]
-
-    # transform to dataframe
-    df = pl.DataFrame(rows)
-
-    # remove variant_id column from df
-    df = df.drop("variant_id")
+        output.write(predisposition_column_format_description)
 
     # write out the dataframe
     with open(output_file, mode="ab") as output:
-        df.write_csv(output, include_header=True, separator="\t")
+        predisposition_variants.write_csv(
+            output, include_header=True, separator="\t")
 
     return
 
@@ -284,10 +352,20 @@ def generate_report(
     logger.info(
         f"Load data from the {cancer_susceptibility_genes} input file.")
     cancer_susceptibility_genes_dict, source = (
-        load_data_from_cancer_susceptibility_genes_table(
+        load_data_from_cancer_susceptibility_genes_file(
             cancer_susceptibility_genes, csg_column_list, gene_name_column
         )
     )
+
+    logger.info()
+    predisposition_column_format_description = generate_predisposition_column_format_description(
+        cancer_susceptibility_genes_dict, gene_name_column, sample_id)
+
+    logger.info(
+        f"Find small variant calls file path."
+    )
+    small_variant_calls = get_small_variant_calls_file_path(
+        sample_id, config_yaml, inpred_nomenclature, root_path)
 
     logger.info(
         f"Find predisposition_variants in SmallVariantGenomeVcf object of a given sample {sample_id}."
@@ -297,7 +375,7 @@ def generate_report(
     )
 
     logger.info(
-        f"Print the {predisposition_variants} content into the {output_file} output file."
+        f"Print the predispositions into the {output_file} output file."
     )
     print_predisposition_variants_to_output_file(
         sample_id,
@@ -308,5 +386,6 @@ def generate_report(
         length_of_targeted_coding_regions,
         tumor_purity,
         predisposition_variants,
+        predisposition_column_format_description,
         output_file,
     )
