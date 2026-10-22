@@ -68,19 +68,24 @@ def parse_metadata_to_get_source(file_path: Path
     logger.info(
         f"Parsing metadata of {file_path} to get source of the information stored in the file.")
 
-    # load metadata about source of the info
+    # try to get metadata about source of the info
     source = "NA"
 
-    with open(file_path, "r") as file:
-        for line in file:
-            if re.match(r"# source:", line):
-                source = line.replace("# source:", "", 1)
-                source = source.strip()
-                return source
+    try:
+        with open(file_path, "r") as file:
+            for line in file:
+                if re.match(r"# source:", line):
+                    source = line.replace("# source:", "", 1)
+                    source = source.strip()
+                    return source
 
-    logger.exception("Data Integrity Validation Failed.")
-    raise ValueError(
-        f"Error: source information not found in metadata of {file_path}.")
+        logger.exception("Data Integrity Validation Failed.")
+        raise ValueError(
+            f"Error: source information not found in metadata of {file_path}.")
+
+    except FileNotFoundError:
+        logger.exception(f"File {file_path} not found.")
+        sys.exit(1)
 
 
 def load_data_from_cancer_susceptibility_genes_file(
@@ -102,8 +107,9 @@ def load_data_from_cancer_susceptibility_genes_file(
         logger.info(f"Attempting to read tabular content of {file_path}.")
         df = pl.read_csv(file_path, columns=column_list,
                          separator="\t", comment_prefix="#")
+
     except ColumnNotFoundError:
-        logger.error(
+        logger.exception(
             "Failed to read CSV because a required column was missing.", exc_info=True)
         sys.exit(1)
 
@@ -174,7 +180,7 @@ def generate_predisposition_column_format_description(
         description = description + \
             "# [" + sample_id + "]        " + key + ": "
         description = description + \
-            "[ " + " | ".join(all_keys_values[key]) + " ]"
+            "[ " + " | ".join(all_keys_values[key]) + " ]" + "\n"
 
     return description
 
