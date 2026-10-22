@@ -4,23 +4,25 @@ Report predispositions subpackage unit test.
 
 from contextlib import nullcontext
 from pathlib import Path
+from polars.exceptions import ColumnNotFoundError
 
 import polars as pl
 import pytest
 
 from tsoppy.report_predispositions.main import (
     check_gene_name_column_presence_in_column_list,
+    generate_predisposition_column_format_description,
+    generate_report,
     get_dna_change,
     get_genomic_location,
+    get_small_variant_calls_file_path,
     load_data_from_cancer_susceptibility_genes_file,
+    lookup_predisposition_variants,
     parse_metadata_to_get_source,
     print_predisposition_variants_to_output_file,
     validate_tumor_purity_range,
     validate_uniqueness,
 )
-
-# TODO: test_lookup_predisposition_variants
-# TODO: test_generate_report
 
 
 @pytest.mark.parametrize(
@@ -184,6 +186,9 @@ def test_parse_metadata_to_get_source(tmp_path, inputs, exception, want):
 
     test_file.unlink()
 
+    # remove the temp directory
+    directory.rmdir()
+
 
 @pytest.mark.parametrize(
     "inputs, exception, want",
@@ -200,101 +205,97 @@ def test_parse_metadata_to_get_source(tmp_path, inputs, exception, want):
                 ],
                 "Gene"
             ),
-            exception,
-            want
+            nullcontext(),
+            (
+                {
+                    "TP53": {
+                        "Actionability": "HA-CSG",
+                        "Age": "Age<30",
+                    },
+                    "BRCA1": {
+                        "Actionability": "MA-CSG",
+                        "Age": "Allages",
+                    },
+                },
+                "doi_url"
+            ),
+        ),
+        (
+            (
+                "cancer_susceptibility_genes_missing_column.csv",
+                "# source: doi_url\nGene\tActionability\nTP53\tHA-CSG\nBRCA1\tMA-CSG",
+                [
+                    "Gene",
+                    "Actionability",
+                    "Age"
+                ],
+                "Gene"
+            ),
+            pytest.raises(SystemExit),
+            None
         ),
     ]
 )
-def test_load_data_from_cancer_susceptibility_genes_file(tmp_path):
-    # cases to test:
+def test_load_data_from_cancer_susceptibility_genes_file(tmp_path, inputs, exception, want):
+    # tested cases:
     # expected input
     # missing column
-    # nonexistent file
-    # duplicate records for a gene
-
-    column_list = list(("Gene", "Actionability", "Age"))
-    gene_name_column = "Gene"
 
     # create temporary directory
-    directory = tmp_path / "test_reporPredispositions_main"
-    directory.mkdir()
+    directory = tmp_path / "test_reporPredispositions_main" / "test_load_data"
+    directory.mkdir(parents=True, exist_ok=True)
 
-    # write content to the temp file, expected
-    test_file_expected = directory / "cancer_susceptibility_genes_expected.csv"
-    cancer_susceptibility_genes_table_content_expected = (
-        "# source: doi_url\nGene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages"
-    )
-    test_file_expected.write_text(
-        cancer_susceptibility_genes_table_content_expected)
+    # write content to the temp file
+    test_file = directory / inputs[0]
+    test_file.write_text(inputs[1], encoding="utf-8")
 
-    # expected result
-    result_g = dict()
-    result_g["TP53"] = dict()
-    result_g["TP53"]["Actionability"] = "HA-CSG"
-    result_g["TP53"]["Age"] = "Age<30"
-    result_g["BRCA1"] = dict()
-    result_g["BRCA1"]["Actionability"] = "MA-CSG"
-    result_g["BRCA1"]["Age"] = "Allages"
-    result_s = 'doi_url'
-    result = (result_g, result_s)
-
-    # test the expected input
-    assert (
-        load_data_from_cancer_susceptibility_genes_file(
-            test_file_expected, column_list, gene_name_column
-        )
-        == result
-    )
+    with exception:
+        got = load_data_from_cancer_susceptibility_genes_file(
+            test_file, *inputs[2:4])
+        assert got == want
 
     # remove the temporary file test_file_expected
-    test_file_expected.unlink()
-
-    # write content to the temp file, missing column
-    test_file_missing_column = (
-        directory / "cancer_susceptibility_genes_missing_column.csv"
-    )
-    cancer_susceptibility_genes_table_content_missing_column = (
-        "Gene\tActionability\nTP53\tHA-CSG\nBRCA1\tMA-CSG"
-    )
-    test_file_missing_column.write_text(
-        cancer_susceptibility_genes_table_content_missing_column
-    )
-
-    # test the input with missing column
-    with pytest.raises(pl.exceptions.ColumnNotFoundError):
-        load_data_from_cancer_susceptibility_genes_file(
-            test_file_missing_column, column_list, gene_name_column
-        )
-
-    # remove the temporary file test_file_missing_column
-    test_file_missing_column.unlink()
-
-    # write content to the temp file, nonexistent
-    test_file_nonexistent = directory / "cancer_susceptibility_genes_nonexistent.csv"
-
-    # test the nonexistent input file
-    with pytest.raises(FileNotFoundError):
-        load_data_from_cancer_susceptibility_genes_file(
-            test_file_nonexistent, column_list, gene_name_column
-        )
-
-    # test the input with duplicated genes
-    test_file_duplicated = directory / "cancer_susceptibility_genes_duplicated.csv"
-    cancer_susceptibility_genes_table_content_duplicated = "Gene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages\nTP53\tSA-CSG\tAge<30"
-    test_file_duplicated.write_text(
-        cancer_susceptibility_genes_table_content_duplicated
-    )
-
-    with pytest.raises(ValueError):
-        load_data_from_cancer_susceptibility_genes_file(
-            test_file_duplicated, column_list, gene_name_column
-        )
-
-    # remove the temp file test_file_duplicated
-    test_file_duplicated.unlink()
+    test_file.unlink()
 
     # remove the temp directory
     directory.rmdir()
+
+
+@pytest.mark.parametrize(
+    "inputs, want",
+    [
+        (
+            (
+                {
+                    "TP53": {
+                        "Actionability": "HA-CSG",
+                        "Age": "Age<30",
+                    },
+                    "BRCA1": {
+                        "Actionability": "MA-CSG",
+                        "Age": "Allages",
+                    },
+                    "BAP1": {
+                        "Actionability": "SA-CSG",
+                        "Age": "Allages",
+                    }
+                },
+                "Gene",
+                "SAMPLE_ID"
+            ),
+            "# [SAMPLE_ID] Column format of gene_predispositions:\n" +
+            "# [SAMPLE_ID]    a list of character strings of the form:\n" +
+            "# [SAMPLE_ID]    [Gene]_[Actionability]_[Age]\n" +
+            "# [SAMPLE_ID]    where:\n" +
+            "# [SAMPLE_ID]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n" +
+            "# [SAMPLE_ID]        Age: [ Age<30 | Allages ]\n"
+        )
+    ]
+)
+def test_generate_predisposition_column_format_description(inputs, want):
+    # is there more testing needed here? like empty dict, or empty inner dict, or something?
+    got = generate_predisposition_column_format_description(*inputs)
+    assert got == want
 
 
 def test_get_genomic_location():
@@ -307,6 +308,12 @@ def test_get_dna_change():
     variant = "chromosome:position:ref>alt"
     out = "ref>alt"
     assert get_dna_change(variant) == out
+
+
+# def test_get_small_variant_calls_file_path()
+# does this one need a test too?
+
+# def test_lookup_predisposition_variants()
 
 
 def test_print_predisposition_variants_to_output_file(tmp_path):
@@ -368,10 +375,17 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
         f"# [{sample_id}] Tumor purity (as a fraction between 0 and 1): {tumor_purity:.2f}\n"
         f"# [{sample_id}]    The tumor purity is provided as an input parameter for tsoppy.\n"
         f"# [{sample_id}] Gene_predisposition column format:\n"
-        f"# [{sample_id}]    [Actionability]_[Age]\n"
+        f"# [{sample_id}]    [Gene]_[Actionability]_[Age]\n"
         f"# [{sample_id}]    where:\n"
-        f"# [{sample_id}]        Actionability: [ MA-CSG | HA-CSG | SA-CSG ]\n"
-        f"# [{sample_id}]        - MA-CSG = most actionable cancer susceptibility gene, HA-CSG = highly actionable csg, SA-CSG = standardly actionable csg\n"
+        f"# [{sample_id}]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n"
+        f"# [{sample_id}]        Age: [ Allages | Age<30 ]\n"
+    )
+
+    predisposition_column_format_description = (
+        f"# [{sample_id}] Gene_predisposition column format:\n"
+        f"# [{sample_id}]    [Gene]_[Actionability]_[Age]\n"
+        f"# [{sample_id}]    where:\n"
+        f"# [{sample_id}]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n"
         f"# [{sample_id}]        Age: [ Allages | Age<30 ]\n"
     )
 
@@ -427,9 +441,13 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
         small_variant_calls,
         length_of_targeted_coding_regions,
         tumor_purity,
-        predisposition_variants,
+        pl.DataFrame(predisposition_variants),
+        predisposition_column_format_description,
         output_file,
     )
 
     assert Path(expected_output_file).read_text() == Path(
         output_file).read_text()
+
+
+# def test_generate_report()
