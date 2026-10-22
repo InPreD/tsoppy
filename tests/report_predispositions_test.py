@@ -2,15 +2,18 @@
 Report predispositions subpackage unit test.
 """
 
+from contextlib import nullcontext
 from pathlib import Path
 
 import polars as pl
 import pytest
 
 from tsoppy.report_predispositions.main import (
+    check_gene_name_column_presence_in_column_list,
     get_dna_change,
     get_genomic_location,
-    load_data_from_cancer_susceptibility_genes_table,
+    load_data_from_cancer_susceptibility_genes_file,
+    parse_metadata_to_get_source,
     print_predisposition_variants_to_output_file,
     validate_tumor_purity_range,
     validate_uniqueness,
@@ -20,52 +23,189 @@ from tsoppy.report_predispositions.main import (
 # TODO: test_generate_report
 
 
-def test_validate_uniqueness():
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            (
+                pl.DataFrame(
+                    {
+                        "Gene": [
+                            "TP53",
+                            "BRCA1"
+                        ],
+                        "Actionability": [
+                            "MA-CSG",
+                            "HA-CSG"
+                        ],
+                        "Age": [
+                            "Age<30",
+                            "Allages"
+                        ],
+                    }
+                ),
+                "Gene",
+            ),
+            nullcontext(),
+            None,
+        ),
+        (
+            (
+                pl.DataFrame(
+                    {
+                        "Gene": [
+                            "TP53",
+                            "BRCA1",
+                            "TP53"
+                        ],
+                        "Actionability": [
+                            "MA-CSG",
+                            "HA-CSG",
+                            "SA-CSG"
+                        ],
+                        "Age": [
+                            "Age<30",
+                            "Allages",
+                            "Allages"
+                        ],
+                    }
+                ),
+                "Gene",
+            ),
+            pytest.raises(ValueError),
+            None,
+        )
+    ],
+)
+def test_validate_uniqueness(inputs, exception, want):
+    with exception:
+        got = validate_uniqueness(*inputs)
+        assert got == want
 
-    # unique keys
-    unique_df = pl.DataFrame(
-        {
-            "Gene": ["TP53", "BRCA1"],
-            "Actionability": ["MA-CSG", "HA-CSG"],
-            "Age": ["Age<30", "Allages"],
-        }
-    )
 
-    assert validate_uniqueness(unique_df, "Gene") is None
-
-    # non_unique keys
-    non_unique_df = pl.DataFrame(
-        {
-            "Gene": ["TP53", "BRCA1", "TP53"],
-            "Actionability": ["MA-CSG", "HA-CSG", "SA-CSG"],
-            "Age": ["Age<30", "Allages", "Allages"],
-        }
-    )
-
-    with pytest.raises(ValueError):
-        validate_uniqueness(non_unique_df, "Gene")
-
-
-def test_validate_tumor_purity_range():
-    # value in the range
-    value = 0.15
-
-    assert validate_tumor_purity_range(value) is None
-
-    # value below 0
-    value = -5
-
-    with pytest.raises(ValueError):
-        validate_tumor_purity_range(value)
-
-    # value higher than 1
-    value = 12
-
-    with pytest.raises(ValueError):
-        validate_tumor_purity_range(value)
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            (
+                0.15,
+            ),
+            nullcontext(),
+            None,
+        ),
+        (
+            (
+                -5,
+            ),
+            pytest.raises(ValueError),
+            None,
+        ),
+        (
+            (
+                12,
+            ),
+            pytest.raises(ValueError),
+            None
+        ),
+    ],
+)
+def test_validate_tumor_purity_range(inputs, exception, want):
+    with exception:
+        got = validate_tumor_purity_range(*inputs)
+        assert got == want
 
 
-def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            (
+                "Gene",
+                [
+                    "Gene",
+                    "Actionability",
+                    "Age"
+                ]
+            ),
+            nullcontext(),
+            None,
+        ),
+        (
+            (
+                "Gene",
+                [
+                    "Actionability",
+                    "Age"
+                ]
+            ),
+            pytest.raises(ValueError),
+            None,
+        ),
+    ],
+)
+def test_check_gene_name_column_presence_in_column_list(inputs, exception, want):
+    with exception:
+        got = check_gene_name_column_presence_in_column_list(*inputs)
+        assert got == want
+
+
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    # inputs: (file_name, content)
+    [
+        (
+            ("empty.csv", ""),
+            pytest.raises(ValueError),
+            None
+        ),
+        (
+            ("contains_source_info.csv", "# source: source_url"),
+            nullcontext(),
+            "source_url"
+        ),
+        (
+            ("no_source_info.csv", "# irrelevant info"),
+            pytest.raises(ValueError),
+            None
+        ),
+    ]
+)
+def test_parse_metadata_to_get_source(tmp_path, inputs, exception, want):
+
+    directory = tmp_path / "test_reportPredispositions_main" / "test_parse_metadata"
+    directory.mkdir(parents=True, exist_ok=True)
+
+    test_file = directory / inputs[0]
+    test_file.write_text(inputs[1], encoding="utf-8")
+
+    with exception:
+        got = parse_metadata_to_get_source(test_file)
+        assert got == want
+
+    test_file.unlink()
+
+
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    # inputs: filename, content, column_list, gene_name_column
+    [
+        (
+            (
+                "cancer_susceptibility_genes_expected.csv",
+                "# source: doi_url\nGene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages",
+                [
+                    "Gene",
+                    "Actionability",
+                    "Age"
+                ],
+                "Gene"
+            ),
+            exception,
+            want
+        ),
+    ]
+)
+def test_load_data_from_cancer_susceptibility_genes_file(tmp_path):
     # cases to test:
     # expected input
     # missing column
@@ -74,8 +214,6 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
 
     column_list = list(("Gene", "Actionability", "Age"))
     gene_name_column = "Gene"
-
-    print(column_list)
 
     # create temporary directory
     directory = tmp_path / "test_reporPredispositions_main"
@@ -102,7 +240,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
 
     # test the expected input
     assert (
-        load_data_from_cancer_susceptibility_genes_table(
+        load_data_from_cancer_susceptibility_genes_file(
             test_file_expected, column_list, gene_name_column
         )
         == result
@@ -124,7 +262,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
 
     # test the input with missing column
     with pytest.raises(pl.exceptions.ColumnNotFoundError):
-        load_data_from_cancer_susceptibility_genes_table(
+        load_data_from_cancer_susceptibility_genes_file(
             test_file_missing_column, column_list, gene_name_column
         )
 
@@ -136,7 +274,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
 
     # test the nonexistent input file
     with pytest.raises(FileNotFoundError):
-        load_data_from_cancer_susceptibility_genes_table(
+        load_data_from_cancer_susceptibility_genes_file(
             test_file_nonexistent, column_list, gene_name_column
         )
 
@@ -148,7 +286,7 @@ def test_load_data_from_cancer_susceptibility_genes_table(tmp_path):
     )
 
     with pytest.raises(ValueError):
-        load_data_from_cancer_susceptibility_genes_table(
+        load_data_from_cancer_susceptibility_genes_file(
             test_file_duplicated, column_list, gene_name_column
         )
 

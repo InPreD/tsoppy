@@ -6,10 +6,11 @@ import logging
 import re
 from collections import defaultdict
 from pathlib import Path
+from polars.exceptions import ColumnNotFoundError
 from string import Template
 
-
 import polars as pl
+import sys
 
 from tsoppy.general.classes import (
     SmallVariantGenomeVcf,
@@ -46,12 +47,26 @@ def validate_tumor_purity_range(tumor_purity: float):
         return
 
 
-def load_data_from_cancer_susceptibility_genes_file(
-    file_path: Path, column_list: list[str], gene_name_column: str
-) -> tuple[dict[str, dict[str, str]], str]:
+def check_gene_name_column_presence_in_column_list(gene_name_column: str, column_list: list[str]):
     """
-    Load data from the input table of cancer susceptibility genes.
+    Check that gene_name_column is present in the provided column_list.
     """
+    if not gene_name_column in column_list:
+        logger.exception("Data Integrity Validation Failed.")
+        raise ValueError(
+            f"Column {gene_name_column} is not present in provided column list {column_list}.")
+    else:
+        return
+
+
+def parse_metadata_to_get_source(file_path: Path
+                                 ) -> str:
+    """
+    Parse metadata of the file to get source of the information stored in the file.
+    """
+
+    logger.info(
+        f"Parsing metadata of {file_path} to get source of the information stored in the file.")
 
     # load metadata about source of the info
     source = "NA"
@@ -61,10 +76,36 @@ def load_data_from_cancer_susceptibility_genes_file(
             if re.match(r"# source:", line):
                 source = line.replace("# source:", "", 1)
                 source = source.strip()
+                return source
 
-    # load input data
-    df = pl.read_csv(file_path, columns=column_list,
-                     separator="\t", comment_prefix="#")
+    logger.exception("Data Integrity Validation Failed.")
+    raise ValueError(
+        f"Error: source information not found in metadata of {file_path}.")
+
+
+def load_data_from_cancer_susceptibility_genes_file(
+    file_path: Path, column_list: list[str], gene_name_column: str
+) -> tuple[dict[str, dict[str, str]], str]:
+    """
+    Load data from the input table of cancer susceptibility genes.
+    """
+
+    # check that gene_name_column is present in the column_list
+    check_gene_name_column_presence_in_column_list(
+        gene_name_column, column_list)
+
+    source = parse_metadata_to_get_source(file_path)
+
+    # attempt to load input data
+    # check that there is no ColumnNotFound error raised
+    try:
+        logger.info(f"Attempting to read tabular content of {file_path}.")
+        df = pl.read_csv(file_path, columns=column_list,
+                         separator="\t", comment_prefix="#")
+    except ColumnNotFoundError:
+        logger.error(
+            "Failed to read CSV because a required column was missing.", exc_info=True)
+        sys.exit(1)
 
     # gene_column_name is supposed to be a column containing
     # primary key of the cancer_susceptibility_genes file
@@ -89,6 +130,10 @@ def generate_predisposition_column_format_description(
     gene_name_column: str,
     sample_id: str
 ) -> str:
+    """
+    Generate text description of columns and values of the cancer susceptibility
+    input info. The description will be written in the metadata of the output file.
+    """
 
     # put together column names
     string_format = "[" + gene_name_column + "]"
@@ -330,6 +375,7 @@ def print_predisposition_variants_to_output_file(
 
 
 def generate_report(
+    output_file: Path,
     sample_id: str,
     config_yaml: str | Path,
     inpred_nomenclature: str | Path,
@@ -338,9 +384,8 @@ def generate_report(
     length_of_targeted_coding_regions: float,
     tumor_purity: float,
     cancer_susceptibility_genes: Path,
-    csg_column_list: list[str],
-    gene_name_column: str,
-    output_file: Path,
+    csg_column_list: list[str] = ["Gene", "Actionability", "Age"],
+    gene_name_column: str = "Gene",
 ):
     """
     This function reports variants called by small variant caller that are present
