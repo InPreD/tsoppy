@@ -4,12 +4,14 @@ Report predispositions subpackage unit test.
 
 from contextlib import nullcontext
 from pathlib import Path
-from polars.exceptions import ColumnNotFoundError
+from polars.exceptions import (ColumnNotFoundError, NoDataError)
 
 import polars as pl
 import pytest
 
 from tsoppy.report_predispositions.main import (
+    check_columns_presence_in_file,
+    check_file_existence_and_content_presence,
     check_gene_name_column_presence_in_column_list,
     generate_predisposition_column_format_description,
     generate_report,
@@ -153,13 +155,59 @@ def test_check_gene_name_column_presence_in_column_list(inputs, exception, want)
 
 @pytest.mark.parametrize(
     "inputs, exception, want",
-    # inputs: (file_name, content)
+    # inputs: filename, content
     [
         (
-            ("empty.csv", ""),
-            pytest.raises(ValueError),
+            (
+                "nonexistent.csv",
+                None
+            ),
+            pytest.raises(FileNotFoundError),
             None
         ),
+        (
+            (
+                "empty.csv",
+                ""
+            ),
+            pytest.raises(NoDataError),
+            None
+        ),
+        (
+            (
+                "nonempty.csv",
+                "content"
+            ),
+            nullcontext(),
+            None
+        ),
+    ]
+)
+def test_check_file_existence_and_content_presence(tmp_path, inputs, exception, want):
+    directory = tmp_path / "test_reportPredispositions_main" / "test_check_file"
+    directory.mkdir(parents=True, exist_ok=True)
+
+    if not inputs[0] == "nonexistent.csv":
+        test_file = directory / inputs[0]
+        test_file.write_text(inputs[1], encoding="utf-8")
+    else:
+        test_file = directory / inputs[0]
+
+    with exception:
+        got = check_file_existence_and_content_presence(test_file)
+        assert got == want
+
+    if not inputs[0] == "nonexistent.csv":
+        test_file.unlink()
+
+    # remove the temp directory
+    directory.rmdir()
+
+
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    # inputs: (file_name, content)
+    [
         (
             ("contains_source_info.csv", "# source: source_url"),
             nullcontext(),
@@ -192,6 +240,61 @@ def test_parse_metadata_to_get_source(tmp_path, inputs, exception, want):
 
 @pytest.mark.parametrize(
     "inputs, exception, want",
+    # inputs: filename, content, column_list
+    [
+        (
+            (
+                "missing_column.csv",
+                "# source: doi_url\nGene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages",
+                [
+                    "Gene",
+                    "Actionability",
+                    "Age",
+                    "X"
+                ],
+            ),
+            pytest.raises(ColumnNotFoundError),
+            None
+        ),
+        (
+            (
+                "expected.csv",
+                "# source: doi_url\nGene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages",
+                [
+                    "Gene",
+                    "Actionability",
+                    "Age"
+                ],
+            ),
+            nullcontext(),
+            None
+        ),
+    ]
+)
+def test_check_columns_presence_in_file(tmp_path, inputs, exception, want):
+
+    # create temporary directory
+    directory = tmp_path / "test_reporPredispositions_main" / "test_check_columns"
+    directory.mkdir(parents=True, exist_ok=True)
+
+    # write content to the temp file
+    test_file = directory / inputs[0]
+    test_file.write_text(inputs[1], encoding="utf-8")
+
+    with exception:
+        got = check_columns_presence_in_file(
+            inputs[2], test_file)
+        assert got == want
+
+    # remove the temporary file test_file
+    test_file.unlink()
+
+    # remove the temp directory
+    directory.rmdir()
+
+
+@pytest.mark.parametrize(
+    "inputs, want",
     # inputs: filename, content, column_list, gene_name_column
     [
         (
@@ -205,7 +308,6 @@ def test_parse_metadata_to_get_source(tmp_path, inputs, exception, want):
                 ],
                 "Gene"
             ),
-            nullcontext(),
             (
                 {
                     "TP53": {
@@ -220,26 +322,9 @@ def test_parse_metadata_to_get_source(tmp_path, inputs, exception, want):
                 "doi_url"
             ),
         ),
-        (
-            (
-                "cancer_susceptibility_genes_missing_column.csv",
-                "# source: doi_url\nGene\tActionability\nTP53\tHA-CSG\nBRCA1\tMA-CSG",
-                [
-                    "Gene",
-                    "Actionability",
-                    "Age"
-                ],
-                "Gene"
-            ),
-            pytest.raises(SystemExit),
-            None
-        ),
     ]
 )
-def test_load_data_from_cancer_susceptibility_genes_file(tmp_path, inputs, exception, want):
-    # tested cases:
-    # expected input
-    # missing column
+def test_load_data_from_cancer_susceptibility_genes_file(tmp_path, inputs, want):
 
     # create temporary directory
     directory = tmp_path / "test_reporPredispositions_main" / "test_load_data"
@@ -249,12 +334,11 @@ def test_load_data_from_cancer_susceptibility_genes_file(tmp_path, inputs, excep
     test_file = directory / inputs[0]
     test_file.write_text(inputs[1], encoding="utf-8")
 
-    with exception:
-        got = load_data_from_cancer_susceptibility_genes_file(
-            test_file, *inputs[2:4])
-        assert got == want
+    got = load_data_from_cancer_susceptibility_genes_file(
+        test_file, *inputs[2:4])
+    assert got == want
 
-    # remove the temporary file test_file_expected
+    # remove the temporary file test_file
     test_file.unlink()
 
     # remove the temp directory
