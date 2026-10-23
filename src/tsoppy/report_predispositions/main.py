@@ -6,7 +6,7 @@ import logging
 import re
 from collections import defaultdict
 from pathlib import Path
-from polars.exceptions import ColumnNotFoundError
+from polars.exceptions import (ColumnNotFoundError, NoDataError)
 from string import Template
 
 import polars as pl
@@ -24,6 +24,10 @@ def validate_uniqueness(df: pl.DataFrame, column: str):
     """
     Test that all the values in column 'column' of dataframe 'df' are unique.
     """
+
+    logger.info(
+        f"Check that column \"{column}\" is a primary key of the data frame.")
+
     if not df[column].is_unique().all():
         # find the duplicates to make the error message helpful
         duplicates = df[column].filter(
@@ -39,6 +43,10 @@ def validate_tumor_purity_range(tumor_purity: float):
     """
     Test that tumor purity value is between 0 and 1.
     """
+
+    logger.info(
+        f"Test that tumor purity value {tumor_purity} is between 0 and 1.")
+
     if not 0 <= tumor_purity <= 1:
         # this captures the full traceback automatically
         logger.exception("Data Integrity Validation Failed.")
@@ -51,12 +59,35 @@ def check_gene_name_column_presence_in_column_list(gene_name_column: str, column
     """
     Check that gene_name_column is present in the provided column_list.
     """
+
+    logger.info(
+        f"Check that column \"{gene_name_column}\" is present in column list {column_list}.")
+
     if not gene_name_column in column_list:
         logger.exception("Data Integrity Validation Failed.")
         raise ValueError(
             f"Column {gene_name_column} is not present in provided column list {column_list}.")
     else:
         return
+
+
+def check_file_existence_and_content_presence(file_path: Path):
+    """
+    Check that input file exists and is not empty.
+    """
+
+    logger.info("Check that input file {file_path} exists and is not empty.")
+
+    if not file_path.is_file():
+        logger.error("File Not Found.")
+        raise FileNotFoundError(
+            f"Error: file that should contain cancer susceptibility genes info ({file_path}) does not exist.")
+
+    if file_path.stat().st_size == 0:
+        logger.error("Empty Input File.")
+        raise NoDataError(f"Error: Input file {file_path} is empty.")
+
+    return
 
 
 def parse_metadata_to_get_source(file_path: Path
@@ -71,47 +102,66 @@ def parse_metadata_to_get_source(file_path: Path
     # try to get metadata about source of the info
     source = "NA"
 
-    try:
-        with open(file_path, "r") as file:
-            for line in file:
-                if re.match(r"# source:", line):
-                    source = line.replace("# source:", "", 1)
-                    source = source.strip()
-                    return source
+    with open(file_path, "r") as file:
+        for line in file:
+            if re.match(r"# source:", line):
+                source = line.replace("# source:", "", 1)
+                source = source.strip()
+                return source
 
-        logger.exception("Data Integrity Validation Failed.")
-        raise ValueError(
-            f"Error: source information not found in metadata of {file_path}.")
+    logger.exception("Data Integrity Validation Failed.")
+    raise ValueError(
+        f"Error: source information not found in metadata of {file_path}.")
 
-    except FileNotFoundError:
-        logger.exception(f"File {file_path} not found.")
-        sys.exit(1)
+
+def check_columns_presence_in_file(column_list: list[str], file_path: Path):
+    """
+    Check that all requested columns are present in the input file.
+    """
+
+    logger.info(
+        f"Check that all requested columns from \"{column_list}\" are present in file {file_path}.")
+
+    lf = pl.scan_csv(file_path, separator="\t", comment_prefix="#")
+
+    available_columns = lf.columns
+    missing_columns = [
+        col for col in column_list if col not in available_columns]
+
+    if missing_columns:
+        logger.error(
+            "Failed to read CSV because a required column was missing.")
+        raise ColumnNotFoundError(f"Error: missing columns {missing_columns}.")
+    else:
+        return
 
 
 def load_data_from_cancer_susceptibility_genes_file(
     file_path: Path, column_list: list[str], gene_name_column: str
 ) -> tuple[dict[str, dict[str, str]], str]:
     """
-    Load data from the input table of cancer susceptibility genes.
+    Load data from the input cancer susceptibility genes file.
     """
+
+    logger.info(
+        f"Load data from the cancer susceptibility genes file {file_path}.")
 
     # check that gene_name_column is present in the column_list
     check_gene_name_column_presence_in_column_list(
         gene_name_column, column_list)
 
+    # check the file existence and content presence
+    check_file_existence_and_content_presence(file_path)
+
+    # get intormation about the source of data presented in the input file
     source = parse_metadata_to_get_source(file_path)
 
-    # attempt to load input data
-    # check that there is no ColumnNotFound error raised
-    try:
-        logger.info(f"Attempting to read tabular content of {file_path}.")
-        df = pl.read_csv(file_path, columns=column_list,
-                         separator="\t", comment_prefix="#")
+    # check that all columns from the column list are present in the file
+    check_columns_presence_in_file(column_list, file_path)
 
-    except ColumnNotFoundError:
-        logger.exception(
-            "Failed to read CSV because a required column was missing.", exc_info=True)
-        sys.exit(1)
+    logger.info(f"Read tabular content of the file {file_path}.")
+    df = pl.read_csv(file_path, columns=column_list,
+                     separator="\t", comment_prefix="#")
 
     # gene_column_name is supposed to be a column containing
     # primary key of the cancer_susceptibility_genes file
@@ -183,6 +233,9 @@ def generate_predisposition_column_format_description(
             "[ " + " | ".join(all_keys_values[key]) + " ]" + "\n"
 
     return description
+
+
+# TODO: finalise testing from here on
 
 
 def get_small_variant_calls_file_path(
