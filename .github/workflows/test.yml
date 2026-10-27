@@ -10,10 +10,13 @@ jobs:
         name: Check out the repo
         uses: actions/checkout@v6
       -
-        name: Set up Python 3.14.3
+        name: Set up Python 3.15.2
         uses: actions/setup-python@v6
         with:
-          python-version: 3.14.3
+          python-version: 3.15.2
+      -
+        name: Install libbz2-dev
+        run: sudo apt-get install -y libbz2-dev
       -
         name: Install dependencies
         run: pip install ".[test]"
