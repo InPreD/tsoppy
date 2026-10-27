@@ -15,6 +15,9 @@ jobs:
         with:
           python-version: 3.15.2
       -
+        name: Install libbz2-dev
+        run: apt-get install -y libbz2-dev
+      -
         name: Install dependencies
         run: pip install ".[lint]"
       -
