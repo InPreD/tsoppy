@@ -254,6 +254,20 @@ def get_small_variant_calls_file_path(
     return small_variants.path
 
 
+def get_workflow_id_string(
+    config_yaml: str | Path,
+    inpred_nomenclature: str | Path,
+    root_path: str | Path
+) -> str:
+    """
+    Return workflow id string.
+    """
+    workflow_output = WorkflowOutput(
+        config_yaml, inpred_nomenclature, root_path)
+
+    return workflow_output.workflow_id
+
+
 def lookup_predisposition_variants(
     cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
     sample_id: str,
@@ -319,21 +333,10 @@ def lookup_predisposition_variants(
     return predispositions_final_pldf
 
 
-def get_genomic_location(variant_id: str) -> str:
-    # variant_id format: chromosome:position:ref>alt
-    chromosome, position = variant_id.split(":")[0:2]
-    return f"{chromosome}:{position}"
-
-
-def get_dna_change(variant_id: str) -> str:
-    # variant_id format: chromosome:position:ref>alt
-    dna_change = variant_id.split(":")[2]
-    return dna_change
-
-
 def print_predisposition_variants_to_output_file(
     sample_id: str,
-    version_string: str,
+    tsoppy_version: str,
+    workflow_id: str,
     source: str,
     cancer_susceptibility_genes: Path,
     small_variant_calls: Path,
@@ -347,8 +350,13 @@ def print_predisposition_variants_to_output_file(
     Print predispositions into the output file.
     """
 
-    header_lines_versions = Template(
-        """  # [$sample_id] Version string: $version_string
+    header_lines_tsoppy = Template(
+        """  # [$sample_id] tsoppy version: $tsoppy_version
+"""
+    )
+
+    header_lines_workflow = Template(
+        """  # [$sample_id] Workflow id: $workflow_id
 """
     )
 
@@ -379,9 +387,12 @@ def print_predisposition_variants_to_output_file(
     with open(output_file, "w") as output:
         # print metadata comments to the output file
 
-        # print info about tool versions
-        versions = {"sample_id": sample_id, "version_string": version_string}
-        output.write(header_lines_versions.safe_substitute(versions))
+        # print info about tsoppy and workflow versions
+        tsoppy = {"sample_id": sample_id, "tsoppy_version": tsoppy_version}
+        output.write(header_lines_tsoppy.safe_substitute(tsoppy))
+
+        workflow = {"sample_id": sample_id, "workflow_id": workflow_id}
+        output.write(header_lines_workflow.safe_substitute(workflow))
 
         # print info about where the susceptibility gene list comes from
         sus_genes_data_source = {
@@ -435,11 +446,11 @@ def print_predisposition_variants_to_output_file(
 
 def generate_report(
     output_file: Path,
+    tsoppy_version: str,
     sample_id: str,
     config_yaml: str | Path,
     inpred_nomenclature: str | Path,
     root_path: str | Path,
-    version_string: str,
     length_of_targeted_coding_regions: float,
     tumor_purity: float,
     cancer_susceptibility_genes: Path,
@@ -451,7 +462,8 @@ def generate_report(
     in the cancer susceptibility genes.
     """
 
-    tumor_purity_range_validation(tumor_purity)
+    logger.info("Validate tumor purity range.")
+    validate_tumor_purity_range(tumor_purity)
 
     logger.info(
         f"Load data from the {cancer_susceptibility_genes} input file.")
@@ -461,15 +473,17 @@ def generate_report(
         )
     )
 
-    logger.info()
+    logger.info("Generate predisposition column format description.")
     predisposition_column_format_description = generate_predisposition_column_format_description(
         cancer_susceptibility_genes_dict, gene_name_column, sample_id)
 
-    logger.info(
-        f"Find small variant calls file path."
-    )
+    logger.info("Find small variant calls file path.")
     small_variant_calls = get_small_variant_calls_file_path(
         sample_id, config_yaml, inpred_nomenclature, root_path)
+
+    logger.info("Retrieve workflow id string.")
+    workflow_id = get_workflow_id_string(
+        config_yaml, inpred_nomenclature, root_path)
 
     logger.info(
         f"Find predisposition_variants in SmallVariantGenomeVcf object of a given sample {sample_id}."
@@ -483,7 +497,8 @@ def generate_report(
     )
     print_predisposition_variants_to_output_file(
         sample_id,
-        version_string,
+        tsoppy_version,
+        workflow_id,
         source,
         cancer_susceptibility_genes,
         small_variant_calls,
