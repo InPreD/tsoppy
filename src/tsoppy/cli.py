@@ -35,12 +35,6 @@ def report_predispositions(
             help="Root path to the folder containing TSO500 analysis the sequencing run which contains the input sample."
         ),
     ],
-    version_string: Annotated[
-        str,
-        typer.Option(
-            help="String of the tools (and their versions) that were used in the data analysis."
-        ),
-    ],
     length_of_targeted_coding_regions: Annotated[
         float,
         typer.Option(
@@ -81,15 +75,15 @@ def report_predispositions(
     """
 
     generate_report(
+        output,
+        app_version,
         sample_id,
         config_yaml,
         inpred_nomenclature,
         root_path,
-        version_string,
         length_of_targeted_coding_regions,
         tumor_purity,
         cancer_susceptibility_genes,
         cancer_susceptibility_genes_column_list,
         cancer_susceptibility_genes_gene_name_column,
-        output,
     )
