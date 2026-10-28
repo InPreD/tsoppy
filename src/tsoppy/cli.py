@@ -24,21 +24,18 @@ def version():
 
 @app.command()
 def report_predispositions(
+    output: Annotated[
+        Path, typer.Option(help="File containing predisposition variants.")
+    ],
     sample_id: Annotated[str, typer.Option(help="ID of the input sample.")],
-    config_yaml: Annotated[str | Path, typer.Option(help="Config yaml file.")],
+    config_yaml: Annotated[Path, typer.Option(help="Config yaml file.")],
     inpred_nomenclature: Annotated[
-        str | Path, typer.Option(help="InPreD nomenclature definition file.")
+        Path, typer.Option(help="InPreD nomenclature definition file.")
     ],
     root_path: Annotated[
-        str | Path,
+        Path,
         typer.Option(
             help="Root path to the folder containing TSO500 analysis the sequencing run which contains the input sample."
-        ),
-    ],
-    length_of_targeted_coding_regions: Annotated[
-        float,
-        typer.Option(
-            help="Cummulative length of all coding regions targeted in the TSO500 experiment (in millions of bases)."
         ),
     ],
     tumor_purity: Annotated[
@@ -58,16 +55,13 @@ def report_predispositions(
         typer.Option(
             help="List of column names for the columns that should be reported in the output predisposition file."
         ),
-    ],
+    ] = ["Gene", "Actionability", "Age"],
     cancer_susceptibility_genes_gene_name_column: Annotated[
         str,
         typer.Option(
             help="Name of the column containing HUGO gene names (e.g. BRCA1, TP53)."
         ),
-    ],
-    output: Annotated[
-        Path, typer.Option(help="File containing predisposition variants.")
-    ],
+    ] = "Gene",
 ):
     """
     This function reports variants called by small variant caller that are present
@@ -81,7 +75,6 @@ def report_predispositions(
         config_yaml,
         inpred_nomenclature,
         root_path,
-        length_of_targeted_coding_regions,
         tumor_purity,
         cancer_susceptibility_genes,
         cancer_susceptibility_genes_column_list,
