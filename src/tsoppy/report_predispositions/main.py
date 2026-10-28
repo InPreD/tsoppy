@@ -252,9 +252,9 @@ def get_small_variant_calls_file_path(
 
 
 def get_workflow_id_string(
-    config_yaml: str | Path,
-    inpred_nomenclature: str | Path,
-    root_path: str | Path
+    config_yaml: Path,
+    inpred_nomenclature: Path,
+    root_path: Path
 ) -> str:
     """
     Return workflow id string.
@@ -271,9 +271,9 @@ def get_workflow_id_string(
 def lookup_predisposition_variants(
     cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
     sample_id: str,
-    config_yaml: str | Path,
-    inpred_nomenclature: str | Path,
-    root_path: str | Path
+    config_yaml: Path,
+    inpred_nomenclature: Path,
+    root_path: Path
 ) -> pl.DataFrame:
     """
     Look up predispositions, store all the info from SmallVariantGenomeVcf merged_table and the gene predispositions in the output pl.DataFrame.
