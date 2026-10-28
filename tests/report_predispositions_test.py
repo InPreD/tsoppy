@@ -5,9 +5,16 @@ Report predispositions subpackage unit test.
 from contextlib import nullcontext
 from pathlib import Path
 from polars.exceptions import (ColumnNotFoundError, NoDataError)
+from os import path
 
+import importlib.metadata
 import polars as pl
 import pytest
+
+from tsoppy.general.classes import (
+    SmallVariantGenomeVcf,
+    WorkflowOutput,
+)
 
 from tsoppy.report_predispositions.main import (
     check_columns_presence_in_file,
@@ -15,9 +22,8 @@ from tsoppy.report_predispositions.main import (
     check_gene_name_column_presence_in_column_list,
     generate_predisposition_column_format_description,
     generate_report,
-    get_dna_change,
-    get_genomic_location,
     get_small_variant_calls_file_path,
+    get_workflow_id_string,
     load_data_from_cancer_susceptibility_genes_file,
     lookup_predisposition_variants,
     parse_metadata_to_get_source,
@@ -382,24 +388,117 @@ def test_generate_predisposition_column_format_description(inputs, want):
     assert got == want
 
 
-def test_get_genomic_location():
-    variant = "chromosome:position:ref>alt"
-    out = "chromosome:position"
-    assert get_genomic_location(variant) == out
+# Define path to test data - cannot be absolute due to different paths locally and in CI
+test_data_dir_general_classes = "tests/test_data/general_classes"
 
 
-def test_get_dna_change():
-    variant = "chromosome:position:ref>alt"
-    out = "ref>alt"
-    assert get_dna_change(variant) == out
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            (
+                "sample1",
+                "config.yaml",
+                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
+                path.join(test_data_dir_general_classes, "dragen/standard"),
+            ),
+            nullcontext(),
+            Path(path.join(test_data_dir_general_classes, "dragen/standard", "Logs_Intermediates",
+                           "DnaDragenCaller", "sample1", "sample1.hard-filtered.gvcf.gz")),
+        ),
+        (
+            (
+                "sample1",
+                "config.yaml",
+                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
+                path.join(test_data_dir_general_classes, "localapp/standard"),
+            ),
+            nullcontext(),
+            Path(path.join(test_data_dir_general_classes, "localapp/standard", "Logs_Intermediates",
+                           "VariantMatching", "sample1", "sample1_MergedSmallVariants.genome.vcf")),
+        ),
+        (
+            (
+                "sample1",
+                "config.yaml",
+                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
+                path.join(test_data_dir_general_classes,
+                          "dragen/non-existent"),
+            ),
+            pytest.raises(FileNotFoundError),
+            None,
+        ),
+    ],
+)
+def test_get_small_variant_calls_file_path(inputs, exception, want):
+    with exception:
+        got = get_small_variant_calls_file_path(*inputs)
+        assert got == want
 
 
-# def test_get_small_variant_calls_file_path()
-# does this one need a test too?
+@pytest.mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
+                path.join(test_data_dir_general_classes, "dragen/standard"),
+            ),
+            nullcontext(),
+            "dragen_2.6.2.4",
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
+                path.join(test_data_dir_general_classes, "localapp/standard"),
+            ),
+            nullcontext(),
+            "localapp_ruo-2.2.0.12",
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
+                path.join(test_data_dir_general_classes,
+                          "dragen/non-existent"),
+            ),
+            pytest.raises(FileNotFoundError),
+            None,
+        ),
+    ],
+)
+def test_get_workflow_id_string(inputs, exception, want):
+    with exception:
+        got = get_workflow_id_string(*inputs)
+        assert got == want
+
 
 # def test_lookup_predisposition_variants()
 
-
+@pytest.mark.parametrize(
+    "inputs, want",
+    # inputs:
+    #   sample_id,
+    #   tsoppy_version,
+    #   workflow_id,
+    #   source,
+    #   cancer_susceptibility_genes,
+    #   small_variant_calls,
+    #   length_of_targeted_coding_regions,
+    #   tumor_purity,
+    #   pl.DataFrame(predisposition_variants),
+    #   predisposition_column_format_description,
+    #   output_file
+    # want:   filename, metadata, header, variants
+    [
+        (
+            (),
+            ()
+        ),
+    ],
+)
 def test_print_predisposition_variants_to_output_file(tmp_path):
 
     # create temporary directory
@@ -407,7 +506,8 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
     directory.mkdir()
 
     sample_id = "IPA0000-X00-Y00-Z00"
-    version_string = "VERSION_STRING"
+    tsoppy_version = "TSOPPY_VERSION"
+    workflow_id = ""
 
     cancer_susceptibility_genes = directory / "cancer_susceptibility_genes.tsv"
     cancer_susceptibility_genes.write_text(
@@ -450,7 +550,8 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
     expected_output_file = directory / "expected_predispositions.tsv"
 
     metadata = (
-        f"# [{sample_id}] Version string: {version_string}\n"
+        f"# [{sample_id}] Version of tsoppy: {tsoppy_version}\n"
+        f"# [{sample_id}] Workflow_id: {workflow_id}\n"
         f"# [{sample_id}] Cancer susceptibility genes are defined in:\n"
         f"# [{sample_id}]    file: {cancer_susceptibility_genes}\n"
         f"# [{sample_id}]    source: {source}\n"
@@ -458,14 +559,6 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
         f"# [{sample_id}] Cumulative length of all the targeted coding regions (in millions of bases): {length_of_targeted_coding_regions:.2f}\n"
         f"# [{sample_id}] Tumor purity (as a fraction between 0 and 1): {tumor_purity:.2f}\n"
         f"# [{sample_id}]    The tumor purity is provided as an input parameter for tsoppy.\n"
-        f"# [{sample_id}] Gene_predisposition column format:\n"
-        f"# [{sample_id}]    [Gene]_[Actionability]_[Age]\n"
-        f"# [{sample_id}]    where:\n"
-        f"# [{sample_id}]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n"
-        f"# [{sample_id}]        Age: [ Allages | Age<30 ]\n"
-    )
-
-    predisposition_column_format_description = (
         f"# [{sample_id}] Gene_predisposition column format:\n"
         f"# [{sample_id}]    [Gene]_[Actionability]_[Age]\n"
         f"# [{sample_id}]    where:\n"
@@ -515,11 +608,12 @@ def test_print_predisposition_variants_to_output_file(tmp_path):
 
     file_content = metadata + header + variants
 
-    expected_output_file.write_text(file_content)
+    output_file.write_text(file_content)
 
     print_predisposition_variants_to_output_file(
         sample_id,
-        version_string,
+        tsoppy_version,
+        workflow_id,
         source,
         cancer_susceptibility_genes,
         small_variant_calls,

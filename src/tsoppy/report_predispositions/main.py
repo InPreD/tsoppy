@@ -235,9 +235,6 @@ def generate_predisposition_column_format_description(
     return description
 
 
-# TODO: finalise testing from here on
-
-
 def get_small_variant_calls_file_path(
     sample_id: str,
     config_yaml: str | Path,
@@ -268,6 +265,9 @@ def get_workflow_id_string(
     return workflow_output.workflow_id
 
 
+# TODO: finalise testing from here on
+
+
 def lookup_predisposition_variants(
     cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
     sample_id: str,
@@ -279,6 +279,7 @@ def lookup_predisposition_variants(
     Look up predispositions, store all the info from SmallVariantGenomeVcf merged_table and the gene predispositions in the output pl.DataFrame.
     """
 
+    logger.info("Read in merged_table of small variants.")
     workflow_output = WorkflowOutput(
         config_yaml, inpred_nomenclature, root_path)
     small_variants = SmallVariantGenomeVcf(
@@ -287,11 +288,20 @@ def lookup_predisposition_variants(
 
     cancer_susceptibility_genes = list(cancer_susceptibility_genes_dict.keys())
 
+    logger.info(
+        "Select only those small variants which overlap with at least one predispositon gene.")
     # select only variants overlapping at least one predisposition gene
     predispositions_basic_pldf = merged_variant_info_pldf.filter(
         pl.col("overlapping_genes").list.set_intersection(
             cancer_susceptibility_genes).list.len() > 0
     )
+
+    if predispositions_basic_pldf.is_empty():
+        logger.info(
+            "There are no small variants overlapping a predisposition gene.")
+
+    logger.info(
+        "Fill predisposition gene info for every small variant overlapping the gene.")
 
     # add gene_predisposition column (containing empty list) into the data frame
     predispositions_pldf = predispositions_basic_pldf.with_columns(
@@ -306,7 +316,8 @@ def lookup_predisposition_variants(
     # iterate through all variant_ids
     #   iterate through all overlapping_genes
     #       if overlapping_gene in cancer_susceptibility_genes
-    #       then append gene_actionability_age for the overlapping_gene
+    #       then append _ separated list of all values for the overlapping gene
+    #       _geneactionability_age as of now
     for variant_id in predispositions_dict.keys():
         for overlapping_gene in predispositions_dict[variant_id]["overlapping_genes"]:
             if (overlapping_gene in cancer_susceptibility_genes):
@@ -340,7 +351,7 @@ def print_predisposition_variants_to_output_file(
     source: str,
     cancer_susceptibility_genes: Path,
     small_variant_calls: Path,
-    length_of_targeted_coding_regions: float,
+    coding_region_size_in_megabases: float,
     tumor_purity: float,
     predisposition_variants: pl.DataFrame,
     predisposition_column_format_description: str,
@@ -351,7 +362,7 @@ def print_predisposition_variants_to_output_file(
     """
 
     header_lines_tsoppy = Template(
-        """  # [$sample_id] tsoppy version: $tsoppy_version
+        """  # [$sample_id] Version of tsoppy: $tsoppy_version
 """
     )
 
@@ -372,8 +383,8 @@ def print_predisposition_variants_to_output_file(
 """
     )
 
-    header_lines_length_of_targeted_coding_regions = Template(
-        """  # [$sample_id] Cumulative length of all the targeted coding regions (in millions of bases): $length_of_targeted_coding_regions
+    header_lines_coding_region_size_in_megabases = Template(
+        """  # [$sample_id] Cumulative length of all the targeted coding regions (in millions of bases) with seq depth >= 50: $coding_region_size_in_megabases
 """
     )
 
@@ -419,10 +430,10 @@ def print_predisposition_variants_to_output_file(
 
         targeted_coding_regions = {
             "sample_id": sample_id,
-            "length_of_targeted_coding_regions": f"{length_of_targeted_coding_regions:.2f}",
+            "length_of_targeted_coding_regions": f"{coding_region_size_in_megabases:.2f}",
         }
         output.write(
-            header_lines_length_of_targeted_coding_regions.safe_substitute(
+            header_lines_coding_region_size_in_megabases.safe_substitute(
                 targeted_coding_regions
             )
         )
@@ -448,14 +459,13 @@ def generate_report(
     output_file: Path,
     tsoppy_version: str,
     sample_id: str,
-    config_yaml: str | Path,
-    inpred_nomenclature: str | Path,
-    root_path: str | Path,
-    length_of_targeted_coding_regions: float,
+    config_yaml: Path,
+    inpred_nomenclature: Path,
+    root_path: Path,
     tumor_purity: float,
     cancer_susceptibility_genes: Path,
-    csg_column_list: list[str] = ["Gene", "Actionability", "Age"],
-    gene_name_column: str = "Gene",
+    csg_column_list: list[str],
+    gene_name_column: str,
 ):
     """
     This function reports variants called by small variant caller that are present
@@ -472,6 +482,12 @@ def generate_report(
             cancer_susceptibility_genes, csg_column_list, gene_name_column
         )
     )
+
+    # TODO
+    # "Cummulative length of all coding regions targeted in the TSO500 experiment (in millions of bases)."
+    logger.info(
+        "Retrieve \"Coding Region Size in Megabases\" from the CombinedVariant Output file.")
+    coding_region_size_in_megabases = "x.yz"
 
     logger.info("Generate predisposition column format description.")
     predisposition_column_format_description = generate_predisposition_column_format_description(
@@ -502,7 +518,7 @@ def generate_report(
         source,
         cancer_susceptibility_genes,
         small_variant_calls,
-        length_of_targeted_coding_regions,
+        coding_region_size_in_megabases,
         tumor_purity,
         predisposition_variants,
         predisposition_column_format_description,
