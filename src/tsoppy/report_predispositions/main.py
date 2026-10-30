@@ -7,9 +7,11 @@ import re
 from collections import defaultdict
 from pathlib import Path
 from polars.exceptions import (ColumnNotFoundError, NoDataError)
+
 from string import Template
 
 import polars as pl
+import polars.selectors as cs
 import sys
 
 from tsoppy.general.classes import (
@@ -362,35 +364,31 @@ def print_predisposition_variants_to_output_file(
     """
 
     header_lines_tsoppy = Template(
-        """  # [$sample_id] Version of tsoppy: $tsoppy_version
-"""
-    )
+        """# [$sample_id] Pipeline: $tsoppy_version""")
 
     header_lines_workflow = Template(
-        """  # [$sample_id] Workflow id: $workflow_id
-"""
-    )
+        """# [$sample_id] Workflow id: $workflow_id""")
 
     header_lines_cancer_susceptibility_data_source = Template(
-        """  # [$sample_id] Cancer susceptibility genes are defined in:
+        """# [$sample_id] Cancer susceptibility genes are defined in:
 # [$sample_id]    file: $cancer_susceptibility_genes
 # [$sample_id]    source: $source
 """
     )
 
     header_lines_small_variant_info_data_source = Template(
-        """  # [$sample_id] Small variant calls are defined in: $small_variant_calls
+        """# [$sample_id] Small variant calls are defined in: $small_variant_calls
 """
     )
 
     header_lines_coding_region_size_in_megabases = Template(
-        """  # [$sample_id] Cumulative length of all the targeted coding regions (in millions of bases) with seq depth >= 50: $coding_region_size_in_megabases
+        """# [$sample_id] Cumulative length of all the targeted coding regions (in millions of bases, seq. depth >= 50): $coding_region_size_in_megabases
 """
     )
 
     header_lines_tumor_purity = Template(
-        """  # [$sample_id] Tumor purity (as a fraction between 0 and 1): $tumor_purity
-# [$sample_id]    The tumor purity is provided as an input parameter for tsoppy.
+        """# [$sample_id] Tumor purity (as a fraction between 0 and 1): $tumor_purity
+# [$sample_id]    The tumor purity is provided as an input parameter to tsoppy.
 """
     )
 
@@ -401,9 +399,11 @@ def print_predisposition_variants_to_output_file(
         # print info about tsoppy and workflow versions
         tsoppy = {"sample_id": sample_id, "tsoppy_version": tsoppy_version}
         output.write(header_lines_tsoppy.safe_substitute(tsoppy))
+        output.write("\n")
 
         workflow = {"sample_id": sample_id, "workflow_id": workflow_id}
         output.write(header_lines_workflow.safe_substitute(workflow))
+        output.write("\n")
 
         # print info about where the susceptibility gene list comes from
         sus_genes_data_source = {
@@ -430,7 +430,7 @@ def print_predisposition_variants_to_output_file(
 
         targeted_coding_regions = {
             "sample_id": sample_id,
-            "length_of_targeted_coding_regions": f"{coding_region_size_in_megabases:.2f}",
+            "coding_region_size_in_megabases": f"{coding_region_size_in_megabases:.2f}",
         }
         output.write(
             header_lines_coding_region_size_in_megabases.safe_substitute(
@@ -447,11 +447,22 @@ def print_predisposition_variants_to_output_file(
 
         output.write(predisposition_column_format_description)
 
+    # TODO: the format of printed out data is rather raw, probably should be crunched a bit more into something easier readable
+
+    # make the dataframe printable to a csv file
+    # join values of complex columns into comma separated strings
+    # columns affected: overlapping_genes, AD, AF (dragen only), gene_predispositions
+    predisposition_variants_str = predisposition_variants.with_columns(
+        cs.by_dtype(pl.List).list.eval(
+            pl.element().cast(pl.String)).list.join(", ")
+    )
+
     # write out the dataframe
     with open(output_file, mode="ab") as output:
-        predisposition_variants.write_csv(
+        predisposition_variants_str.write_csv(
             output, include_header=True, separator="\t")
 
+    # TODO: decide on: should there be some text message stating that no variants were found in the predisposition genes if that is the case?
     return
 
 

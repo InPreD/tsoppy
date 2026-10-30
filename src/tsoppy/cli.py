@@ -70,7 +70,7 @@ def report_predispositions(
 
     generate_report(
         output,
-        app_version,
+        version(),
         sample_id,
         config_yaml,
         inpred_nomenclature,
