@@ -93,8 +93,6 @@ We decided to go with option 1 due as it makes the code DRYer and the tool is mo
 
 ## Consequences
 
-We need to implement the common input options to make them available for all subcommands.
-
 ### Positive
 
 - any subcommand can simply include the `typer.Context` to have access to common input parameters
@@ -106,4 +104,4 @@ We need to implement the common input options to make them available for all sub
 
 ### Neutral
 
--
+- We need to implement the common input options to make them available for all subcommands.
