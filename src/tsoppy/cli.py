@@ -1,15 +1,16 @@
 """This module contains the CLI commands for tsoppy."""
 
-from tsoppy.metric_plots.plotting import Generate_qc_plots
-from tsoppy.metric_plots.main import MetricPlots
-import typer
-from typing import Annotated
-from pathlib import Path
+import importlib.metadata
+import logging
 from dataclasses import dataclass
 from enum import Enum
-import logging
-import importlib.metadata
+from pathlib import Path
+from typing import Annotated
 
+import typer
+
+from tsoppy.metric_plots.main import MetricPlots
+from tsoppy.metric_plots.plotting import Generate_qc_plots
 
 app = typer.Typer()
 
@@ -48,8 +49,7 @@ def _parse_run_id_file(value: str) -> list[str]:
     path = Path(value)
 
     if not path.is_file():
-        raise typer.BadParameter(
-            f"File '{value}' does not exist or is not a file.")
+        raise typer.BadParameter(f"File '{value}' does not exist or is not a file.")
 
     return [
         run_id
@@ -62,10 +62,14 @@ def _parse_run_id_file(value: str) -> list[str]:
 @app.callback()
 def main(
     ctx: typer.Context,
-    config: Annotated[Path | None, typer.Option(
-        "--config", help="Path to tsoppy config file.", exists=True)] = None,
-    nomenclature: Annotated[Path | None, typer.Option(
-        "--nomenclature", help="Path to inpred nomenclature file.")] = None,
+    config: Annotated[
+        Path | None,
+        typer.Option("--config", help="Path to tsoppy config file.", exists=True),
+    ] = None,
+    nomenclature: Annotated[
+        Path | None,
+        typer.Option("--nomenclature", help="Path to inpred nomenclature file."),
+    ] = None,
 ):
     """
     This is the main entry point for the tsoppy CLI application. It sets up the
@@ -291,8 +295,7 @@ def metric_plots(
             f"{plot_joint_qc.height} joint QC rows for {plot_workflow.value} plotting."
         )
 
-        output_pdf = plot_output or Path(
-            f"{plot_workflow.value}_metric_plots.pdf")
+        output_pdf = plot_output or Path(f"{plot_workflow.value}_metric_plots.pdf")
 
         Generate_qc_plots(
             metrics_table=plot_frame,
