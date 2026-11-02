@@ -747,6 +747,103 @@ def test_get_workflow_id_string(inputs, exception, want):
                 ),
             ),
         ),
+        (
+            (
+                "sample4",
+                "tsoppy version 0.0.1",
+                "localapp_ruo-2.2.0.12",
+                "doi_url",
+                Path("cancer_susceptibility_genes.tsv"),
+                Path("small_variant_calls.vcf"),
+                1.283,
+                0.7,
+                # a variant overlapping with two predisposition genes and one gene which is not in the cancer susceptibility genes
+                # the same as merged_table dataframe plus a column for the predisposition gene info
+                # localapp pl.Dataframe input
+                pl.DataFrame(
+                    {
+                        "variant_ID":
+                            [
+                                "chr1:1000000:A>G",
+                            ],
+                        "variant_type":
+                            [
+                                "SNV",
+                            ],
+                        "Illumina_variant_class":
+                            [
+                                "VCF_filtered",
+                            ],
+                        "overlapping_genes":
+                            [
+                                ["TP53", "BRCA1", "XXX"],
+                            ],
+                        "AD":
+                            [
+                                [189, 1],
+                            ],
+                        "DP":
+                            [
+                                190,
+                            ],
+                        "AF":
+                            [
+                                0.0054
+                            ],
+                        "gene_predispositions":
+                            [
+                                ["TP53_HA-CSG_Age<30", "BRCA1_MA-CSG_Allages"],
+                            ],
+                    }
+                ),
+                "# [sample4] Column format of gene_predispositions:\n" +
+                "# [sample4]    a list of character strings of the form:\n" +
+                "# [sample4]    [Gene]_[Actionability]_[Age]\n" +
+                "# [sample4]    where:\n" +
+                "# [sample4]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n" +
+                "# [sample4]        Age: [ Age<30 | Allages ]\n",
+                Path("output_sample4.tsv")
+            ),
+            (
+                Path("expected_output_sample4.tsv"),
+                (
+                    f"# [sample4] Pipeline: tsoppy version 0.0.1\n"
+                    f"# [sample4] Workflow id: localapp_ruo-2.2.0.12\n"
+                    f"# [sample4] Cancer susceptibility genes are defined in:\n"
+                    f"# [sample4]    file: cancer_susceptibility_genes.tsv\n"
+                    f"# [sample4]    source: doi_url\n"
+                    f"# [sample4] Small variant calls are defined in: small_variant_calls.vcf\n"
+                    f"# [sample4] Cumulative length of all the targeted coding regions (in millions of bases, seq. depth >= 50): 1.28\n"
+                    f"# [sample4] Tumor purity (as a fraction between 0 and 1): 0.70\n"
+                    f"# [sample4]    The tumor purity is provided as an input parameter to tsoppy.\n"
+                    f"# [sample4] Column format of gene_predispositions:\n"
+                    f"# [sample4]    a list of character strings of the form:\n"
+                    f"# [sample4]    [Gene]_[Actionability]_[Age]\n"
+                    f"# [sample4]    where:\n"
+                    f"# [sample4]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n"
+                    f"# [sample4]        Age: [ Age<30 | Allages ]\n"
+                ),
+                (
+                    f"variant_ID\t"
+                    f"variant_type\t"
+                    f"Illumina_variant_class\t"
+                    f"overlapping_genes\t"
+                    f"AD\t"
+                    f"DP\t"
+                    f"AF\t"
+                    f"gene_predispositions\n"
+                    f"chr1:1000000:A>G\t"
+                    f"SNV\t"
+                    f"VCF_filtered\t"
+                    f"TP53, BRCA1, XXX\t"
+                    f"189, 1\t"
+                    f"190\t"
+                    f"0.0054\t"
+                    f"TP53_HA-CSG_Age<30, BRCA1_MA-CSG_Allages\n"
+                ),
+            ),
+        ),
+
     ],
 )
 def test_print_predisposition_variants_to_output_file(tmp_path, inputs, want):
