@@ -1,14 +1,14 @@
 """This module contains the CLI commands for tsoppy."""
 
-import importlib.metadata
-import logging
-from enum import Enum
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Annotated
-import typer
-from tsoppy.metric_plots.main import MetricPlots
 from tsoppy.metric_plots.plotting import Generate_qc_plots
+from tsoppy.metric_plots.main import MetricPlots
+import typer
+from typing import Annotated
+from pathlib import Path
+from dataclasses import dataclass
+from enum import Enum
+import logging
+import importlib.metadata
 
 
 app = typer.Typer()
@@ -62,8 +62,8 @@ def _parse_run_id_file(value: str) -> list[str]:
 @app.callback()
 def main(
     ctx: typer.Context,
-    config: Annotated[Path, typer.Option(
-        "--config", help="Path to tsoppy config file.", exists=True)],
+    config: Annotated[Path | None, typer.Option(
+        "--config", help="Path to tsoppy config file.", exists=True)] = None,
     nomenclature: Annotated[Path | None, typer.Option(
         "--nomenclature", help="Path to inpred nomenclature file.")] = None,
 ):
