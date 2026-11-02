@@ -2,6 +2,7 @@
 
 import importlib.metadata
 import logging
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -10,14 +11,6 @@ import typer
 
 from tsoppy.metric_plots.main import MetricPlots
 from tsoppy.metric_plots.plotting import Generate_qc_plots
-
-
-class WorkflowType(str, Enum):
-    """Supported workflow types for metric plotting."""
-
-    DRAGEN = "dragen"
-    LOCALAPP = "localapp"
-
 
 app = typer.Typer()
 
@@ -29,6 +22,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app_version = importlib.metadata.version("tsoppy")
+
+
+class WorkflowType(str, Enum):
+    """Supported workflow types for metric plotting."""
+
+    DRAGEN = "dragen"
+    LOCALAPP = "localapp"
+
+
+@dataclass
+class CommonOptions:
+    """Holds common input options."""
+
+    nomenclature: Path
+    config: Path
 
 
 def _parse_run_ids(value: str) -> list[str]:
@@ -49,6 +57,25 @@ def _parse_run_id_file(value: str) -> list[str]:
         if line.strip()
         for run_id in _parse_run_ids(line)
     ]
+
+
+@app.callback()
+def main(
+    ctx: typer.Context,
+    config: Annotated[
+        Path | None,
+        typer.Option("--config", help="Path to tsoppy config file.", exists=True),
+    ] = None,
+    nomenclature: Annotated[
+        Path | None,
+        typer.Option("--nomenclature", help="Path to inpred nomenclature file."),
+    ] = None,
+):
+    """
+    This is the main entry point for the tsoppy CLI application. It sets up the
+    context object with commonOptions that can be accessed by subcommands.
+    """
+    ctx.obj = CommonOptions(nomenclature=nomenclature, config=config)
 
 
 @app.command()
