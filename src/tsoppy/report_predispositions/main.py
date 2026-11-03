@@ -388,7 +388,7 @@ def print_predisposition_variants_to_output_file(
 
     header_lines_tumor_purity = Template(
         """# [$sample_id] Tumor purity (as a fraction between 0 and 1): $tumor_purity
-# [$sample_id]    The tumor purity is provided as an input parameter to tsoppy.
+# [$sample_id]    The tumor purity is provided as an input parameter to the pipeline.
 """
     )
 
@@ -447,8 +447,6 @@ def print_predisposition_variants_to_output_file(
 
         output.write(predisposition_column_format_description)
 
-    # TODO: the format of printed out data is rather raw, probably should be crunched a bit more into something easier readable
-
     # make the dataframe printable to a csv file
     # join values of complex columns into comma separated strings
     # columns affected: overlapping_genes, AD, AF (dragen only), gene_predispositions
@@ -462,7 +460,6 @@ def print_predisposition_variants_to_output_file(
         predisposition_variants_str.write_csv(
             output, include_header=True, separator="\t")
 
-    # TODO: decide on: should there be some text message stating that no variants were found in the predisposition genes if that is the case?
     return
 
 
