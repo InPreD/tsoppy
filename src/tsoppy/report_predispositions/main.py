@@ -533,6 +533,8 @@ def print_output_file(
     predisposition_variants_str = format_predisposition_variants_before_printing(
         sample_id, predisposition_variants)
 
+    logger.info(
+        f"Print variants overlapping with the susceptibility genes into the output file {output_file}.")
     # print the dataframe into the output_file
     with open(output_file, mode="ab") as output:
         predisposition_variants_str.write_csv(
