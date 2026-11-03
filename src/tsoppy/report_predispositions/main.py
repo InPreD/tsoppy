@@ -346,7 +346,7 @@ def lookup_predisposition_variants(
     return predispositions_final_pldf
 
 
-def print_predisposition_variants_to_output_file(
+def print_metadata_to_output_file(
     sample_id: str,
     tsoppy_version: str,
     workflow_id: str,
@@ -355,12 +355,11 @@ def print_predisposition_variants_to_output_file(
     small_variant_calls: Path,
     coding_region_size_in_megabases: float,
     tumor_purity: float,
-    predisposition_variants: pl.DataFrame,
     predisposition_column_format_description: str,
     output_file: Path,
 ):
     """
-    Print predispositions into the output file.
+    Print metadata to the output file.
     """
 
     header_lines_tsoppy = Template(
@@ -392,6 +391,7 @@ def print_predisposition_variants_to_output_file(
 """
     )
 
+    logger.info(f"Printing metadata info to the output file {output_file}.")
     # open output file for writing
     with open(output_file, "w") as output:
         # print metadata comments to the output file
@@ -447,15 +447,93 @@ def print_predisposition_variants_to_output_file(
 
         output.write(predisposition_column_format_description)
 
+    return
+
+
+def format_predisposition_variants_before_printing(
+    sample_id: str,
+    predisposition_variants: pl.DataFrame,
+) -> pl.DataFrame:
+    """
+    Format predisposition_variants data frame for printing.
+    """
+
+    logger.info("Formatting predisposition_variants data frame for printing.")
+
+    # add sample_id clolumn
+    predisposition_variants = predisposition_variants.with_columns(
+        pl.lit(sample_id).alias("sample_id")
+    )
+
+    # split variant_id to genomic_location and DNA_change
+    # - split variant_id to chromosome, position and DNA_change
+    predisposition_variants = predisposition_variants.with_columns(
+        pl.col("variant_id")
+        .str.split_exact(":", 2)
+        .struct.rename_fields(["chromosome", "position", "DNA_change"])
+        .alias("split_data")
+    ).unnest("split_data")
+    # - join chromosome and position to genomic_location, drop the partial columns
+    predisposition_variants = predisposition_variants.with_columns(
+        pl.concat_str(["chromosome", "position"], separator=":")
+        .alias("genomic_location")
+    ).drop("chromosome", "position")
+
+    # format DP to depth_tumor_DNA: simple renamed copy
+    predisposition_variants = predisposition_variants.with_columns(
+        pl.col("DP").alias("depth_tumor_DNA")
+    )
+
+    # format AF to AF_tumor_DNA: select only the first element of the array
+    predisposition_variants = predisposition_variants.with_columns(
+        pl.col("AF").list.get(0)
+        .alias("AF_tumor_DNA")
+    )
+
+    # define output column order
+    col_order = [
+        "sample_id",
+        "overlapping_genes",
+        "genomic_location",
+        "DNA_change",
+        "depth_tumor_DNA",
+        "AF_tumor_DNA",
+    ]
+
     # make the dataframe printable to a csv file
     # join values of complex columns into comma separated strings
     # columns affected: overlapping_genes, AD, AF (dragen only), gene_predispositions
     predisposition_variants_str = predisposition_variants.with_columns(
         cs.by_dtype(pl.List).list.eval(
             pl.element().cast(pl.String)).list.join(", ")
-    )
+    ).select(col_order)
 
-    # write out the dataframe
+    return predisposition_variants_str
+
+
+def print_output_file(
+    sample_id: str,
+    tsoppy_version: str,
+    workflow_id: str,
+    source: str,
+    cancer_susceptibility_genes: Path,
+    small_variant_calls: Path,
+    coding_region_size_in_megabases: float,
+    tumor_purity: float,
+    predisposition_variants: pl.DataFrame,
+    predisposition_column_format_description: str,
+    output_file: Path,
+):
+
+    print_metadata_to_output_file(sample_id, tsoppy_version, workflow_id, source, cancer_susceptibility_genes, small_variant_calls,
+                                  coding_region_size_in_megabases, tumor_purity, predisposition_column_format_description, output_file)
+
+    # TODO: add columns depth_normal_DNA, AF_normal_DNA, depth_tumor_RNA, AF_tumor_RNA, assign appropriate values
+
+    predisposition_variants_str = format_predisposition_variants_before_printing(
+        sample_id, predisposition_variants)
+
+    # print the dataframe into the output_file
     with open(output_file, mode="ab") as output:
         predisposition_variants_str.write_csv(
             output, include_header=True, separator="\t")
