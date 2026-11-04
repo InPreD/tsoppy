@@ -449,3 +449,58 @@ def test_get_workflow_id_string(inputs, exception, want):
 
 
 # def test_lookup_predisposition_variants()
+
+@pytest.mark.parametrize(
+    "inputs, want",
+    # inputs:
+    #   sample_id,
+    #   tsoppy_version,
+    #   workflow_id,
+    #   source,
+    #   cancer_susceptibility_genes,
+    #   small_variant_calls,
+    #   coding_region_size_in_megabases,
+    #   tumor_purity,
+    #   predisposition_column_format_description,
+    #   output_file
+    # want:   filename
+    [
+        (
+            (
+                "sample_id",
+                "tsoppy version 0.0.1",
+                "dragen_2.6.2.4",
+                "doi_url",
+                Path("cancer_susceptibility_genes.tsv"),
+                Path("small_variant_calls.vcf"),
+                1.283,
+                0.7,
+                "# [sample_id] Column format of gene_predispositions:\n" +
+                "# [sample_id]    a list of character strings of the form:\n" +
+                "# [sample_id]    [Gene]_[Actionability]_[Age]\n" +
+                "# [sample_id]    where:\n" +
+                "# [sample_id]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n" +
+                "# [sample_id]        Age: [ Age<30 | Allages ]\n",
+                Path("output.tsv")
+            ),
+            Path(path.join(test_data_dir,
+                 "print_metadata_to_output_file_expected_output.tsv")),
+        ),
+
+
+    ],
+)
+def test_print_metadata_to_output_file(tmp_path, inputs, want):
+
+    # create temporary directory
+    directory = tmp_path / "test_reportPredispositions_main"
+    directory.mkdir(parents=True, exist_ok=True)
+    out_path = directory / inputs[9]
+
+    print_metadata_to_output_file(*inputs[:9], Path(out_path))
+    assert Path(out_path).read_text() == Path(want).read_text()
+
+    # remove the temporary file
+    out_path.unlink()
+    # remove the temp directory
+    directory.rmdir()
