@@ -290,12 +290,12 @@ def test_check_columns_presence_in_file(inputs, exception, want):
 
 @pytest.mark.parametrize(
     "inputs, want",
-    # inputs: filename, content, column_list, gene_name_column
+    # inputs: filename, column_list, gene_name_column
     [
         (
             (
-                "cancer_susceptibility_genes_expected.csv",
-                "# source: doi_url\nGene\tActionability\tAge\nTP53\tHA-CSG\tAge<30\nBRCA1\tMA-CSG\tAllages",
+                path.join(
+                    test_data_dir, "load_data_from_cancer_susceptibility_genes_file_input.csv"),
                 [
                     "Gene",
                     "Actionability",
@@ -319,25 +319,10 @@ def test_check_columns_presence_in_file(inputs, exception, want):
         ),
     ]
 )
-def test_load_data_from_cancer_susceptibility_genes_file(tmp_path, inputs, want):
-
-    # create temporary directory
-    directory = tmp_path / "test_reporPredispositions_main" / "test_load_data"
-    directory.mkdir(parents=True, exist_ok=True)
-
-    # write content to the temp file
-    test_file = directory / inputs[0]
-    test_file.write_text(inputs[1], encoding="utf-8")
-
-    got = load_data_from_cancer_susceptibility_genes_file(
-        test_file, *inputs[2:4])
+def test_load_data_from_cancer_susceptibility_genes_file(inputs, want):
+    p = Path(inputs[0])
+    got = load_data_from_cancer_susceptibility_genes_file(p, *inputs[1:3])
     assert got == want
-
-    # remove the temporary file test_file
-    test_file.unlink()
-
-    # remove the temp directory
-    directory.rmdir()
 
 
 @pytest.mark.parametrize(
