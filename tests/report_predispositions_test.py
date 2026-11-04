@@ -294,8 +294,8 @@ def test_check_columns_presence_in_file(inputs, exception, want):
     [
         (
             (
-                path.join(
-                    test_data_dir, "load_data_from_cancer_susceptibility_genes_file_input.csv"),
+                Path(path.join(
+                    test_data_dir, "load_data_from_cancer_susceptibility_genes_file_input.csv")),
                 [
                     "Gene",
                     "Actionability",
@@ -320,8 +320,7 @@ def test_check_columns_presence_in_file(inputs, exception, want):
     ]
 )
 def test_load_data_from_cancer_susceptibility_genes_file(inputs, want):
-    p = Path(inputs[0])
-    got = load_data_from_cancer_susceptibility_genes_file(p, *inputs[1:3])
+    got = load_data_from_cancer_susceptibility_genes_file(*inputs)
     assert got == want
 
 
