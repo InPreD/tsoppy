@@ -122,18 +122,18 @@ def check_columns_presence_in_file(column_list: list[str], file_path: Path):
     """
 
     logger.info(
-        f"Check that all requested columns from \"{column_list}\" are present in file {file_path}.")
+        f"Check that all requested columns from the column_list {column_list} are present in the file {file_path}.")
 
     lf = pl.scan_csv(file_path, separator="\t", comment_prefix="#")
 
-    available_columns = lf.columns
+    available_columns = lf.collect_schema().names()
     missing_columns = [
         col for col in column_list if col not in available_columns]
 
     if missing_columns:
         logger.error(
-            "Failed to read CSV because a required column was missing.")
-        raise ColumnNotFoundError(f"Error: missing columns {missing_columns}.")
+            f"Failed to read CSV because a required column was missing, missing columns {missing_columns}.")
+        raise ColumnNotFoundError()
     else:
         return
 
