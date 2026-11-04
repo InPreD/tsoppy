@@ -504,3 +504,273 @@ def test_print_metadata_to_output_file(tmp_path, inputs, want):
     out_path.unlink()
     # remove the temp directory
     directory.rmdir()
+
+
+@pytest.mark.parametrize(
+    "inputs, want",
+    # inputs:
+    #   sample_id,
+    #   pl.DataFrame(predisposition_variants),
+    # want:
+    #   pl.DataFrame(formated_predisposition_variants)
+    [
+        (
+            (
+                "sample1",
+                # empty dataframe
+                # the same as merged_table dataframe plus a column for the predisposition gene info
+                pl.DataFrame(
+                    {
+                        "variant_ID": [],
+                        "variant_type": [],
+                        "Illumina_variant_class": [],
+                        "overlapping_genes": [],
+                        "AD": [],
+                        "DP": [],
+                        "AF": [],
+                        "gene_predispositions": [],
+                    }
+                ),
+            ),
+            pl.DataFrame(
+                {
+                    "sample_id": [],
+                    "overlapping_genes": [],
+                    "genomic_location": [],
+                    "DNA_change": [],
+                    "depth_tumor_DNA": [],
+                    "AF_tumor_DNA": [],
+                    "gene_predispositions": [],
+                }
+            ),
+        ),
+        (
+            (
+                "sample2",
+                # a variant overlapping with one predisposition gene
+                # the same as merged_table dataframe plus a column for the predisposition gene info
+                pl.DataFrame(
+                    {
+                        "variant_ID":
+                            [
+                                "chr1:1000000:A>G",
+                            ],
+                        "variant_type":
+                            [
+                                "SNV",
+                            ],
+                        "Illumina_variant_class":
+                            [
+                                "VCF_filtered",
+                            ],
+                        "overlapping_genes":
+                            [
+                                ["TP53"],
+                            ],
+                        "AD":
+                            [
+                                [189, 1, 0],
+                            ],
+                        "DP":
+                            [
+                                190,
+                            ],
+                        "AF":
+                            [
+                                [0.0054, 0.0]
+                            ],
+                        "gene_predispositions":
+                            [
+                                "TP53_HA-CSG_Age<30",
+                            ],
+                    }
+                ),
+            ),
+            pl.DataFrame(
+                {
+                    "sample_id":
+                        [
+                            "sample2"
+                        ],
+                    "overlapping_genes":
+                        [
+                            "TP53"
+                        ],
+                    "genomic_location":
+                        [
+                            "chr1:1000000"
+                        ],
+                    "DNA_change":
+                        [
+                            "A>G"
+                        ],
+                    "depth_tumor_DNA":
+                        [
+                            190
+                        ],
+                    "AF_tumor_DNA":
+                        [
+                            0.0054
+                        ],
+                    "gene_predispositions":
+                        [
+                            "TP53_HA-CSG_Age<30",
+                        ],
+                }
+            ),
+        ),
+        (
+            (
+                "sample3",
+                # a variant overlapping with two predisposition genes
+                # the same as merged_table dataframe plus a column for the predisposition gene info
+                pl.DataFrame(
+                    {
+                        "variant_ID":
+                            [
+                                "chr1:1000000:A>G",
+                            ],
+                        "variant_type":
+                            [
+                                "SNV",
+                            ],
+                        "Illumina_variant_class":
+                            [
+                                "VCF_filtered",
+                            ],
+                        "overlapping_genes":
+                            [
+                                ["TP53", "BRCA1"],
+                            ],
+                        "AD":
+                            [
+                                [189, 1, 0],
+                            ],
+                        "DP":
+                            [
+                                190,
+                            ],
+                        "AF":
+                            [
+                                [0.0054, 0.0]
+                            ],
+                        "gene_predispositions":
+                            [
+                                ["TP53_HA-CSG_Age<30", "BRCA1_MA-CSG_Allages"],
+                            ],
+                    }
+                ),
+            ),
+            pl.DataFrame(
+                {
+                    "sample_id":
+                        [
+                            "sample3"
+                        ],
+                    "overlapping_genes":
+                        [
+                            "TP53, BRCA1"
+                        ],
+                    "genomic_location":
+                        [
+                            "chr1:1000000"
+                        ],
+                    "DNA_change":
+                        [
+                            "A>G"
+                        ],
+                    "depth_tumor_DNA":
+                        [
+                            190
+                        ],
+                    "AF_tumor_DNA":
+                        [
+                            0.0054
+                        ],
+                    "gene_predispositions":
+                        [
+                            "TP53_HA-CSG_Age<30, BRCA1_MA-CSG_Allages"
+                        ],
+                }
+            ),
+        ),
+        (
+            (
+                "sample4",
+                # a variant overlapping with two predisposition genes and one gene which is not in the cancer susceptibility genes
+                # the same as merged_table dataframe plus a column for the predisposition gene info
+                pl.DataFrame(
+                    {
+                        "variant_ID":
+                            [
+                                "chr1:1000000:A>G",
+                            ],
+                        "variant_type":
+                            [
+                                "SNV",
+                            ],
+                        "Illumina_variant_class":
+                            [
+                                "VCF_filtered",
+                            ],
+                        "overlapping_genes":
+                            [
+                                ["TP53", "BRCA1", "XXX"],
+                            ],
+                        "AD":
+                            [
+                                [189, 1, 0],
+                            ],
+                        "DP":
+                            [
+                                190,
+                            ],
+                        "AF":
+                            [
+                                [0.0054, 0.0]
+                            ],
+                        "gene_predispositions":
+                            [
+                                ["TP53_HA-CSG_Age<30", "BRCA1_MA-CSG_Allages"],
+                            ],
+                    }
+                ),
+            ),
+            pl.DataFrame(
+                {
+                    "sample_id":
+                        [
+                            "sample3"
+                        ],
+                    "overlapping_genes":
+                        [
+                            "TP53, BRCA1, XXX"
+                        ],
+                    "genomic_location":
+                        [
+                            "chr1:1000000"
+                        ],
+                    "DNA_change":
+                        [
+                            "A>G"
+                        ],
+                    "depth_tumor_DNA":
+                        [
+                            190
+                        ],
+                    "AF_tumor_DNA":
+                        [
+                            0.0054
+                        ],
+                    "gene_predispositions":
+                        [
+                            "TP53_HA-CSG_Age<30, BRCA1_MA-CSG_Allages"
+                        ],
+                }
+            ),
+        ),
+    ],
+)
+def test_format_predisposition_variants_before_printing(inputs, want):
+    got = format_predisposition_variants_before_printing(*inputs)
+    assert got == want

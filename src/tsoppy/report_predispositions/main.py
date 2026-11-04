@@ -468,7 +468,7 @@ def format_predisposition_variants_before_printing(
     # split variant_id to genomic_location and DNA_change
     # - split variant_id to chromosome, position and DNA_change
     predisposition_variants = predisposition_variants.with_columns(
-        pl.col("variant_id")
+        pl.col("variant_ID")
         .str.split_exact(":", 2)
         .struct.rename_fields(["chromosome", "position", "DNA_change"])
         .alias("split_data")
@@ -498,6 +498,7 @@ def format_predisposition_variants_before_printing(
         "DNA_change",
         "depth_tumor_DNA",
         "AF_tumor_DNA",
+        "gene_predispositions"
     ]
 
     # make the dataframe printable to a csv file
@@ -599,7 +600,7 @@ def generate_report(
     logger.info(
         f"Print the predispositions into the {output_file} output file."
     )
-    print_predisposition_variants_to_output_file(
+    print_output_file(
         sample_id,
         tsoppy_version,
         workflow_id,
