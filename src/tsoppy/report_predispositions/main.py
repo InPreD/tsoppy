@@ -312,7 +312,7 @@ def lookup_predisposition_variants(
 
     # transform the data frame into a a dictionary
     predispositions_dict = {
-        row.pop("variant_id"): row for row in predispositions_pldf.to_dicts()
+        row.pop("variant_ID"): row for row in predispositions_pldf.to_dicts()
     }
 
     # iterate through all variant_ids
@@ -336,8 +336,8 @@ def lookup_predisposition_variants(
     # transform the nested predispositions_dict into a list of dicts
     # using **fields to unpack the rest of the dictionary values
     rows = [
-        {"variant_id": variant_id, **fields}
-        for variant_id, fields in predispositions_dict.items()
+        {"variant_ID": variant_ID, **fields}
+        for variant_ID, fields in predispositions_dict.items()
     ]
 
     # transform to dataframe
@@ -547,6 +547,7 @@ def print_output_file(
                                   coding_region_size_in_megabases, tumor_purity, predisposition_column_format_description, output_file)
 
     # TODO: add columns depth_normal_DNA, AF_normal_DNA, depth_tumor_RNA, AF_tumor_RNA, assign appropriate values
+    # TODO: this should be happening in the lookup function maybe?
 
     predisposition_variants_str = format_predisposition_variants_before_printing(
         sample_id, predisposition_variants)
