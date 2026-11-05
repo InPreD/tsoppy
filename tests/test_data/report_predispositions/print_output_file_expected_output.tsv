@@ -1,0 +1,17 @@
+# [SAMPLE_ID] Pipeline: tsoppy version 0.0.1
+# [SAMPLE_ID] Workflow id: localapp_ruo-2.2.0.12
+# [SAMPLE_ID] Cancer susceptibility genes are defined in:
+# [SAMPLE_ID]    file: cancer_susceptibility_genes.tsv
+# [SAMPLE_ID]    source: doi_url
+# [SAMPLE_ID] Small variant calls are defined in: small_variant_calls.vcf
+# [SAMPLE_ID] Cumulative length of all the targeted coding regions (in millions of bases, seq. depth >= 50): 1.28
+# [SAMPLE_ID] Tumor purity (as a fraction between 0 and 1): 0.70
+# [SAMPLE_ID]    The tumor purity is provided as an input parameter to the pipeline.
+# [SAMPLE_ID] Column format of gene_predispositions:
+# [SAMPLE_ID]    a list of character strings of the form:
+# [SAMPLE_ID]    [Gene]_[Actionability]_[Age]
+# [SAMPLE_ID]    where:
+# [SAMPLE_ID]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]
+# [SAMPLE_ID]        Age: [ Age<30 | Allages ]
+sample_id	overlapping_genes	genomic_location	DNA_change	depth_tumor_DNA	AF_tumor_DNA	gene_predispositions
+SAMPLE_ID	TP53, BRCA1, XXX	chr1:1000000	A>G	190	0.0054	TP53_HA-CSG_Age<30, BRCA1_MA-CSG_Allages

@@ -247,7 +247,9 @@ def test_parse_metadata_to_get_source(tmp_path, inputs, exception, want):
     directory.rmdir()
 
 
+# Define paths to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/report_predispositions"
+test_data_dir_general_classes = "tests/test_data/general_classes"
 
 
 @pytest.mark.parametrize(
@@ -360,10 +362,6 @@ def test_generate_predisposition_column_format_description(inputs, want):
     # is there more testing needed here? like empty dict, or empty inner dict, or something?
     got = generate_predisposition_column_format_description(*inputs)
     assert got == want
-
-
-# Define path to test data - cannot be absolute due to different paths locally and in CI
-test_data_dir_general_classes = "tests/test_data/general_classes"
 
 
 @pytest.mark.parametrize(
@@ -775,3 +773,93 @@ def test_print_metadata_to_output_file(tmp_path, inputs, want):
 def test_format_predisposition_variants_before_printing(inputs, want):
     got = format_predisposition_variants_before_printing(*inputs)
     assert_frame_equal(left=got, right=want, check_dtypes=False)
+
+
+@pytest.mark.parametrize(
+    "inputs, want",
+    # inputs:
+    #   sample_id,
+    #   tsoppy_version,
+    #   workflow_id,
+    #   source,
+    #   cancer_susceptibility_genes,
+    #   small_variant_calls,
+    #   coding_region_size_in_megabases,
+    #   tumor_purity,
+    #   pl.DataFrame(predisposition_variants),
+    #   predisposition_column_format_description,
+    #   output_file
+    # want:   filepath
+    [
+        (
+            (
+                "SAMPLE_ID",
+                "tsoppy version 0.0.1",
+                "localapp_ruo-2.2.0.12",
+                "doi_url",
+                Path("cancer_susceptibility_genes.tsv"),
+                Path("small_variant_calls.vcf"),
+                1.283,
+                0.7,
+                # a variant overlapping with two predisposition genes and one gene which is not in the cancer susceptibility genes
+                # the same as merged_table dataframe plus a column for the predisposition gene info
+                # localapp pl.Dataframe input
+                pl.DataFrame(
+                    {
+                        "variant_ID":
+                            [
+                                "chr1:1000000:A>G",
+                            ],
+                        "variant_type":
+                            [
+                                "SNV",
+                            ],
+                        "Illumina_variant_class":
+                            [
+                                "VCF_filtered",
+                            ],
+                        "overlapping_genes":
+                            [
+                                ["TP53", "BRCA1", "XXX"],
+                            ],
+                        "AD":
+                            [
+                                [189, 1, 0],
+                            ],
+                        "DP":
+                            [
+                                190,
+                            ],
+                        "AF":
+                            [
+                                [0.0054, 0.0],
+                            ],
+                        "gene_predispositions":
+                            [
+                                ["TP53_HA-CSG_Age<30", "BRCA1_MA-CSG_Allages"],
+                            ],
+                    }
+                ),
+                "# [SAMPLE_ID] Column format of gene_predispositions:\n" +
+                "# [SAMPLE_ID]    a list of character strings of the form:\n" +
+                "# [SAMPLE_ID]    [Gene]_[Actionability]_[Age]\n" +
+                "# [SAMPLE_ID]    where:\n" +
+                "# [SAMPLE_ID]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n" +
+                "# [SAMPLE_ID]        Age: [ Age<30 | Allages ]\n",
+                Path("output.tsv")
+            ),
+            Path(path.join(test_data_dir, "print_output_file_expected_output.tsv")),
+        ),
+    ],
+)
+def test_print_output_file(tmp_path, inputs, want):
+    # create temporary directory
+    directory = tmp_path / "test_reportPredispositions_main"
+    directory.mkdir(parents=True, exist_ok=True)
+    out_path = directory / inputs[10]
+    print_output_file(*inputs[:10], out_path)
+    assert out_path.read_text() == want.read_text()
+    # remove the temporary file
+    out_path.unlink()
+    # remove the temp directory
+    directory.rmdir()
