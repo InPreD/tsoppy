@@ -35,8 +35,9 @@ def validate_uniqueness(df: pl.DataFrame, column: str):
         duplicates = df[column].filter(
             df[column].is_duplicated()).unique().to_list()
         # this captures the full traceback automatically
-        logger.exception("Data Integrity Validation Failed.")
-        raise ValueError(f"Duplicate IDs found in '{column}': {duplicates}")
+        logger.exception(
+            f"Data Integrity Validation Failed. Duplicate IDs found in column '{column}': {duplicates}.")
+        raise ValueError()
     else:
         return
 
@@ -51,8 +52,9 @@ def validate_tumor_purity_range(tumor_purity: float):
 
     if not 0 <= tumor_purity <= 1:
         # this captures the full traceback automatically
-        logger.exception("Data Integrity Validation Failed.")
-        raise ValueError(f"Tumor purity value {tumor_purity} is out of range.")
+        logger.exception(
+            f"Data Integrity Validation Failed. Tumor purity value {tumor_purity} is out of range.")
+        raise ValueError()
     else:
         return
 
@@ -66,9 +68,9 @@ def check_gene_name_column_presence_in_column_list(gene_name_column: str, column
         f"Check that column \"{gene_name_column}\" is present in column list {column_list}.")
 
     if not gene_name_column in column_list:
-        logger.exception("Data Integrity Validation Failed.")
-        raise ValueError(
-            f"Column {gene_name_column} is not present in provided column list {column_list}.")
+        logger.exception(
+            f"Data Integrity Validation Failed. Column {gene_name_column} is not present in provided column list {column_list}.")
+        raise ValueError()
     else:
         return
 
@@ -81,13 +83,13 @@ def check_file_existence_and_content_presence(file_path: Path):
     logger.info("Check that input file {file_path} exists and is not empty.")
 
     if not file_path.is_file():
-        logger.error("File Not Found.")
-        raise FileNotFoundError(
-            f"Error: file that should contain cancer susceptibility genes info ({file_path}) does not exist.")
+        logger.error(
+            f"File Not Found. File that should contain cancer susceptibility genes info ({file_path}) does not exist.")
+        raise FileNotFoundError()
 
     if file_path.stat().st_size == 0:
-        logger.error("Empty Input File.")
-        raise NoDataError(f"Error: Input file {file_path} is empty.")
+        logger.error(f"Empty Input File. Input file {file_path} is empty.")
+        raise NoDataError()
 
     return
 
@@ -111,9 +113,9 @@ def parse_metadata_to_get_source(file_path: Path
                 source = source.strip()
                 return source
 
-    logger.exception("Data Integrity Validation Failed.")
-    raise ValueError(
-        f"Error: source information not found in metadata of {file_path}.")
+    logger.exception(
+        f"Data Integrity Validation Failed. Source information not found in metadata of {file_path}.")
+    raise ValueError()
 
 
 def check_columns_presence_in_file(column_list: list[str], file_path: Path):
