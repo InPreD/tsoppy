@@ -27,7 +27,7 @@ def validate_uniqueness(df: pl.DataFrame, column: str):
     Test that all the values in column 'column' of dataframe 'df' are unique.
     """
 
-    logger.info(
+    logger.debug(
         f"Check that column \"{column}\" is a primary key of the data frame.")
 
     if not df[column].is_unique().all():
@@ -47,7 +47,7 @@ def validate_tumor_purity_range(tumor_purity: float):
     Test that tumor purity value is between 0 and 1.
     """
 
-    logger.info(
+    logger.debug(
         f"Test that tumor purity value {tumor_purity} is between 0 and 1.")
 
     if not 0 <= tumor_purity <= 1:
@@ -64,7 +64,7 @@ def check_gene_name_column_presence_in_column_list(gene_name_column: str, column
     Check that gene_name_column is present in the provided column_list.
     """
 
-    logger.info(
+    logger.debug(
         f"Check that column \"{gene_name_column}\" is present in column list {column_list}.")
 
     if not gene_name_column in column_list:
@@ -80,7 +80,7 @@ def check_file_existence_and_content_presence(file_path: Path):
     Check that input file exists and is not empty.
     """
 
-    logger.info("Check that input file {file_path} exists and is not empty.")
+    logger.debug(f"Check that input file {file_path} exists and is not empty.")
 
     if not file_path.is_file():
         logger.error(
@@ -100,7 +100,7 @@ def parse_metadata_to_get_source(file_path: Path
     Parse metadata of the file to get source of the information stored in the file.
     """
 
-    logger.info(
+    logger.debug(
         f"Parsing metadata of {file_path} to get source of the information stored in the file.")
 
     # try to get metadata about source of the info
@@ -123,7 +123,7 @@ def check_columns_presence_in_file(column_list: list[str], file_path: Path):
     Check that all requested columns are present in the input file.
     """
 
-    logger.info(
+    logger.debug(
         f"Check that all requested columns from the column_list {column_list} are present in the file {file_path}.")
 
     lf = pl.scan_csv(file_path, separator="\t", comment_prefix="#")
@@ -147,7 +147,7 @@ def load_data_from_cancer_susceptibility_genes_file(
     Load data from the input cancer susceptibility genes file.
     """
 
-    logger.info(
+    logger.debug(
         f"Load data from the cancer susceptibility genes file {file_path}.")
 
     # check that gene_name_column is present in the column_list
@@ -163,7 +163,7 @@ def load_data_from_cancer_susceptibility_genes_file(
     # check that all columns from the column list are present in the file
     check_columns_presence_in_file(column_list, file_path)
 
-    logger.info(f"Read tabular content of the file {file_path}.")
+    logger.debug(f"Read tabular content of the file {file_path}.")
     df = pl.read_csv(file_path, columns=column_list,
                      separator="\t", comment_prefix="#")
 
@@ -194,6 +194,9 @@ def generate_predisposition_column_format_description(
     Generate text description of columns and values of the cancer susceptibility
     input info. The description will be written in the metadata of the output file.
     """
+
+    logger.debug(
+        "Generate text description of columns and values of the cancer susceptibility input info.")
 
     # put together column names
     string_format = "[" + gene_name_column + "]"
@@ -263,6 +266,7 @@ def get_workflow_id_string(
     """
     Return workflow id string.
     """
+
     workflow_output = WorkflowOutput(
         config_yaml, inpred_nomenclature, root_path)
 
@@ -283,7 +287,10 @@ def lookup_predisposition_variants(
     Look up predispositions, store all the info from SmallVariantGenomeVcf merged_table and the gene predispositions in the output pl.DataFrame.
     """
 
-    logger.info("Read in merged_table of small variants.")
+    logger.debug(
+        "Look up overlaps between the small variant calls and the cancer susceptibility genes.")
+
+    logger.debug("Read in merged_table of small variants.")
     workflow_output = WorkflowOutput(
         config_yaml, inpred_nomenclature, root_path)
     small_variants = SmallVariantGenomeVcf(
@@ -292,7 +299,7 @@ def lookup_predisposition_variants(
 
     cancer_susceptibility_genes = list(cancer_susceptibility_genes_dict.keys())
 
-    logger.info(
+    logger.debug(
         "Select only those small variants which overlap with at least one predispositon gene.")
     # select only variants overlapping at least one predisposition gene
     predispositions_basic_pldf = merged_variant_info_pldf.filter(
@@ -301,10 +308,10 @@ def lookup_predisposition_variants(
     )
 
     if predispositions_basic_pldf.is_empty():
-        logger.info(
+        logger.debug(
             "There are no small variants overlapping a predisposition gene.")
 
-    logger.info(
+    logger.debug(
         "Fill predisposition gene info for every small variant overlapping the gene.")
 
     # add gene_predisposition column (containing empty list) into the data frame
@@ -393,7 +400,7 @@ def print_metadata_to_output_file(
 """
     )
 
-    logger.info(f"Printing metadata info to the output file {output_file}.")
+    logger.debug(f"Printing metadata info to the output file {output_file}.")
     # open output file for writing
     with open(output_file, "w") as output:
         # print metadata comments to the output file
@@ -460,7 +467,7 @@ def format_predisposition_variants_before_printing(
     Format predisposition_variants data frame for printing.
     """
 
-    logger.info("Formatting predisposition_variants data frame for printing.")
+    logger.debug("Formatting predisposition_variants data frame for printing.")
 
     # if the input dataframe is empty,
     # return empty dataframe of appropriate structure
@@ -544,6 +551,11 @@ def print_output_file(
     predisposition_column_format_description: str,
     output_file: Path,
 ):
+    """
+    Generate output file.
+    """
+
+    logger.debug("Generate output file.")
 
     print_metadata_to_output_file(sample_id, tsoppy_version, workflow_id, source, cancer_susceptibility_genes, small_variant_calls,
                                   coding_region_size_in_megabases, tumor_purity, predisposition_column_format_description, output_file)
@@ -554,7 +566,7 @@ def print_output_file(
     predisposition_variants_str = format_predisposition_variants_before_printing(
         sample_id, predisposition_variants)
 
-    logger.info(
+    logger.debug(
         f"Print variants overlapping with the susceptibility genes into the output file {output_file}.")
     # print the dataframe into the output_file
     with open(output_file, mode="ab") as output:
@@ -581,10 +593,13 @@ def generate_report(
     in the cancer susceptibility genes.
     """
 
-    logger.info("Validate tumor purity range.")
+    logger.info(
+        "Report small variants presents in the cancer susceptibility genes.")
+
+    logger.debug("Validate tumor purity range.")
     validate_tumor_purity_range(tumor_purity)
 
-    logger.info(
+    logger.debug(
         f"Load data from the {cancer_susceptibility_genes} input file.")
     cancer_susceptibility_genes_dict, source = (
         load_data_from_cancer_susceptibility_genes_file(
@@ -592,32 +607,32 @@ def generate_report(
         )
     )
 
-    # TODO
+    # TODO: implement functionality from the other module
     # "Cummulative length of all coding regions targeted in the TSO500 experiment (in millions of bases)."
-    logger.info(
+    logger.debug(
         "Retrieve \"Coding Region Size in Megabases\" from the CombinedVariant Output file.")
     coding_region_size_in_megabases = "x.yz"
 
-    logger.info("Generate predisposition column format description.")
+    logger.debug("Generate predisposition column format description.")
     predisposition_column_format_description = generate_predisposition_column_format_description(
         cancer_susceptibility_genes_dict, gene_name_column, sample_id)
 
-    logger.info("Find small variant calls file path.")
+    logger.debug("Find small variant calls file path.")
     small_variant_calls = get_small_variant_calls_file_path(
         sample_id, config_yaml, inpred_nomenclature, root_path)
 
-    logger.info("Retrieve workflow id string.")
+    logger.debug("Retrieve workflow id string.")
     workflow_id = get_workflow_id_string(
         config_yaml, inpred_nomenclature, root_path)
 
-    logger.info(
+    logger.debug(
         f"Find predisposition_variants in SmallVariantGenomeVcf object of a given sample {sample_id}."
     )
     predisposition_variants = lookup_predisposition_variants(
         cancer_susceptibility_genes_dict, sample_id, config_yaml, inpred_nomenclature, root_path
     )
 
-    logger.info(
+    logger.debug(
         f"Print the predispositions into the {output_file} output file."
     )
     print_output_file(
