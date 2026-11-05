@@ -863,3 +863,6 @@ def test_print_output_file(tmp_path, inputs, want):
     out_path.unlink()
     # remove the temp directory
     directory.rmdir()
+
+
+# def test_generate_report()
