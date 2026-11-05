@@ -460,6 +460,23 @@ def format_predisposition_variants_before_printing(
 
     logger.info("Formatting predisposition_variants data frame for printing.")
 
+    # if the input dataframe is empty,
+    # return empty dataframe of appropriate structure
+    if predisposition_variants.is_empty():
+        return pl.DataFrame(
+            {
+                "sample_id": [],
+                "overlapping_genes": [],
+                "genomic_location": [],
+                "DNA_change": [],
+                "depth_tumor_DNA": [],
+                "AF_tumor_DNA": [],
+                "gene_predispositions": [],
+            }
+        )
+
+    # continue from here on with non-empty dataframe
+
     # add sample_id clolumn
     predisposition_variants = predisposition_variants.with_columns(
         pl.lit(sample_id).alias("sample_id")

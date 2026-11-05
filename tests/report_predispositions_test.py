@@ -5,6 +5,7 @@ Report predispositions subpackage unit test.
 from contextlib import nullcontext
 from pathlib import Path
 from polars.exceptions import (ColumnNotFoundError, NoDataError)
+from polars.testing import assert_frame_equal
 from os import path
 
 import importlib.metadata
@@ -740,7 +741,7 @@ def test_print_metadata_to_output_file(tmp_path, inputs, want):
                 {
                     "sample_id":
                         [
-                            "sample3"
+                            "sample4"
                         ],
                     "overlapping_genes":
                         [
@@ -773,4 +774,4 @@ def test_print_metadata_to_output_file(tmp_path, inputs, want):
 )
 def test_format_predisposition_variants_before_printing(inputs, want):
     got = format_predisposition_variants_before_printing(*inputs)
-    assert got == want
+    assert_frame_equal(left=got, right=want, check_dtypes=False)
