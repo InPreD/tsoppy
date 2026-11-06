@@ -1,7 +1,7 @@
 """Unit tests for the add_variant_summary main module."""
 
 import polars
-from pytest import mark
+from pytest import mark, raises
 
 from tsoppy.add_variant_summary.main import (
     HEADER,
@@ -262,7 +262,7 @@ def test_detect_data_type(sections, want):
     [
         (
             _dragen_sections(),
-            "dragen",
+            "dragen_2.6.2.4",
             [
                 "IPD1111-D",
                 "7.8 (10)",
@@ -279,7 +279,7 @@ def test_detect_data_type(sections, want):
         ),
         (
             _localapp_sections(),
-            "localapp",
+            "localapp_ruo-2.2.0.12",
             [
                 "IPD1111-D",
                 "7.8 (10)",
@@ -298,6 +298,11 @@ def test_detect_data_type(sections, want):
 )
 def test_format_dna_row(sections, workflow_type, want):
     assert _format_dna_row(sections, workflow_type) == want
+
+
+def test_format_dna_row_unknown_workflow_id():
+    with raises(ValueError):
+        _format_dna_row(_dragen_sections(), "dragen_9.9.9.9")
 
 
 @mark.parametrize(
@@ -333,7 +338,7 @@ def test_format_rna_row(sections, want):
     [
         (
             _dragen_sections("IPD1111-D", "NA"),
-            "dragen",
+            "dragen_2.6.2.4",
             [
                 [
                     "IPD1111-D",
@@ -352,7 +357,7 @@ def test_format_rna_row(sections, want):
         ),
         (
             _dragen_sections("IPD1111-D", "IPD1111-R"),
-            "dragen",
+            "dragen_2.6.2.4",
             [
                 [
                     "IPD1111-D",
@@ -384,7 +389,7 @@ def test_format_rna_row(sections, want):
         ),
         (
             _localapp_sections("IPD1111-D", "NA"),
-            "localapp",
+            "localapp_ruo-2.2.0.12",
             [
                 [
                     "IPD1111-D",

@@ -22,6 +22,13 @@ GIS_SCORE = "Genomic Instability Score"
 TUMOR_FRACTION = "Tumor Fraction"
 PLOIDY = "Ploidy"
 
+# Combined variant output layout per workflow id.
+CVO_WORKFLOW_ID = {
+    "dragen_2.6.2.4": "dragen",
+    "localapp_ruo-2.2.0.12": "localapp",
+}
+
+
 # Output table columns, in order.
 HEADER = [
     "Sample_id",
@@ -69,7 +76,7 @@ def Summarise_variant_output(
     with open(output_file, "w") as out_file:
         _write_header(out_file, cvo_files[0].headers)
         for cvo in cvo_files:
-            for row in _parse_sample(cvo.sections, cvo.workflow_type):
+            for row in _parse_sample(cvo.sections, cvo.workflow_id):
                 out_file.write("\t".join(row) + "\n")
 
 
@@ -82,18 +89,23 @@ def _detect_data_type(sections: dict[str, polars.DataFrame]) -> tuple[bool, bool
 
 
 def _format_dna_row(
-    sections: dict[str, polars.DataFrame], workflow_type: str
+    sections: dict[str, polars.DataFrame], workflow_id: str
 ) -> list[str]:
     sample_id = _value(sections.get("Analysis Details"), "DNA Sample ID")
 
-    if workflow_type == "dragen":
+    layout = CVO_WORKFLOW_ID.get(workflow_id)
+    if layout is None:
+        logger.error(f"No combined variant output layout defined for {workflow_id}")
+        raise ValueError
+
+    if layout == "dragen":
         gene_amp = _format_cnv(sections)
         loh = _format_loh(sections)
         gis = _value(sections.get("GIS"), GIS_SCORE)
         tumor_fraction = _value(sections.get("GIS"), TUMOR_FRACTION)
         ploidy = _value(sections.get("GIS"), PLOIDY)
         large_rearr = _format_large_rearr(sections)
-    else:
+    elif layout == "localapp":
         gene_amp = _format_gene_amp(sections)
         loh = "NA"
         gis = "NA"
@@ -144,12 +156,12 @@ def _write_header(out_file, headers: list[str]) -> None:
 
 
 def _parse_sample(
-    sections: dict[str, polars.DataFrame], workflow_type: str
+    sections: dict[str, polars.DataFrame], workflow_id: str
 ) -> list[list[str]]:
     has_dna, has_rna = _detect_data_type(sections)
     rows = []
     if has_dna:
-        rows.append(_format_dna_row(sections, workflow_type))
+        rows.append(_format_dna_row(sections, workflow_id))
     if has_rna:
         rows.append(_format_rna_row(sections))
     return rows
