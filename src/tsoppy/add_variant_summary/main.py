@@ -273,7 +273,7 @@ def _format_gene_amp(sections: dict[str, polars.DataFrame]) -> str:
     for row in gamp.iter_rows(named=True):
         if row["Gene"] in (None, "NA", "-"):
             continue
-        output.append(f"{row['Gene']} ({row['Fold Change']}, <DUP>)")
+        output.append(f"{row['Gene']} ({row['Fold Change']}, <DUP>, NA)")
     return "|".join(output) if output else "NA"
 
 

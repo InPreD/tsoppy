@@ -187,7 +187,7 @@ def test_format_loh(sections, want):
 @mark.parametrize(
     "sections, want",
     [
-        ({"Gene Amplifications": _gene_amp()}, "MDM4 (1.741, <DUP>)"),
+        ({"Gene Amplifications": _gene_amp()}, "MDM4 (1.741, <DUP>, NA)"),
         ({"Gene Amplifications": polars.DataFrame()}, "NA"),
         ({}, "NA"),
     ],
@@ -278,7 +278,7 @@ def _expected_localapp_dna_row():
         "Sample_id": "IPD1111-D",
         "TMB": "7.8 (10)",
         "MSI": "4.13 (5/121)",
-        "Gene_amplifications_CNV": "MDM4 (1.741, <DUP>)",
+        "Gene_amplifications_CNV": "MDM4 (1.741, <DUP>, NA)",
         "LOH": "NA",
         "Splice_variants": "NA",
         "Fusions": "NA",
