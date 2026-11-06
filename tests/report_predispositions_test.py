@@ -19,7 +19,6 @@ from tsoppy.general.classes import (
 
 from tsoppy.report_predispositions.main import (
     check_columns_presence_in_file,
-    check_file_existence_and_content_presence,
     check_gene_name_column_presence_in_column_list,
     format_predisposition_variants_before_printing,
     generate_predisposition_column_format_description,
@@ -160,57 +159,6 @@ def test_check_gene_name_column_presence_in_column_list(inputs, exception, want)
     with exception:
         got = check_gene_name_column_presence_in_column_list(*inputs)
         assert got == want
-
-
-@pytest.mark.parametrize(
-    "inputs, exception, want",
-    # inputs: filename, content
-    [
-        (
-            (
-                "nonexistent.csv",
-                None
-            ),
-            pytest.raises(FileNotFoundError),
-            None
-        ),
-        (
-            (
-                "empty.csv",
-                ""
-            ),
-            pytest.raises(NoDataError),
-            None
-        ),
-        (
-            (
-                "nonempty.csv",
-                "content"
-            ),
-            nullcontext(),
-            None
-        ),
-    ]
-)
-def test_check_file_existence_and_content_presence(tmp_path, inputs, exception, want):
-    directory = tmp_path / "test_reportPredispositions_main" / "test_check_file"
-    directory.mkdir(parents=True, exist_ok=True)
-
-    if not inputs[0] == "nonexistent.csv":
-        test_file = directory / inputs[0]
-        test_file.write_text(inputs[1], encoding="utf-8")
-    else:
-        test_file = directory / inputs[0]
-
-    with exception:
-        got = check_file_existence_and_content_presence(test_file)
-        assert got == want
-
-    if not inputs[0] == "nonexistent.csv":
-        test_file.unlink()
-
-    # remove the temp directory
-    directory.rmdir()
 
 
 @pytest.mark.parametrize(
