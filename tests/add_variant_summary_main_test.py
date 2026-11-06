@@ -102,7 +102,48 @@ def _fusions():
 
 
 def _large_rearr():
-    return polars.DataFrame({"Gene": ["BRCA1", "BRCA2"]})
+    return polars.DataFrame(
+        {
+            "Gene": ["BRCA1", "BRCA2"],
+            "Chromosome": ["chr17", "chr13"],
+            "Start": ["43044295", "32315474"],
+            "Stop": ["43125483", "32399672"],
+            "Affected Exon(s)": ["7-23", "10"],
+            "Fold Change": ["0.35", "0.40"],
+            "CNV Type": ["DEL", "DEL"],
+        }
+    )
+
+
+def _large_rearr_partial():
+    """DRAGEN may leave fold change and CNV type empty."""
+    return polars.DataFrame(
+        {
+            "Gene": ["BRCA1"],
+            "Chromosome": ["chr17"],
+            "Start": ["43044295"],
+            "Stop": ["43125483"],
+            "Affected Exon(s)": ["7-23"],
+            "Fold Change": ["-"],
+            "CNV Type": ["-"],
+        }
+    )
+
+
+def _large_rearr_stub():
+    """Rows naming only the gene report no rearrangement."""
+    blank = ["-", "-"]
+    return polars.DataFrame(
+        {
+            "Gene": ["BRCA1", "BRCA2"],
+            "Chromosome": ["NA", "NA"],
+            "Start": blank,
+            "Stop": blank,
+            "Affected Exon(s)": blank,
+            "Fold Change": blank,
+            "CNV Type": blank,
+        }
+    )
 
 
 def _dragen_sections(dna="IPD1111-D", rna="NA"):
@@ -229,7 +270,16 @@ def test_format_fusions(sections, want):
 @mark.parametrize(
     "sections, want",
     [
-        ({"Large Rearrangements": _large_rearr()}, "BRCA1|BRCA2"),
+        (
+            {"Large Rearrangements": _large_rearr()},
+            "BRCA1 (chr17:43044295-43125483, 7-23, 0.35, DEL)"
+            "|BRCA2 (chr13:32315474-32399672, 10, 0.40, DEL)",
+        ),
+        (
+            {"Large Rearrangements": _large_rearr_partial()},
+            "BRCA1 (chr17:43044295-43125483, 7-23, NA, NA)",
+        ),
+        ({"Large Rearrangements": _large_rearr_stub()}, "NA"),
         ({"Large Rearrangements": polars.DataFrame()}, "NA"),
         ({}, "NA"),
     ],
@@ -269,7 +319,10 @@ def _expected_dragen_dna_row():
         "GIS": "32",
         "Tumor_fraction": "0.650",
         "Ploidy": "3.92",
-        "Large_rearrangements": "BRCA1|BRCA2",
+        "Large_rearrangements": (
+            "BRCA1 (chr17:43044295-43125483, 7-23, 0.35, DEL)"
+            "|BRCA2 (chr13:32315474-32399672, 10, 0.40, DEL)"
+        ),
     }
 
 

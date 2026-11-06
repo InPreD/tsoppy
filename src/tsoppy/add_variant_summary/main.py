@@ -251,6 +251,16 @@ def _format_fusions(sections: dict[str, polars.DataFrame]) -> str:
     return "|".join(output) if output else "NA"
 
 
+def _is_missing(value) -> bool:
+    """True when a CVO cell carries no value ("NA", "-" or empty)."""
+    return value is None or str(value).strip() in ("", "NA", "-")
+
+
+def _or_na(value) -> str:
+    """Return `value` as text, or "NA" when the cell carries no value."""
+    return "NA" if _is_missing(value) else str(value)
+
+
 def _format_large_rearr(sections: dict[str, polars.DataFrame]) -> str:
     """Format large rearrangements from the [Large Rearrangements] section."""
     lr = sections.get("Large Rearrangements")
@@ -258,9 +268,26 @@ def _format_large_rearr(sections: dict[str, polars.DataFrame]) -> str:
         return "NA"
     output = []
     for row in lr.iter_rows(named=True):
-        if row["Gene"] in (None, "NA", "-"):
+        if _is_missing(row["Gene"]):
             continue
-        output.append(str(row["Gene"]))
+
+        coords = [row.get("Chromosome"), row.get("Start"), row.get("Stop")]
+        span = (
+            "NA"
+            if any(_is_missing(value) for value in coords)
+            else f"{coords[0]}:{coords[1]}-{coords[2]}"
+        )
+        details = [
+            span,
+            _or_na(row.get("Affected Exon(s)")),
+            _or_na(row.get("Fold Change")),
+            _or_na(row.get("CNV Type")),
+        ]
+        # A row that only names the gene reports no rearrangement.
+        if all(detail == "NA" for detail in details):
+            continue
+
+        output.append(f"{row['Gene']} ({', '.join(details)})")
     return "|".join(output) if output else "NA"
 
 

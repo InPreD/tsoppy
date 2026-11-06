@@ -8,5 +8,5 @@
 # - Genomic Instability Score (GIS): Genomic Instability Score
 # - Tumor fraction: Tumor Fraction
 # - Ploidy: Ploidy
-# - Large Rearrangements: gene
+# - Large Rearrangements: gene (chromosome:start-stop, affected_exon(s), fold_change, cnv_type)
 $columns
