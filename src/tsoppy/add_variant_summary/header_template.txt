@@ -5,8 +5,8 @@
 # - Loss of Heterozygosity (LOH): gene (absolute_copy_number, minor_copy_number)
 # - Splice variants: gene[affected_exon] (breakpoint_1-breakpoint_2) supporting/ref_reads
 # - Fusions: gene_1-gene_2 (breakpoint_1-breakpoint_2) supporting/ref_gene_1/ref_gene_2
-# - Genomic Instability Score (GIS): Genomic Instability Score, from the [GIS] section
-# - Tumor fraction: Tumor Fraction, from the [GIS] section
-# - Ploidy: Ploidy, from the [GIS] section
+# - Genomic Instability Score (GIS): Genomic Instability Score
+# - Tumor fraction: Tumor Fraction
+# - Ploidy: Ploidy
 # - Large Rearrangements: gene
 $columns
