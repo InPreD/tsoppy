@@ -75,25 +75,6 @@ def check_gene_name_column_presence_in_column_list(gene_name_column: str, column
         return
 
 
-def check_file_existence_and_content_presence(file_path: Path):
-    """
-    Check that input file exists and is not empty.
-    """
-
-    logger.debug(f"Check that input file {file_path} exists and is not empty.")
-
-    if not file_path.is_file():
-        logger.error(
-            f"File Not Found. File that should contain cancer susceptibility genes info ({file_path}) does not exist.")
-        raise FileNotFoundError()
-
-    if file_path.stat().st_size == 0:
-        logger.error(f"Empty Input File. Input file {file_path} is empty.")
-        raise NoDataError()
-
-    return
-
-
 def parse_metadata_to_get_source(file_path: Path
                                  ) -> str:
     """
@@ -153,9 +134,6 @@ def load_data_from_cancer_susceptibility_genes_file(
     # check that gene_name_column is present in the column_list
     check_gene_name_column_presence_in_column_list(
         gene_name_column, column_list)
-
-    # check the file existence and content presence
-    check_file_existence_and_content_presence(file_path)
 
     # get intormation about the source of data presented in the input file
     source = parse_metadata_to_get_source(file_path)

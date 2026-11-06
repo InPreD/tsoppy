@@ -3,6 +3,7 @@ This module contains the CLI commands for tsoppy.
 """
 
 import importlib.metadata
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -22,6 +23,19 @@ def version():
     print(f"tsoppy version {app_version}")
 
 
+logger = logging.getLogger(__name__)
+
+
+def validate_not_empty(file: Path) -> Path:
+    """Callback function to ensure the file contains data."""
+    # Typer runs built-in validation (like exists=True) BEFORE callbacks,
+    # so we know the path already exists and is a file here.
+    if file.stat().st_size == 0:
+        logger.exception(f"The specified file {file} is empty.")
+        raise typer.BadParameter()
+    return file
+
+
 @app.command()
 def report_predispositions(
     output: Annotated[
@@ -30,11 +44,16 @@ def report_predispositions(
     sample_id: Annotated[str, typer.Option(help="ID of the input sample.")],
     config_yaml: Annotated[Path, typer.Option(help="Config yaml file.")],
     inpred_nomenclature: Annotated[
-        Path, typer.Option(help="InPreD nomenclature definition file.")
+        Path,
+        typer.Option(
+            exists=True,
+            help="InPreD nomenclature definition file."
+        )
     ],
     root_path: Annotated[
         Path,
         typer.Option(
+            exists=True,
             help="Root path to the folder containing TSO500 analysis the sequencing run which contains the input sample."
         ),
     ],
@@ -47,6 +66,8 @@ def report_predispositions(
     cancer_susceptibility_genes: Annotated[
         Path,
         typer.Option(
+            exists=True,
+            callback=validate_not_empty,
             help="File containing info about genes in which variants increase a person's risk of developing certain cancers."
         ),
     ],
