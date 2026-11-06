@@ -265,7 +265,7 @@ def _format_large_rearr(sections: dict[str, polars.DataFrame]) -> str:
 
 
 def _format_gene_amp(sections: dict[str, polars.DataFrame]) -> str:
-    """Format localapp gene amplifications (all are <DUP>)."""
+    """Format localapp gene amplifications (all are of type <DUP> with unspecified absolute copy number value)."""
     gamp = sections.get("Gene Amplifications")
     if gamp is None or gamp.is_empty():
         return "NA"
