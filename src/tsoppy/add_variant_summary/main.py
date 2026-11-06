@@ -77,7 +77,7 @@ def Summarise_variant_output(
         _write_header(out_file, cvo_files[0].headers)
         for cvo in cvo_files:
             for row in _parse_sample(cvo.sections, cvo.workflow_id):
-                out_file.write("\t".join(row) + "\n")
+                out_file.write("\t".join(row[column] for column in HEADER) + "\n")
 
 
 def _detect_data_type(sections: dict[str, polars.DataFrame]) -> tuple[bool, bool]:
@@ -90,7 +90,7 @@ def _detect_data_type(sections: dict[str, polars.DataFrame]) -> tuple[bool, bool
 
 def _format_dna_row(
     sections: dict[str, polars.DataFrame], workflow_id: str
-) -> list[str]:
+) -> dict[str, str]:
     sample_id = _value(sections.get("Analysis Details"), "DNA Sample ID")
 
     layout = CVO_WORKFLOW_ID.get(workflow_id)
@@ -113,37 +113,37 @@ def _format_dna_row(
         ploidy = "NA"
         large_rearr = "NA"
 
-    return [
-        sample_id,
-        _format_tmb(sections),
-        _format_msi(sections),
-        gene_amp,
-        loh,
-        "NA",  # splice_variants (RNA only)
-        "NA",  # fusions (RNA only)
-        gis,
-        tumor_fraction,
-        ploidy,
-        large_rearr,
-    ]
+    return {
+        "Sample_id": sample_id,
+        "TMB": _format_tmb(sections),
+        "MSI": _format_msi(sections),
+        "Gene_amplifications_CNV": gene_amp,
+        "LOH": loh,
+        "Splice_variants": "NA",
+        "Fusions": "NA",
+        "GIS": gis,
+        "Tumor_fraction": tumor_fraction,
+        "Ploidy": ploidy,
+        "Large_rearrangements": large_rearr,
+    }
 
 
-def _format_rna_row(sections: dict[str, polars.DataFrame]) -> list[str]:
+def _format_rna_row(sections: dict[str, polars.DataFrame]) -> dict[str, str]:
     sample_id = _value(sections.get("Analysis Details"), "RNA Sample ID")
 
-    return [
-        sample_id,
-        "NA",  # TMB (DNA only)
-        "NA",  # MSI (DNA only)
-        "NA",  # gene_amplifications (DNA only)
-        "NA",  # LOH (DNA only)
-        _format_splice_vars(sections),
-        _format_fusions(sections),
-        "NA",  # GIS (DNA only)
-        "NA",  # Tumor fraction (DNA only)
-        "NA",  # Ploidy (DNA only)
-        "NA",  # Large Rearrangements (DNA only)
-    ]
+    return {
+        "Sample_id": sample_id,
+        "TMB": "NA",
+        "MSI": "NA",
+        "Gene_amplifications_CNV": "NA",
+        "LOH": "NA",
+        "Splice_variants": _format_splice_vars(sections),
+        "Fusions": _format_fusions(sections),
+        "GIS": "NA",
+        "Tumor_fraction": "NA",
+        "Ploidy": "NA",
+        "Large_rearrangements": "NA",
+    }
 
 
 def _write_header(out_file, headers: list[str]) -> None:
@@ -157,7 +157,7 @@ def _write_header(out_file, headers: list[str]) -> None:
 
 def _parse_sample(
     sections: dict[str, polars.DataFrame], workflow_id: str
-) -> list[list[str]]:
+) -> list[dict[str, str]]:
     has_dna, has_rna = _detect_data_type(sections)
     rows = []
     if has_dna:

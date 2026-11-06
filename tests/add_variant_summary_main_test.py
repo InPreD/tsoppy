@@ -257,47 +257,63 @@ def test_detect_data_type(sections, want):
 # --- Row builders ------------------------------------------------------------
 
 
+def _expected_dragen_dna_row():
+    return {
+        "Sample_id": "IPD1111-D",
+        "TMB": "7.8 (10)",
+        "MSI": "4.13 (5/121)",
+        "Gene_amplifications_CNV": "EGFR (1.5, DUP, 5)|MET (2.0, DEL, 2)",
+        "LOH": "BRCA1 (1, 0)",
+        "Splice_variants": "NA",
+        "Fusions": "NA",
+        "GIS": "32",
+        "Tumor_fraction": "0.650",
+        "Ploidy": "3.92",
+        "Large_rearrangements": "BRCA1|BRCA2",
+    }
+
+
+def _expected_localapp_dna_row():
+    return {
+        "Sample_id": "IPD1111-D",
+        "TMB": "7.8 (10)",
+        "MSI": "4.13 (5/121)",
+        "Gene_amplifications_CNV": "MDM4 (1.741, <DUP>)",
+        "LOH": "NA",
+        "Splice_variants": "NA",
+        "Fusions": "NA",
+        "GIS": "NA",
+        "Tumor_fraction": "NA",
+        "Ploidy": "NA",
+        "Large_rearrangements": "NA",
+    }
+
+
+def _expected_rna_row():
+    return {
+        "Sample_id": "IPD1111-R",
+        "TMB": "NA",
+        "MSI": "NA",
+        "Gene_amplifications_CNV": "NA",
+        "LOH": "NA",
+        "Splice_variants": "EGFR[2-3/28] (chr7:55087058-chr7:55214298) 15/13089",
+        "Fusions": "USP13-PIK3CA (chr3:179463005-chr3:178947060) 18/0/429",
+        "GIS": "NA",
+        "Tumor_fraction": "NA",
+        "Ploidy": "NA",
+        "Large_rearrangements": "NA",
+    }
+
+
 @mark.parametrize(
-    "sections, workflow_type, want",
+    "sections, workflow_id, want",
     [
-        (
-            _dragen_sections(),
-            "dragen_2.6.2.4",
-            [
-                "IPD1111-D",
-                "7.8 (10)",
-                "4.13 (5/121)",
-                "EGFR (1.5, DUP, 5)|MET (2.0, DEL, 2)",
-                "BRCA1 (1, 0)",
-                "NA",  # splice_variants
-                "NA",  # fusions
-                "32",  # GIS
-                "0.650",  # Tumor fraction
-                "3.92",  # Ploidy
-                "BRCA1|BRCA2",  # Large rearrangements
-            ],
-        ),
-        (
-            _localapp_sections(),
-            "localapp_ruo-2.2.0.12",
-            [
-                "IPD1111-D",
-                "7.8 (10)",
-                "4.13 (5/121)",
-                "MDM4 (1.741, <DUP>)",
-                "NA",
-                "NA",
-                "NA",
-                "NA",
-                "NA",
-                "NA",
-                "NA",
-            ],
-        ),
+        (_dragen_sections(), "dragen_2.6.2.4", _expected_dragen_dna_row()),
+        (_localapp_sections(), "localapp_ruo-2.2.0.12", _expected_localapp_dna_row()),
     ],
 )
-def test_format_dna_row(sections, workflow_type, want):
-    assert _format_dna_row(sections, workflow_type) == want
+def test_format_dna_row(sections, workflow_id, want):
+    assert _format_dna_row(sections, workflow_id) == want
 
 
 def test_format_dna_row_unknown_workflow_id():
@@ -306,110 +322,53 @@ def test_format_dna_row_unknown_workflow_id():
 
 
 @mark.parametrize(
-    "sections, want",
+    "sections, workflow_id",
     [
-        (
-            _dragen_sections("NA", "IPD1111-R"),
-            [
-                "IPD1111-R",
-                "NA",
-                "NA",
-                "NA",
-                "NA",
-                "EGFR[2-3/28] (chr7:55087058-chr7:55214298) 15/13089",
-                "USP13-PIK3CA (chr3:179463005-chr3:178947060) 18/0/429",
-                "NA",
-                "NA",
-                "NA",
-                "NA",
-            ],
-        ),
+        (_dragen_sections(), "dragen_2.6.2.4"),
+        (_localapp_sections(), "localapp_ruo-2.2.0.12"),
     ],
+)
+def test_dna_row_keys_match_header(sections, workflow_id):
+    assert set(_format_dna_row(sections, workflow_id)) == set(HEADER)
+
+
+@mark.parametrize(
+    "sections, want",
+    [(_dragen_sections("NA", "IPD1111-R"), _expected_rna_row())],
 )
 def test_format_rna_row(sections, want):
     assert _format_rna_row(sections) == want
+
+
+def test_rna_row_keys_match_header():
+    assert set(_format_rna_row(_dragen_sections("NA", "IPD1111-R"))) == set(HEADER)
 
 
 # --- Integration: one parsed file -> rows -----------------------------------
 
 
 @mark.parametrize(
-    "sections, workflow_type, want",
+    "sections, workflow_id, want",
     [
         (
             _dragen_sections("IPD1111-D", "NA"),
             "dragen_2.6.2.4",
-            [
-                [
-                    "IPD1111-D",
-                    "7.8 (10)",
-                    "4.13 (5/121)",
-                    "EGFR (1.5, DUP, 5)|MET (2.0, DEL, 2)",
-                    "BRCA1 (1, 0)",
-                    "NA",
-                    "NA",
-                    "32",
-                    "0.650",
-                    "3.92",
-                    "BRCA1|BRCA2",
-                ],
-            ],
+            [_expected_dragen_dna_row()],
         ),
         (
             _dragen_sections("IPD1111-D", "IPD1111-R"),
             "dragen_2.6.2.4",
-            [
-                [
-                    "IPD1111-D",
-                    "7.8 (10)",
-                    "4.13 (5/121)",
-                    "EGFR (1.5, DUP, 5)|MET (2.0, DEL, 2)",
-                    "BRCA1 (1, 0)",
-                    "NA",
-                    "NA",
-                    "32",
-                    "0.650",
-                    "3.92",
-                    "BRCA1|BRCA2",
-                ],
-                [
-                    "IPD1111-R",
-                    "NA",
-                    "NA",
-                    "NA",
-                    "NA",
-                    "EGFR[2-3/28] (chr7:55087058-chr7:55214298) 15/13089",
-                    "USP13-PIK3CA (chr3:179463005-chr3:178947060) 18/0/429",
-                    "NA",
-                    "NA",
-                    "NA",
-                    "NA",
-                ],
-            ],
+            [_expected_dragen_dna_row(), _expected_rna_row()],
         ),
         (
             _localapp_sections("IPD1111-D", "NA"),
             "localapp_ruo-2.2.0.12",
-            [
-                [
-                    "IPD1111-D",
-                    "7.8 (10)",
-                    "4.13 (5/121)",
-                    "MDM4 (1.741, <DUP>)",
-                    "NA",
-                    "NA",
-                    "NA",
-                    "NA",
-                    "NA",
-                    "NA",
-                    "NA",
-                ],
-            ],
+            [_expected_localapp_dna_row()],
         ),
     ],
 )
-def test_parse_sample(sections, workflow_type, want):
-    assert _parse_sample(sections, workflow_type) == want
+def test_parse_sample(sections, workflow_id, want):
+    assert _parse_sample(sections, workflow_id) == want
 
 
 def test_write_header(tmp_path):
