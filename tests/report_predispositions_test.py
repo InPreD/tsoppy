@@ -4,18 +4,12 @@ Report predispositions subpackage unit test.
 
 from contextlib import nullcontext
 from pathlib import Path
-from polars.exceptions import (ColumnNotFoundError, NoDataError)
+from polars.exceptions import ColumnNotFoundError
 from polars.testing import assert_frame_equal
 from os import path
 
-import importlib.metadata
 import polars as pl
 import pytest
-
-from tsoppy.general.classes import (
-    SmallVariantGenomeVcf,
-    WorkflowOutput,
-)
 
 from tsoppy.report_predispositions.main import (
     check_columns_presence_in_file,
@@ -195,9 +189,8 @@ def test_parse_metadata_to_get_source(tmp_path, inputs, exception, want):
     directory.rmdir()
 
 
-# Define paths to test data - cannot be absolute due to different paths locally and in CI
+# Define path to test data - cannot be absolute due to different paths locally and in CI
 test_data_dir = "tests/test_data/report_predispositions"
-test_data_dir_general_classes = "tests/test_data/general_classes"
 
 
 @pytest.mark.parametrize(
@@ -319,30 +312,30 @@ def test_generate_predisposition_column_format_description(inputs, want):
             (
                 "sample1",
                 "config.yaml",
-                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
-                path.join(test_data_dir_general_classes, "dragen/standard"),
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
             ),
             nullcontext(),
-            Path(path.join(test_data_dir_general_classes, "dragen/standard", "Logs_Intermediates",
+            Path(path.join(test_data_dir, "dragen/standard", "Logs_Intermediates",
                            "DnaDragenCaller", "sample1", "sample1.hard-filtered.gvcf.gz")),
         ),
         (
             (
                 "sample1",
                 "config.yaml",
-                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
-                path.join(test_data_dir_general_classes, "localapp/standard"),
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
             ),
             nullcontext(),
-            Path(path.join(test_data_dir_general_classes, "localapp/standard", "Logs_Intermediates",
+            Path(path.join(test_data_dir, "localapp/standard", "Logs_Intermediates",
                            "VariantMatching", "sample1", "sample1_MergedSmallVariants.genome.vcf")),
         ),
         (
             (
                 "sample1",
                 "config.yaml",
-                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
-                path.join(test_data_dir_general_classes,
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir,
                           "dragen/non-existent"),
             ),
             pytest.raises(FileNotFoundError),
@@ -362,8 +355,8 @@ def test_get_small_variant_calls_file_path(inputs, exception, want):
         (
             (
                 "config.yaml",
-                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
-                path.join(test_data_dir_general_classes, "dragen/standard"),
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
             ),
             nullcontext(),
             "dragen_2.6.2.4",
@@ -371,8 +364,8 @@ def test_get_small_variant_calls_file_path(inputs, exception, want):
         (
             (
                 "config.yaml",
-                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
-                path.join(test_data_dir_general_classes, "localapp/standard"),
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
             ),
             nullcontext(),
             "localapp_ruo-2.2.0.12",
@@ -380,8 +373,8 @@ def test_get_small_variant_calls_file_path(inputs, exception, want):
         (
             (
                 "config.yaml",
-                path.join(test_data_dir_general_classes, "nomenclature.yaml"),
-                path.join(test_data_dir_general_classes,
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir,
                           "dragen/non-existent"),
             ),
             pytest.raises(FileNotFoundError),
@@ -395,7 +388,182 @@ def test_get_workflow_id_string(inputs, exception, want):
         assert got == want
 
 
-# def test_lookup_predisposition_variants()
+@pytest.mark.parametrize(
+    "inputs, want",
+    # inputs:
+    #   cancer_susceptibility_genes_dict,
+    #   sample_id,
+    #   config_yaml,
+    #   inpred_nomenclature,
+    #   root_path,
+    # want: pl.DataFrame
+    [
+        (
+            # no small variants overlapping the cances susceptibility genes
+            (
+                {
+                    "TP53": {
+                        "Actionability": "HA-CSG",
+                        "Age": "Age<30",
+                    },
+                    "BRCA1": {
+                        "Actionability": "MA-CSG",
+                        "Age": "Allages",
+                    },
+                },
+                "sample2",
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+            ),
+            pl.DataFrame(
+                {
+                    "variant_ID": [],
+                    "variant_type": [],
+                    "Illumina_variant_class": [],
+                    "overlapping_genes": [],
+                    "AD": [],
+                    "DP": [],
+                    "AF": [],
+                    "gene_predispositions": [],
+                }
+            )
+        ),
+        (
+            # one cancer susceptibility gene overlapping a small variant
+            (
+                {
+                    "TP53": {
+                        "Actionability": "HA-CSG",
+                        "Age": "Age<30",
+                    },
+                    "BRCA1": {
+                        "Actionability": "MA-CSG",
+                        "Age": "Allages",
+                    },
+                },
+                "sample3",
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+            ),
+            pl.DataFrame(
+                {
+                    "variant_ID": ["chr1:2000000:A>G"],
+                    "variant_type": ["SNV"],
+                    "Illumina_variant_class": ["Germline_DB"],
+                    "overlapping_genes":
+                    [
+                        ["TP53"]
+                    ],
+                    "AD":
+                    [
+                        [419, 19, 0]
+                    ],
+                    "DP": [438],
+                    "AF":
+                    [
+                        [0.0434, 0]
+                    ],
+                    "gene_predispositions":
+                    [
+                        ["TP53_HA-CSG_Age<30"]
+                    ],
+                }
+            )
+        ),
+        (
+            # two cancer susceptibility genes overlapping a small variant
+            (
+                {
+                    "TP53": {
+                        "Actionability": "HA-CSG",
+                        "Age": "Age<30",
+                    },
+                    "BRCA1": {
+                        "Actionability": "MA-CSG",
+                        "Age": "Allages",
+                    },
+                },
+                "sample4",
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+            ),
+            pl.DataFrame(
+                {
+                    "variant_ID": ["chr1:2000000:A>G"],
+                    "variant_type": ["SNV"],
+                    "Illumina_variant_class": ["Germline_DB"],
+                    "overlapping_genes":
+                    [
+                        ["BRCA1", "TP53"]
+                    ],
+                    "AD":
+                    [
+                        [419, 19, 0]
+                    ],
+                    "DP": [438],
+                    "AF":
+                    [
+                        [0.0434, 0]
+                    ],
+                    "gene_predispositions":
+                    [
+                        ["BRCA1_MA-CSG_Allages", "TP53_HA-CSG_Age<30"]
+                    ],
+                }
+            )
+        ),
+        (
+            # two cancer susceptibility genes overlapping a small variant and one other gene overlapping the variant too
+            (
+                {
+                    "TP53": {
+                        "Actionability": "HA-CSG",
+                        "Age": "Age<30",
+                    },
+                    "BRCA1": {
+                        "Actionability": "MA-CSG",
+                        "Age": "Allages",
+                    },
+                },
+                "sample5",
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+            ),
+            pl.DataFrame(
+                {
+                    "variant_ID": ["chr1:2000000:A>G"],
+                    "variant_type": ["SNV"],
+                    "Illumina_variant_class": ["Germline_DB"],
+                    "overlapping_genes":
+                    [
+                        ["BRCA1", "TP53", "XXX"]
+                    ],
+                    "AD":
+                    [
+                        [419, 19, 0]
+                    ],
+                    "DP": [438],
+                    "AF":
+                    [
+                        [0.0434, 0]
+                    ],
+                    "gene_predispositions":
+                    [
+                        ["BRCA1_MA-CSG_Allages", "TP53_HA-CSG_Age<30"]
+                    ],
+                }
+            )
+        ),
+    ]
+)
+def test_lookup_predisposition_variants(inputs, want):
+    got = lookup_predisposition_variants(*inputs)
+    assert_frame_equal(left=got, right=want, check_dtypes=False)
+
 
 @pytest.mark.parametrize(
     "inputs, want",
@@ -802,7 +970,7 @@ def test_format_predisposition_variants_before_printing(inputs, want):
 )
 def test_print_output_file(tmp_path, inputs, want):
     # create temporary directory
-    directory = tmp_path / "test_reportPredispositions_main"
+    directory = tmp_path / "test_reportPredispositions_main" / "test_print_output"
     directory.mkdir(parents=True, exist_ok=True)
     out_path = directory / inputs[10]
     print_output_file(*inputs[:10], out_path)
@@ -813,4 +981,47 @@ def test_print_output_file(tmp_path, inputs, want):
     directory.rmdir()
 
 
-# def test_generate_report()
+@pytest.mark.parametrize(
+    "inputs, want",
+    # inputs:
+    #   output_file,
+    #   tsoppy_version,
+    #   sample_id,
+    #   config_yaml,
+    #   inpred_nomenclature,
+    #   root_path,
+    #   tumor_purity,
+    #   cancer_susceptibility_genes,
+    #   csg_column_list,
+    #   gene_name_column
+    # want: filename
+    [
+        (
+            (
+                "output.tsv",
+                "tsoppy version 0.0.1",
+                "sample5",
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                0.7,
+                path.join(
+                    test_data_dir, "cancer_susceptibility_genes.csv"),
+                ["Gene", "Actionability", "Age"],
+                "Gene"
+            ),
+            Path(path.join(test_data_dir, "generate_report_expected_output.tsv"))
+        )
+    ]
+)
+def test_generate_report(tmp_path, inputs, want):
+    # create temporary directory
+    directory = tmp_path / "test_reportPredispositions_main" / "test_generate_report"
+    directory.mkdir(parents=True, exist_ok=True)
+    out_path = directory / inputs[0]
+    generate_report(out_path, *inputs[1:])
+    assert out_path.read_text() == want.read_text()
+    # remove the temporary file
+    out_path.unlink()
+    # remove the temp directory
+    directory.rmdir()

@@ -2,3 +2,6 @@
 Sample_ID,Index_ID,Sample_Type,Pair_ID,Sample_Feature,Sample_Description
 sample1,IDX0001,DNA,sample1,HRD,
 sample2,IDX0002,DNA,sample2,HRD,
+sample3,IDX0003,DNA,sample3,HRD,
+sample4,IDX0004,DNA,sample4,HRD,
+sample5,IDX0005,DNA,sample5,HRD,
