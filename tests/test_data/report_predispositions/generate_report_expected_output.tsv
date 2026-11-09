@@ -1,0 +1,17 @@
+# [sample5] Pipeline: tsoppy version 0.0.1
+# [sample5] Workflow id: dragen_2.6.2.4
+# [sample5] Cancer susceptibility genes are defined in:
+# [sample5]    file: tests/test_data/report_predispositions/cancer_susceptibility_genes.csv
+# [sample5]    source: https://doi.org/10.1016/j.annonc.2022.12.003
+# [sample5] Small variant calls are defined in: tests/test_data/report_predispositions/dragen/standard/Logs_Intermediates/DnaDragenCaller/sample5/sample5.hard-filtered.gvcf.gz
+# [sample5] Cumulative length of all the targeted coding regions (in millions of bases, seq. depth >= 50): 1.11
+# [sample5] Tumor purity (as a fraction between 0 and 1): 0.70
+# [sample5]    The tumor purity is provided as an input parameter to the pipeline.
+# [sample5] Column format of gene_predispositions:
+# [sample5]    a list of character strings of the form:
+# [sample5]    [Gene]_[Actionability]_[Age]
+# [sample5]    where:
+# [sample5]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]
+# [sample5]        Age: [ Age<30 | Allages ]
+sample_id	overlapping_genes	genomic_location	DNA_change	depth_tumor_DNA	AF_tumor_DNA	gene_predispositions
+sample5	BRCA1, TP53, XXX	chr1:2000000	A>G	438	0.0434	BRCA1_MA-CSG_Allages, TP53_HA-CSG_Age<30

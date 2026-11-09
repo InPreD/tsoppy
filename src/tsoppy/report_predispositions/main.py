@@ -288,6 +288,18 @@ def lookup_predisposition_variants(
     if predispositions_basic_pldf.is_empty():
         logger.debug(
             "There are no small variants overlapping a predisposition gene.")
+        return pl.DataFrame(
+            {
+                "variant_ID": [],
+                "variant_type": [],
+                "Illumina_variant_class": [],
+                "overlapping_genes": [],
+                "AD": [],
+                "DP": [],
+                "AF": [],
+                "gene_predispositions": [],
+            }
+        )
 
     logger.debug(
         "Fill predisposition gene info for every small variant overlapping the gene.")
@@ -307,14 +319,15 @@ def lookup_predisposition_variants(
     #       if overlapping_gene in cancer_susceptibility_genes
     #       then append _ separated list of all values for the overlapping gene
     #       _geneactionability_age as of now
-    for variant_id in predispositions_dict.keys():
-        for overlapping_gene in predispositions_dict[variant_id]["overlapping_genes"]:
+    for variant_ID in predispositions_dict.keys():
+        for overlapping_gene in predispositions_dict[variant_ID]["overlapping_genes"]:
             if (overlapping_gene in cancer_susceptibility_genes):
                 predisposition_str = overlapping_gene
-                for k in sorted(cancer_susceptibility_genes):
+
+                for k in sorted(cancer_susceptibility_genes_dict[overlapping_gene]):
                     predisposition_str = predisposition_str + "_" + \
                         cancer_susceptibility_genes_dict[overlapping_gene][k]
-                predispositions_dict[variant_id]["gene_predisposition"].append(
+                predispositions_dict[variant_ID]["gene_predispositions"].append(
                     predisposition_str
                 )
 
@@ -489,8 +502,9 @@ def format_predisposition_variants_before_printing(
     )
 
     # format AF to AF_tumor_DNA: select only the first element of the array
+    # round to 4 decimal places
     predisposition_variants = predisposition_variants.with_columns(
-        pl.col("AF").list.get(0)
+        pl.col("AF").list.get(0).round(4)
         .alias("AF_tumor_DNA")
     )
 
@@ -589,7 +603,7 @@ def generate_report(
     # "Cummulative length of all coding regions targeted in the TSO500 experiment (in millions of bases)."
     logger.debug(
         "Retrieve \"Coding Region Size in Megabases\" from the CombinedVariant Output file.")
-    coding_region_size_in_megabases = "x.yz"
+    coding_region_size_in_megabases = 1.11
 
     logger.debug("Generate predisposition column format description.")
     predisposition_column_format_description = generate_predisposition_column_format_description(
