@@ -273,19 +273,19 @@ def lookup_predisposition_variants(
         config_yaml, inpred_nomenclature, root_path)
     small_variants = SmallVariantGenomeVcf(
         config_yaml, inpred_nomenclature, root_path, sample_id)
-    merged_variant_info_pldf = small_variants.merge(workflow_output)
+    merged_variant_info_df = small_variants.merge(workflow_output)
 
     cancer_susceptibility_genes = list(cancer_susceptibility_genes_dict.keys())
 
     logger.debug(
         "Select only those small variants which overlap with at least one predispositon gene.")
     # select only variants overlapping at least one predisposition gene
-    predispositions_basic_pldf = merged_variant_info_pldf.filter(
+    predispositions_basic_df = merged_variant_info_df.filter(
         pl.col("overlapping_genes").list.set_intersection(
             cancer_susceptibility_genes).list.len() > 0
     )
 
-    if predispositions_basic_pldf.is_empty():
+    if predispositions_basic_df.is_empty():
         logger.debug(
             "There are no small variants overlapping a predisposition gene.")
         return pl.DataFrame(
@@ -305,13 +305,13 @@ def lookup_predisposition_variants(
         "Fill predisposition gene info for every small variant overlapping the gene.")
 
     # add gene_predisposition column (containing empty list) into the data frame
-    predispositions_pldf = predispositions_basic_pldf.with_columns(
+    predispositions_df = predispositions_basic_df.with_columns(
         gene_predispositions=pl.lit([]).cast(pl.List(pl.String))
     )
 
     # transform the data frame into a a dictionary
     predispositions_dict = {
-        row.pop("variant_ID"): row for row in predispositions_pldf.to_dicts()
+        row.pop("variant_ID"): row for row in predispositions_df.to_dicts()
     }
 
     # iterate through all variant_ids
@@ -341,9 +341,9 @@ def lookup_predisposition_variants(
     ]
 
     # transform to dataframe
-    predispositions_final_pldf = pl.DataFrame(rows)
+    predispositions_final_df = pl.DataFrame(rows)
 
-    return predispositions_final_pldf
+    return predispositions_final_df
 
 
 def print_metadata_to_output_file(
