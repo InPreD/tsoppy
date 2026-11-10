@@ -115,7 +115,7 @@ def check_columns_presence_in_file(column_list: list[str], file_path: Path):
 
     if missing_columns:
         logger.error(
-            f"Failed to read CSV because a required column was missing, missing columns {missing_columns}.")
+            f"Failed to read the file {file_path} because a required column is missing, missing columns: {missing_columns}.")
         raise ColumnNotFoundError()
     else:
         return
@@ -249,9 +249,6 @@ def get_workflow_id_string(
         config_yaml, inpred_nomenclature, root_path)
 
     return workflow_output.workflow_id
-
-
-# TODO: finalise testing from here on
 
 
 def lookup_predisposition_variants(
