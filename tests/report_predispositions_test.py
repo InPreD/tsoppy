@@ -28,6 +28,9 @@ from tsoppy.report_predispositions.main import (
     validate_uniqueness,
 )
 
+# Define path to test data - cannot be absolute due to different paths locally and in CI
+test_data_dir = "tests/test_data/report_predispositions"
+
 
 @pytest.mark.parametrize(
     "inputs, exception, want",
@@ -187,10 +190,6 @@ def test_parse_metadata_to_get_source(tmp_path, inputs, exception, want):
 
     # remove the temp directory
     directory.rmdir()
-
-
-# Define path to test data - cannot be absolute due to different paths locally and in CI
-test_data_dir = "tests/test_data/report_predispositions"
 
 
 @pytest.mark.parametrize(
