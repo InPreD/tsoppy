@@ -1,5 +1,5 @@
 """
-This module filters an input list of small variants and outputs a table containing only variants located in cancer-predisposing genes.
+This module filters an input list of small variants and outputs a table containing only the variants located in cancer-predisposing genes.
 """
 
 import logging
