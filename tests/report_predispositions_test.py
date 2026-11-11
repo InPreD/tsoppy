@@ -26,6 +26,7 @@ from tsoppy.report_predispositions.main import (
     print_output_file,
     validate_tumor_purity_range,
     validate_uniqueness,
+    jinja
 )
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
@@ -1024,3 +1025,73 @@ def test_generate_report(tmp_path, inputs, want):
     out_path.unlink()
     # remove the temp directory
     directory.rmdir()
+
+
+@pytest.mark.parametrize(
+    "inputs, want",
+    [
+        (
+            (
+                "sample_id",
+                "tsoppy version 0.0.1",
+                "dragen_2.6.2.4",
+                Path("cancer_susceptibility_genes.tsv"),
+                "doi_url",
+                Path("small_variant_calls.vcf"),
+                1.283,
+                0.70,
+                {
+                    "TP53": {
+                        "Actionability": "HA-CSG",
+                        "Age": "Age<30",
+                    },
+                    "BRCA1": {
+                        "Actionability": "MA-CSG",
+                        "Age": "Allages",
+                    },
+                    "BAP1": {
+                        "Actionability": "SA-CSG",
+                        "Age": "Allages",
+                    }
+                },
+                "Gene",
+                pl.DataFrame(
+                    {
+                        "sample_id":
+                        [
+                            "sample_id"
+                        ],
+                        "overlapping_genes":
+                        [
+                            "TP53, BRCA1, XXX"
+                        ],
+                        "genomic_location":
+                        [
+                            "chr1:1000000"
+                        ],
+                        "DNA_change":
+                        [
+                            "A>G"
+                        ],
+                        "depth_tumor_DNA":
+                        [
+                            190
+                        ],
+                        "AF_tumor_DNA":
+                        [
+                            0.0054
+                        ],
+                        "gene_predispositions":
+                        [
+                            "TP53_HA-CSG_Age<30, BRCA1_MA-CSG_Allages"
+                        ],
+                    }
+                ),
+            ),
+            Path(path.join(test_data_dir,
+                 "jinja_expected_output.tsv")),
+        ),
+    ]
+)
+def test_jinja(inputs, want):
+    assert jinja(*inputs) == want.read_text()

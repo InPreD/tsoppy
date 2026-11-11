@@ -9,6 +9,8 @@ dependencies = [
     "polars>=1.39.3",
     "pyyaml>=6.0.3",
     "typer>=0.24.1",
+    "mako>=1.4.3",
+    "jinja2>=3.1.6",
 ]
 dynamic = ["version"]
 name = "tsoppy"

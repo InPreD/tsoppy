@@ -7,6 +7,8 @@ import re
 from collections import defaultdict
 from pathlib import Path
 from polars.exceptions import (ColumnNotFoundError, NoDataError)
+from jinja2 import Environment, FileSystemLoader
+from mako.template import Template
 
 from string import Template
 
@@ -637,3 +639,66 @@ def generate_report(
         predisposition_column_format_description,
         output_file,
     )
+
+
+def jinja(
+        sample_id: str,
+        tsoppy_version: str,
+        workflow_id: str,
+        cancer_susceptibility_genes: Path,
+        source: str,
+        small_variant_calls: Path,
+        coding_region_size_in_megabases: float,
+        tumor_purity: float,
+        cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
+        gene_name_column: str,
+        predisposition_variants_str: pl.DataFrame,
+) -> str:
+    # loading the environment
+    env = Environment(
+        loader=FileSystemLoader(
+            '/workspaces/tsoppy/src/tsoppy/report_predispositions/templates'),
+        trim_blocks=True,
+        lstrip_blocks=True
+    )
+
+    # loading the template
+    template = env.get_template('predispositions.jinja')
+
+    # generate list of columns present in the cancer susceptibility genes file
+    column_list = sorted(
+        {inner_key for inner_dict in cancer_susceptibility_genes_dict.values() for inner_key in inner_dict})
+
+    # for each column of the cancer susceptibility genes data (except for the gene names):
+    #  collect possible values (unique)
+
+    # initialize a dictionary where every new key automatically starts with an empty set()
+    unique_values_per_key = defaultdict(set)
+
+    # iterate through all inner dictionaries
+    for inner_dict in cancer_susceptibility_genes_dict.values():
+        for inner_key, inner_value in inner_dict.items():
+            # add the value to the set corresponding to this specific inner key
+            unique_values_per_key[inner_key].add(inner_value)
+
+    # convert back to a standard dict
+    all_keys_values = {k: sorted(list(v))
+                       for k, v in unique_values_per_key.items()}
+
+    # rendering the template and storing the resultant text in variable output
+    output = template.render(
+        sample_id=sample_id,
+        tsoppy_version=tsoppy_version,
+        workflow_id=workflow_id,
+        cancer_susceptibility_genes=cancer_susceptibility_genes,
+        source=source,
+        small_variant_calls=small_variant_calls,
+        coding_region_size_in_megabases=coding_region_size_in_megabases,
+        tumor_purity=tumor_purity,
+        gene_name=gene_name_column,
+        column_list=column_list,
+        all_columns_values=all_keys_values,
+        predispositions=predisposition_variants_str,
+    )
+
+    return output

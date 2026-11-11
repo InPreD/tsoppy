@@ -1,0 +1,24 @@
+# [{{sample_id}}] Pipeline: {{tsoppy_version}}
+# [{{sample_id}}] Workflow id: {{workflow_id}}
+# [{{sample_id}}] Cancer susceptibility genes are defined in:
+# [{{sample_id}}]    file: {{cancer_susceptibility_genes}}
+# [{{sample_id}}]    source: {{source}}
+# [{{sample_id}}] Small variant calls are defined in: {{small_variant_calls}}
+# [{{sample_id}}] Cumulative length of all the targeted coding regions (in millions of bases, seq. depth >= 50): {{coding_region_size_in_megabases | round(2)}}
+# [{{sample_id}}] Tumor purity (as a fraction between 0 and 1): {{tumor_purity | round(2)}}
+# [{{sample_id}}]    The tumor purity is provided as an input parameter to the pipeline.
+# [{{sample_id}}] Column format of gene_predispositions:
+# [{{sample_id}}]    a list of character strings of the form:
+{% set ns = namespace(formatted_string= "[" ~ gene_name ~ "]" ) %}
+{% for column in column_list %}
+    {% set ns.formatted_string = ns.formatted_string ~ "_[" ~ column ~ "]" %}
+{% endfor %}
+# [{{sample_id}}]    {{ns.formatted_string}}
+# [{{sample_id}}]    where:
+{% for column, values in all_columns_values | dictsort %}
+# [{{sample_id}}]        {{column}}: [ {{values | join(' | ')}} ]
+{% endfor %}
+{{ predispositions.columns | join('\t') }}
+{% for row in predispositions.iter_rows() -%}
+{{ row | join('\t') }}
+{% endfor -%}
