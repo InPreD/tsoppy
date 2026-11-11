@@ -4,7 +4,7 @@
 
 Select a templating engine to dynamically generate output texts, consider readability of the template code for others as well as how easy it is to modify the code.   
 
-Considering [jinga2](https://jinja.palletsprojects.com/en/stable/) and [mako](https://www.makotemplates.org/).
+Considering [jinja2](https://jinja.palletsprojects.com/en/stable/) and [mako](https://www.makotemplates.org/).
 
 <!--Include all relevant information necessary for making a decision here.-->
 
