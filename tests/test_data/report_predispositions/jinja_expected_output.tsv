@@ -5,7 +5,7 @@
 # [sample_id]    source: doi_url
 # [sample_id] Small variant calls are defined in: small_variant_calls.vcf
 # [sample_id] Cumulative length of all the targeted coding regions (in millions of bases, seq. depth >= 50): 1.28
-# [sample_id] Tumor purity (as a fraction between 0 and 1): 0.7
+# [sample_id] Tumor purity (as a fraction between 0 and 1): 0.70
 # [sample_id]    The tumor purity is provided as an input parameter to the pipeline.
 # [sample_id] Column format of gene_predispositions:
 # [sample_id]    a list of character strings of the form:
