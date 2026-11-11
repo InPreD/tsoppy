@@ -4,8 +4,8 @@
 # [{{sample_id}}]    file: {{cancer_susceptibility_genes}}
 # [{{sample_id}}]    source: {{source}}
 # [{{sample_id}}] Small variant calls are defined in: {{small_variant_calls}}
-# [{{sample_id}}] Cumulative length of all the targeted coding regions (in millions of bases, seq. depth >= 50): {{coding_region_size_in_megabases | round(2)}}
-# [{{sample_id}}] Tumor purity (as a fraction between 0 and 1): {{tumor_purity | round(2)}}
+# [{{sample_id}}] Cumulative length of all the targeted coding regions (in millions of bases, seq. depth >= 50): {{ "%.2f" | format(coding_region_size_in_megabases) }}
+# [{{sample_id}}] Tumor purity (as a fraction between 0 and 1): {{ "%.2f" | format(tumor_purity) }}
 # [{{sample_id}}]    The tumor purity is provided as an input parameter to the pipeline.
 # [{{sample_id}}] Column format of gene_predispositions:
 # [{{sample_id}}]    a list of character strings of the form:
