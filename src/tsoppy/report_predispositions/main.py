@@ -8,9 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 from polars.exceptions import (ColumnNotFoundError, NoDataError)
 from jinja2 import Environment, FileSystemLoader
-from mako.template import Template
-
-from string import Template
+from mako.template import Template as makoTemplate
 
 import polars as pl
 import polars.selectors as cs
@@ -20,6 +18,8 @@ from tsoppy.general.classes import (
     SmallVariantGenomeVcf,
     WorkflowOutput
 )
+
+from string import Template
 
 logger = logging.getLogger(__name__)
 
@@ -519,11 +519,21 @@ def format_predisposition_variants_before_printing(
     ]
 
     # make the dataframe printable to a csv file
+
     # join values of complex columns into comma separated strings
-    # columns affected: overlapping_genes, AD, AF (dragen only), gene_predispositions
+    # columns affected: overlapping_genes, AD, AF, gene_predispositions
+    # format ints to strings
+    # columns affected: depth_tumor_DNA
+    # format floats to 4decimal precision strings
+    # columns affected: AF_tumor_DNA
     predisposition_variants_str = predisposition_variants.with_columns(
         cs.by_dtype(pl.List).list.eval(
-            pl.element().cast(pl.String)).list.join(", ")
+            pl.element().cast(pl.String)).list.join(", "),
+        cs.integer().cast(pl.String),
+        cs.float().map_elements(
+            lambda x: f"{x:.4f}" if x is not None else None,
+            return_dtype=pl.String
+        )
     ).select(col_order)
 
     return predisposition_variants_str
@@ -669,6 +679,9 @@ def jinja(
     column_list = sorted(
         {inner_key for inner_dict in cancer_susceptibility_genes_dict.values() for inner_key in inner_dict})
 
+    # insert gene_name_column to the beginning of the list
+    column_list.insert(0, gene_name_column)
+
     # for each column of the cancer susceptibility genes data (except for the gene names):
     #  collect possible values (unique)
 
@@ -695,7 +708,62 @@ def jinja(
         small_variant_calls=small_variant_calls,
         coding_region_size_in_megabases=coding_region_size_in_megabases,
         tumor_purity=tumor_purity,
-        gene_name=gene_name_column,
+        column_list=column_list,
+        all_columns_values=all_keys_values,
+        predispositions=predisposition_variants_str,
+    )
+
+    return output
+
+
+def mako(
+        sample_id: str,
+        tsoppy_version: str,
+        workflow_id: str,
+        cancer_susceptibility_genes: Path,
+        source: str,
+        small_variant_calls: Path,
+        coding_region_size_in_megabases: float,
+        tumor_purity: float,
+        cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
+        gene_name_column: str,
+        predisposition_variants_str: pl.DataFrame,
+) -> str:
+    xx_template = makoTemplate(
+        filename='/workspaces/tsoppy/src/tsoppy/report_predispositions/templates/predispositions.mako')
+
+    # generate list of columns present in the cancer susceptibility genes file
+    column_list = sorted(
+        {inner_key for inner_dict in cancer_susceptibility_genes_dict.values() for inner_key in inner_dict})
+
+    # insert gene_name_column to the beginning of the list
+    column_list.insert(0, gene_name_column)
+
+    # for each column of the cancer susceptibility genes data (except for the gene names):
+    #  collect possible values (unique)
+
+    # initialize a dictionary where every new key automatically starts with an empty set()
+    unique_values_per_key = defaultdict(set)
+
+    # iterate through all inner dictionaries
+    for inner_dict in cancer_susceptibility_genes_dict.values():
+        for inner_key, inner_value in inner_dict.items():
+            # add the value to the set corresponding to this specific inner key
+            unique_values_per_key[inner_key].add(inner_value)
+
+    # convert back to a standard dict
+    all_keys_values = {k: sorted(list(v))
+                       for k, v in unique_values_per_key.items()}
+
+    output = xx_template.render(
+        sample_id=sample_id,
+        tsoppy_version=tsoppy_version,
+        workflow_id=workflow_id,
+        cancer_susceptibility_genes=cancer_susceptibility_genes,
+        source=source,
+        small_variant_calls=small_variant_calls,
+        coding_region_size_in_megabases=coding_region_size_in_megabases,
+        tumor_purity=tumor_purity,
         column_list=column_list,
         all_columns_values=all_keys_values,
         predispositions=predisposition_variants_str,
