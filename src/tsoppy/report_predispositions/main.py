@@ -6,8 +6,7 @@ import logging
 import re
 from collections import defaultdict
 from pathlib import Path
-from polars.exceptions import (ColumnNotFoundError, NoDataError)
-from jinja2 import Environment, FileSystemLoader
+from polars.exceptions import ColumnNotFoundError
 from mako.template import Template as makoTemplate
 
 import polars as pl
@@ -18,8 +17,6 @@ from tsoppy.general.classes import (
     SmallVariantGenomeVcf,
     WorkflowOutput
 )
-
-from string import Template
 
 logger = logging.getLogger(__name__)
 
@@ -165,63 +162,6 @@ def load_data_from_cancer_susceptibility_genes_file(
     return (cancer_susceptibility_genes_dict, source)
 
 
-def generate_predisposition_column_format_description(
-    cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
-    gene_name_column: str,
-    sample_id: str
-) -> str:
-    """
-    Generate text description of columns and values of the cancer susceptibility
-    input info. The description will be written in the metadata of the output file.
-    """
-
-    logger.debug(
-        "Generate text description of columns and values of the cancer susceptibility input info.")
-
-    # put together column names
-    string_format = "[" + gene_name_column + "]"
-
-    unique_inner_keys = sorted(
-        {inner_key for inner_dict in cancer_susceptibility_genes_dict.values() for inner_key in inner_dict})
-
-    for key in unique_inner_keys:
-        string_format = string_format + "_[" + key + "]"
-
-    description = "# [" + sample_id + \
-        "] Column format of gene_predispositions:\n"
-    description = description + \
-        "# [" + sample_id + "]    a list of character strings of the form:\n"
-    description = description + \
-        "# [" + sample_id + "]    " + string_format + "\n"
-    description = description + "# [" + sample_id + "]    where:\n"
-
-    # for each column of the input data (except for the gene names):
-    #  collect possible values,
-    #  generate string to print out to description
-
-    # initialize a dictionary where every new key automatically starts with an empty set()
-    unique_values_per_key = defaultdict(set)
-
-    # iterate through all inner dictionaries
-    for inner_dict in cancer_susceptibility_genes_dict.values():
-        for inner_key, inner_value in inner_dict.items():
-            # add the value to the set corresponding to this specific inner key
-            unique_values_per_key[inner_key].add(inner_value)
-
-    # convert back to a standard dict
-    all_keys_values = {k: sorted(list(v))
-                       for k, v in unique_values_per_key.items()}
-
-    # add the info to the description string
-    for key in sorted(all_keys_values.keys()):
-        description = description + \
-            "# [" + sample_id + "]        " + key + ": "
-        description = description + \
-            "[ " + " | ".join(all_keys_values[key]) + " ]" + "\n"
-
-    return description
-
-
 def get_small_variant_calls_file_path(
     sample_id: str,
     config_yaml: str | Path,
@@ -345,110 +285,6 @@ def lookup_predisposition_variants(
     return predispositions_final_df
 
 
-def print_metadata_to_output_file(
-    sample_id: str,
-    tsoppy_version: str,
-    workflow_id: str,
-    source: str,
-    cancer_susceptibility_genes: Path,
-    small_variant_calls: Path,
-    coding_region_size_in_megabases: float,
-    tumor_purity: float,
-    predisposition_column_format_description: str,
-    output_file: Path,
-):
-    """
-    Print metadata to the output file.
-    """
-
-    header_lines_tsoppy = Template(
-        """# [$sample_id] Pipeline: $tsoppy_version""")
-
-    header_lines_workflow = Template(
-        """# [$sample_id] Workflow id: $workflow_id""")
-
-    header_lines_cancer_susceptibility_data_source = Template(
-        """# [$sample_id] Cancer susceptibility genes are defined in:
-# [$sample_id]    file: $cancer_susceptibility_genes
-# [$sample_id]    source: $source
-"""
-    )
-
-    header_lines_small_variant_info_data_source = Template(
-        """# [$sample_id] Small variant calls are defined in: $small_variant_calls
-"""
-    )
-
-    header_lines_coding_region_size_in_megabases = Template(
-        """# [$sample_id] Cumulative length of all the targeted coding regions (in millions of bases, seq. depth >= 50): $coding_region_size_in_megabases
-"""
-    )
-
-    header_lines_tumor_purity = Template(
-        """# [$sample_id] Tumor purity (as a fraction between 0 and 1): $tumor_purity
-# [$sample_id]    The tumor purity is provided as an input parameter to the pipeline.
-"""
-    )
-
-    logger.debug(f"Printing metadata info to the output file {output_file}.")
-    # open output file for writing
-    with open(output_file, "w") as output:
-        # print metadata comments to the output file
-
-        # print info about tsoppy and workflow versions
-        tsoppy = {"sample_id": sample_id, "tsoppy_version": tsoppy_version}
-        output.write(header_lines_tsoppy.safe_substitute(tsoppy))
-        output.write("\n")
-
-        workflow = {"sample_id": sample_id, "workflow_id": workflow_id}
-        output.write(header_lines_workflow.safe_substitute(workflow))
-        output.write("\n")
-
-        # print info about where the susceptibility gene list comes from
-        sus_genes_data_source = {
-            "sample_id": sample_id,
-            "cancer_susceptibility_genes": cancer_susceptibility_genes,
-            "source": source,
-        }
-        output.write(
-            header_lines_cancer_susceptibility_data_source.safe_substitute(
-                sus_genes_data_source
-            )
-        )
-
-        # print info about where the small variant info comes from
-        small_variant_info = {
-            "sample_id": sample_id,
-            "small_variant_calls": small_variant_calls,
-        }
-        output.write(
-            header_lines_small_variant_info_data_source.safe_substitute(
-                small_variant_info
-            )
-        )
-
-        targeted_coding_regions = {
-            "sample_id": sample_id,
-            "coding_region_size_in_megabases": f"{coding_region_size_in_megabases:.2f}",
-        }
-        output.write(
-            header_lines_coding_region_size_in_megabases.safe_substitute(
-                targeted_coding_regions
-            )
-        )
-
-        tumor_purity_info = {
-            "sample_id": sample_id,
-            "tumor_purity": f"{tumor_purity:.2f}",
-        }
-        output.write(
-            header_lines_tumor_purity.safe_substitute(tumor_purity_info))
-
-        output.write(predisposition_column_format_description)
-
-    return
-
-
 def format_predisposition_variants_before_printing(
     sample_id: str,
     predisposition_variants: pl.DataFrame,
@@ -548,31 +384,65 @@ def print_output_file(
     small_variant_calls: Path,
     coding_region_size_in_megabases: float,
     tumor_purity: float,
+    cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
+    gene_name_column: str,
     predisposition_variants: pl.DataFrame,
-    predisposition_column_format_description: str,
     output_file: Path,
 ):
     """
-    Generate output file.
+    Generate output file from a mako template.
     """
 
-    logger.debug("Generate output file.")
-
-    print_metadata_to_output_file(sample_id, tsoppy_version, workflow_id, source, cancer_susceptibility_genes, small_variant_calls,
-                                  coding_region_size_in_megabases, tumor_purity, predisposition_column_format_description, output_file)
+    logger.debug("Generate output file from a mako template.")
 
     # TODO: add columns depth_normal_DNA, AF_normal_DNA, depth_tumor_RNA, AF_tumor_RNA, assign appropriate values
     # TODO: this should be happening in the lookup function maybe?
 
+    my_template = makoTemplate(
+        filename='/workspaces/tsoppy/src/tsoppy/report_predispositions/templates/predispositions.mako')
+
+    # generate list of columns present in the cancer susceptibility genes file
+    column_list = sorted(
+        {inner_key for inner_dict in cancer_susceptibility_genes_dict.values() for inner_key in inner_dict})
+
+    # insert gene_name_column to the beginning of the list
+    column_list.insert(0, gene_name_column)
+
+    # for each column of the cancer susceptibility genes data (except for the gene names):
+    #  collect possible values (unique)
+
+    # initialize a dictionary where every new key automatically starts with an empty set()
+    unique_values_per_key = defaultdict(set)
+
+    # iterate through all inner dictionaries
+    for inner_dict in cancer_susceptibility_genes_dict.values():
+        for inner_key, inner_value in inner_dict.items():
+            # add the value to the set corresponding to this specific inner key
+            unique_values_per_key[inner_key].add(inner_value)
+
+    # convert back to a standard dict
+    all_keys_values = {k: sorted(list(v))
+                       for k, v in unique_values_per_key.items()}
+
     predisposition_variants_str = format_predisposition_variants_before_printing(
         sample_id, predisposition_variants)
 
-    logger.debug(
-        f"Print variants overlapping with the susceptibility genes into the output file {output_file}.")
-    # print the dataframe into the output_file
-    with open(output_file, mode="ab") as output:
-        predisposition_variants_str.write_csv(
-            output, include_header=True, separator="\t")
+    rendered_content = my_template.render(
+        sample_id=sample_id,
+        tsoppy_version=tsoppy_version,
+        workflow_id=workflow_id,
+        cancer_susceptibility_genes=cancer_susceptibility_genes,
+        source=source,
+        small_variant_calls=small_variant_calls,
+        coding_region_size_in_megabases=coding_region_size_in_megabases,
+        tumor_purity=tumor_purity,
+        column_list=column_list,
+        all_columns_values=all_keys_values,
+        predispositions=predisposition_variants_str,
+    )
+
+    with open(output_file, mode="w", encoding="utf-8") as output:
+        output.write(rendered_content)
 
     return
 
@@ -614,10 +484,6 @@ def generate_report(
         "Retrieve \"Coding Region Size in Megabases\" from the CombinedVariant Output file.")
     coding_region_size_in_megabases = 1.11
 
-    logger.debug("Generate predisposition column format description.")
-    predisposition_column_format_description = generate_predisposition_column_format_description(
-        cancer_susceptibility_genes_dict, gene_name_column, sample_id)
-
     logger.debug("Find small variant calls file path.")
     small_variant_calls = get_small_variant_calls_file_path(
         sample_id, config_yaml, inpred_nomenclature, root_path)
@@ -645,128 +511,8 @@ def generate_report(
         small_variant_calls,
         coding_region_size_in_megabases,
         tumor_purity,
+        cancer_susceptibility_genes_dict,
+        gene_name_column,
         predisposition_variants,
-        predisposition_column_format_description,
         output_file,
     )
-
-
-def jinja(
-        sample_id: str,
-        tsoppy_version: str,
-        workflow_id: str,
-        cancer_susceptibility_genes: Path,
-        source: str,
-        small_variant_calls: Path,
-        coding_region_size_in_megabases: float,
-        tumor_purity: float,
-        cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
-        gene_name_column: str,
-        predisposition_variants_str: pl.DataFrame,
-) -> str:
-    # loading the environment
-    env = Environment(
-        loader=FileSystemLoader(
-            '/workspaces/tsoppy/src/tsoppy/report_predispositions/templates'),
-        trim_blocks=True,
-        lstrip_blocks=True
-    )
-
-    # loading the template
-    template = env.get_template('predispositions.jinja')
-
-    # generate list of columns present in the cancer susceptibility genes file
-    column_list = sorted(
-        {inner_key for inner_dict in cancer_susceptibility_genes_dict.values() for inner_key in inner_dict})
-
-    # insert gene_name_column to the beginning of the list
-    column_list.insert(0, gene_name_column)
-
-    # for each column of the cancer susceptibility genes data (except for the gene names):
-    #  collect possible values (unique)
-
-    # initialize a dictionary where every new key automatically starts with an empty set()
-    unique_values_per_key = defaultdict(set)
-
-    # iterate through all inner dictionaries
-    for inner_dict in cancer_susceptibility_genes_dict.values():
-        for inner_key, inner_value in inner_dict.items():
-            # add the value to the set corresponding to this specific inner key
-            unique_values_per_key[inner_key].add(inner_value)
-
-    # convert back to a standard dict
-    all_keys_values = {k: sorted(list(v))
-                       for k, v in unique_values_per_key.items()}
-
-    # rendering the template and storing the resultant text in variable output
-    output = template.render(
-        sample_id=sample_id,
-        tsoppy_version=tsoppy_version,
-        workflow_id=workflow_id,
-        cancer_susceptibility_genes=cancer_susceptibility_genes,
-        source=source,
-        small_variant_calls=small_variant_calls,
-        coding_region_size_in_megabases=coding_region_size_in_megabases,
-        tumor_purity=tumor_purity,
-        column_list=column_list,
-        all_columns_values=all_keys_values,
-        predispositions=predisposition_variants_str,
-    )
-
-    return output
-
-
-def mako(
-        sample_id: str,
-        tsoppy_version: str,
-        workflow_id: str,
-        cancer_susceptibility_genes: Path,
-        source: str,
-        small_variant_calls: Path,
-        coding_region_size_in_megabases: float,
-        tumor_purity: float,
-        cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
-        gene_name_column: str,
-        predisposition_variants_str: pl.DataFrame,
-) -> str:
-    xx_template = makoTemplate(
-        filename='/workspaces/tsoppy/src/tsoppy/report_predispositions/templates/predispositions.mako')
-
-    # generate list of columns present in the cancer susceptibility genes file
-    column_list = sorted(
-        {inner_key for inner_dict in cancer_susceptibility_genes_dict.values() for inner_key in inner_dict})
-
-    # insert gene_name_column to the beginning of the list
-    column_list.insert(0, gene_name_column)
-
-    # for each column of the cancer susceptibility genes data (except for the gene names):
-    #  collect possible values (unique)
-
-    # initialize a dictionary where every new key automatically starts with an empty set()
-    unique_values_per_key = defaultdict(set)
-
-    # iterate through all inner dictionaries
-    for inner_dict in cancer_susceptibility_genes_dict.values():
-        for inner_key, inner_value in inner_dict.items():
-            # add the value to the set corresponding to this specific inner key
-            unique_values_per_key[inner_key].add(inner_value)
-
-    # convert back to a standard dict
-    all_keys_values = {k: sorted(list(v))
-                       for k, v in unique_values_per_key.items()}
-
-    output = xx_template.render(
-        sample_id=sample_id,
-        tsoppy_version=tsoppy_version,
-        workflow_id=workflow_id,
-        cancer_susceptibility_genes=cancer_susceptibility_genes,
-        source=source,
-        small_variant_calls=small_variant_calls,
-        coding_region_size_in_megabases=coding_region_size_in_megabases,
-        tumor_purity=tumor_purity,
-        column_list=column_list,
-        all_columns_values=all_keys_values,
-        predispositions=predisposition_variants_str,
-    )
-
-    return output
