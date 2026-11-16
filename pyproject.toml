@@ -13,6 +13,7 @@ dependencies = [
     "pyarrow>=18.0.0",
     "pyyaml>=6.0.3",
     "typer>=0.24.1",
+    "mako>=1.4.3",
 ]
 dynamic = ["version"]
 name = "tsoppy"
