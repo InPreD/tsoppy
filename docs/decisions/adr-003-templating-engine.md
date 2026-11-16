@@ -8,7 +8,6 @@ The aim here is to separate text generating functionality from the rest of the c
 2) data structures generated with python code and containing output information can be easily rendered.
 
 Select a templating engine to dynamically generate output texts, consider readability of the template code for others as well as how easy it is to modify the code.
-
 Considering [jinja2](https://jinja.palletsprojects.com/en/stable/) and [mako](https://www.makotemplates.org/).
 
 Both engines were used to create a template for the report_predispositions module to see how they work in the real world example. In this case, the templates had to render some string variables, floats, join content of a string list, work with a dictionary and a data frame containing simple string fields (a more complex data frame needs to be transformed into such a simple one to explicitly state what should be rendered and how). This probably covers most data types (if not all) that we want to render into the output files.
