@@ -4,8 +4,8 @@
 
 The aim here is to separate text generating functionality from the rest of the code so that:
 1) all the text outputs are kept in a well defined and easy to find place,
-1) it is easy to edit the text when needed,
-2) data structures generated with python code and containing output information can be easily rendered.
+2) it is easy to edit the text when needed,
+3) data structures generated with python code and containing output information can be easily rendered.
 
 Select a templating engine to dynamically generate output texts, consider readability of the template code for others as well as how easy it is to modify the code.
 Considering [jinja2](https://jinja.palletsprojects.com/en/stable/) and [mako](https://www.makotemplates.org/).
