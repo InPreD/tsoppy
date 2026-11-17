@@ -24,8 +24,6 @@ Thus `mako` seems to be a better option going forward and we will start using th
 - install mako package in the repo
 - use the package to work with the templates
 
-<!--- List general consequences.-->
-
 ### Positive
 
 - separation of the text templates to a dedicated place 
