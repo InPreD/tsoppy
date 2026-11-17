@@ -355,7 +355,11 @@ def report_predispositions(
     output: Annotated[
         Path, typer.Option(help="File containing predisposition variants.")
     ],
-    sample_id: Annotated[str, typer.Option(help="ID of the input sample.")],
+    sample_id_tumor_DNA: Annotated[str, typer.Option(help="ID of the input tumor DNA sample.")],
+    sample_id_normal_DNA: Annotated[str | None, typer.Option(
+        help="ID of the input normal DNA sample.")] = None,
+    sample_id_tumor_RNA: Annotated[str | None, typer.Option(
+        help="ID of the input tumor RNA sample.")] = None,
     config_yaml: Annotated[Path, typer.Option(help="Config yaml file.")],
     inpred_nomenclature: Annotated[
         Path,
@@ -364,13 +368,15 @@ def report_predispositions(
             help="InPreD nomenclature definition file."
         )
     ],
-    root_path: Annotated[
+    root_path_tumor_DNA: Annotated[
         Path,
         typer.Option(
             exists=True,
-            help="Root path to the folder containing TSO500 analysis the sequencing run which contains the input sample."
+            help="Root path to the folder containing TSO500 analysis of the sequencing run which contains the input tumor DNA sample."
         ),
     ],
+    root_path_normal_DNA: Annotated[] = None,
+    root_path_tumor_RNA: Annotated[] = None,
     tumor_purity: Annotated[
         float,
         typer.Option(
@@ -406,10 +412,14 @@ def report_predispositions(
     generate_report(
         output,
         version(),
-        sample_id,
+        sample_id_tumor_DNA,
+        sample_id_normal_DNA,
+        sample_id_tumor_RNA,
         config_yaml,
         inpred_nomenclature,
-        root_path,
+        root_path_tumor_DNA,
+        root_path_normal_DNA,
+        root_path_tumor_RNA,
         tumor_purity,
         cancer_susceptibility_genes,
         cancer_susceptibility_genes_column_list,
