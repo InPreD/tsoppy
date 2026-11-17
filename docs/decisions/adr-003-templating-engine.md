@@ -32,11 +32,6 @@ Thus `mako` seems to be a better option going forward and we will start using th
 ### Negative
 
 - learning curve
-<!--- List negative consequences.-->
-
-### Neutral
-
-<!--- List neutral consequences.-->
 
 ## Code example 
 
