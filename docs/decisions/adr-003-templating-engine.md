@@ -12,28 +12,8 @@ Considering [jinja2](https://jinja.palletsprojects.com/en/stable/) and [mako](ht
 
 Both engines were used to create a template for the report_predispositions module to see how they work in the real world example. In this case, the templates had to render some string variables, floats, join content of a string list, work with a dictionary and a data frame containing simple string fields (a more complex data frame needs to be transformed into such a simple one to explicitly state what should be rendered and how). This probably covers most data types (if not all) that we want to render into the output files.
 
-## Decision
 
-From the two tested possibilities, `mako` was much better in enforcing proper formatting and rendering of various data types (int, float, complex data frames, etc.). I see this as a positive trait. `jinja` did not complain much, rendered something and usually it looked ok, but debugging or changing default behavior seem to be taking more time in the end.
-Thus `mako` seems to be a better option going forward and we will start using that package.
-
-## Consequences
-
-- create template folder in each module where templates will be used
-- set the absolute path for the template folder inside the container (see the code example below)
-- install mako package in the repo
-- use the package to work with the templates
-
-### Positive
-
-- separation of the text templates to a dedicated place 
-- ease to modify and read the text 
-
-### Negative
-
-- learning curve
-
-## Code example 
+### Code example 
 
 In the python script:
 ```
@@ -62,3 +42,28 @@ ${ "\t".join(row) }
 
 For a bit more, have a look [here](https://github.com/InPreD/tsoppy/blob/report_predispositions/src/tsoppy/report_predispositions/templates/predispositions.mako)
 or dive into the [documentation](https://www.makotemplates.org/)
+
+
+
+
+## Decision
+
+From the two tested possibilities, `mako` was much better in enforcing proper formatting and rendering of various data types (int, float, complex data frames, etc.). I see this as a positive trait. `jinja` did not complain much, rendered something and usually it looked ok, but debugging or changing default behavior seem to be taking more time in the end.
+Thus `mako` seems to be a better option going forward and we will start using that package.
+
+## Consequences
+
+- create template folder in each module where templates will be used
+- set the absolute path for the template folder inside the container (see the code example below)
+- install mako package in the repo
+- use the package to work with the templates
+
+### Positive
+
+- separation of the text templates to a dedicated place 
+- ease to modify and read the text 
+
+### Negative
+
+- learning curve
+
