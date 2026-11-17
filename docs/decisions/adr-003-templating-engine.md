@@ -28,7 +28,6 @@ Thus `mako` seems to be a better option going forward and we will start using th
 
 - separation of the text templates to a dedicated place 
 - ease to modify and read the text 
-<!--- List positive consequences.-->
 
 ### Negative
 
