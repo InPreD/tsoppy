@@ -11,7 +11,6 @@ Select a templating engine to dynamically generate output texts, consider readab
 Considering [jinja2](https://jinja.palletsprojects.com/en/stable/) and [mako](https://www.makotemplates.org/).
 
 Both engines were used to create a template for the report_predispositions module to see how they work in the real world example. In this case, the templates had to render some string variables, floats, join content of a string list, work with a dictionary and a data frame containing simple string fields (a more complex data frame needs to be transformed into such a simple one to explicitly state what should be rendered and how). This probably covers most data types (if not all) that we want to render into the output files.
-<!--Include all relevant information necessary for making a decision here.-->
 
 ## Decision
 
