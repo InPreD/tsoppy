@@ -339,7 +339,7 @@ def format_predisposition_variants_before_printing(
     # format AF to AF_tumor_DNA: select only the first element of the array
     # round to 4 decimal places
     predisposition_variants = predisposition_variants.with_columns(
-        pl.col("AF").list.get(0).round(4)
+        pl.concat_list("AF").list.get(0)
         .alias("AF_tumor_DNA")
     )
 
@@ -360,16 +360,17 @@ def format_predisposition_variants_before_printing(
     # columns affected: overlapping_genes, AD, AF, gene_predispositions
     # format ints to strings
     # columns affected: depth_tumor_DNA
-    # format floats to 4decimal precision strings
+    # format floats to 4decimal precision strings / format floats to strings
     # columns affected: AF_tumor_DNA
     predisposition_variants_str = predisposition_variants.with_columns(
         cs.by_dtype(pl.List).list.eval(
             pl.element().cast(pl.String)).list.join(", "),
         cs.integer().cast(pl.String),
-        cs.float().map_elements(
-            lambda x: f"{x:.4f}" if x is not None else None,
-            return_dtype=pl.String
-        )
+        cs.float().map_elements(repr, return_dtype=pl.String),
+        # cs.float().cast(pl.String),
+        # cs.float().map_elements(
+        #    lambda x: f"{x:.4f}" if x is not None else None,
+        #    return_dtype=pl.String
     ).select(col_order)
 
     return predisposition_variants_str
@@ -478,7 +479,7 @@ def generate_report(
         )
     )
 
-    # TODO: implement functionality from the other module
+    # TODO: use functionality from the other module
     # "Cummulative length of all coding regions targeted in the TSO500 experiment (in millions of bases)."
     logger.debug(
         "Retrieve \"Coding Region Size in Megabases\" from the CombinedVariant Output file.")

@@ -15,18 +15,15 @@ from tsoppy.report_predispositions.main import (
     check_columns_presence_in_file,
     check_gene_name_column_presence_in_column_list,
     format_predisposition_variants_before_printing,
-    generate_predisposition_column_format_description,
     generate_report,
     get_small_variant_calls_file_path,
     get_workflow_id_string,
     load_data_from_cancer_susceptibility_genes_file,
     lookup_predisposition_variants,
     parse_metadata_to_get_source,
-    print_metadata_to_output_file,
     print_output_file,
     validate_tumor_purity_range,
     validate_uniqueness,
-    mako
 )
 
 # Define path to test data - cannot be absolute due to different paths locally and in CI
@@ -269,43 +266,6 @@ def test_load_data_from_cancer_susceptibility_genes_file(inputs, want):
 
 
 @pytest.mark.parametrize(
-    "inputs, want",
-    [
-        (
-            (
-                {
-                    "TP53": {
-                        "Actionability": "HA-CSG",
-                        "Age": "Age<30",
-                    },
-                    "BRCA1": {
-                        "Actionability": "MA-CSG",
-                        "Age": "Allages",
-                    },
-                    "BAP1": {
-                        "Actionability": "SA-CSG",
-                        "Age": "Allages",
-                    }
-                },
-                "Gene",
-                "SAMPLE_ID"
-            ),
-            "# [SAMPLE_ID] Column format of gene_predispositions:\n" +
-            "# [SAMPLE_ID]    a list of character strings of the form:\n" +
-            "# [SAMPLE_ID]    [Gene]_[Actionability]_[Age]\n" +
-            "# [SAMPLE_ID]    where:\n" +
-            "# [SAMPLE_ID]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n" +
-            "# [SAMPLE_ID]        Age: [ Age<30 | Allages ]\n"
-        )
-    ]
-)
-def test_generate_predisposition_column_format_description(inputs, want):
-    # is there more testing needed here? like empty dict, or empty inner dict, or something?
-    got = generate_predisposition_column_format_description(*inputs)
-    assert got == want
-
-
-@pytest.mark.parametrize(
     "inputs, exception, want",
     [
         (
@@ -430,7 +390,7 @@ def test_get_workflow_id_string(inputs, exception, want):
             )
         ),
         (
-            # one cancer susceptibility gene overlapping a small variant
+            # one cancer susceptibility gene overlapping a small variant, dragen
             (
                 {
                     "TP53": {
@@ -473,7 +433,50 @@ def test_get_workflow_id_string(inputs, exception, want):
             )
         ),
         (
-            # two cancer susceptibility genes overlapping a small variant
+            # one cancer susceptibility gene overlapping a small variant, localapp
+            (
+                {
+                    "TP53": {
+                        "Actionability": "HA-CSG",
+                        "Age": "Age<30",
+                    },
+                    "BRCA1": {
+                        "Actionability": "MA-CSG",
+                        "Age": "Allages",
+                    },
+                },
+                "sample3",
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+            ),
+            pl.DataFrame(
+                {
+                    "variant_ID": ["chr1:2000000:A>G"],
+                    "variant_type": ["SNV"],
+                    "Illumina_variant_class": ["Germline_DB"],
+                    "overlapping_genes":
+                    [
+                        ["TP53"]
+                    ],
+                    "AD":
+                    [
+                        [419, 19]
+                    ],
+                    "DP": [438],
+                    "AF":
+                    [
+                        0.0434
+                    ],
+                    "gene_predispositions":
+                    [
+                        ["TP53_HA-CSG_Age<30"]
+                    ],
+                }
+            )
+        ),
+        (
+            # two cancer susceptibility genes overlapping a small variant, dragen
             (
                 {
                     "TP53": {
@@ -569,62 +572,6 @@ def test_lookup_predisposition_variants(inputs, want):
     "inputs, want",
     # inputs:
     #   sample_id,
-    #   tsoppy_version,
-    #   workflow_id,
-    #   source,
-    #   cancer_susceptibility_genes,
-    #   small_variant_calls,
-    #   coding_region_size_in_megabases,
-    #   tumor_purity,
-    #   predisposition_column_format_description,
-    #   output_file
-    # want:   filename
-    [
-        (
-            (
-                "sample_id",
-                "tsoppy version 0.0.1",
-                "dragen_2.6.2.4",
-                "doi_url",
-                Path("cancer_susceptibility_genes.tsv"),
-                Path("small_variant_calls.vcf"),
-                1.283,
-                0.7,
-                "# [sample_id] Column format of gene_predispositions:\n" +
-                "# [sample_id]    a list of character strings of the form:\n" +
-                "# [sample_id]    [Gene]_[Actionability]_[Age]\n" +
-                "# [sample_id]    where:\n" +
-                "# [sample_id]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n" +
-                "# [sample_id]        Age: [ Age<30 | Allages ]\n",
-                Path("output.tsv")
-            ),
-            Path(path.join(test_data_dir,
-                 "print_metadata_to_output_file_expected_output.tsv")),
-        ),
-
-
-    ],
-)
-def test_print_metadata_to_output_file(tmp_path, inputs, want):
-
-    # create temporary directory
-    directory = tmp_path / "test_reportPredispositions_main"
-    directory.mkdir(parents=True, exist_ok=True)
-    out_path = directory / inputs[9]
-
-    print_metadata_to_output_file(*inputs[:9], Path(out_path))
-    assert Path(out_path).read_text() == Path(want).read_text()
-
-    # remove the temporary file
-    out_path.unlink()
-    # remove the temp directory
-    directory.rmdir()
-
-
-@pytest.mark.parametrize(
-    "inputs, want",
-    # inputs:
-    #   sample_id,
     #   pl.DataFrame(predisposition_variants),
     # want:
     #   pl.DataFrame(formated_predisposition_variants)
@@ -692,7 +639,7 @@ def test_print_metadata_to_output_file(tmp_path, inputs, want):
                             ],
                         "AF":
                             [
-                                [0.0054, 0.0]
+                                [0.0054, 0]
                             ],
                         "gene_predispositions":
                             [
@@ -751,7 +698,7 @@ def test_print_metadata_to_output_file(tmp_path, inputs, want):
                             ],
                         "Illumina_variant_class":
                             [
-                                "VCF_filtered",
+                                "Germline_DB",
                             ],
                         "overlapping_genes":
                             [
@@ -884,6 +831,203 @@ def test_print_metadata_to_output_file(tmp_path, inputs, want):
                 }
             ),
         ),
+        (
+            (
+                "sample5",
+                pl.DataFrame(
+                    {
+                        "variant_ID":
+                            [
+                                "chr1:1000000:A>G",
+                                "chr1:1000000:A>C",
+                                "chr1:1200000:CTGAAAGAGC>GTGAAAGAGT",
+                                "chr1:2000000:A>G",
+                                "chr1:3000000:G>A",
+                                "chr1:5000000:G>A",
+                                "chr1:6000000:G>A",
+                                "chr1:7000000:C>T",
+                                "chr1:8000000:T>TC",
+                                "chr1:9000000:CG>C",
+                            ],
+                        "variant_type":
+                            [
+                                "SNV",
+                                "SNV",
+                                "MNV",
+                                "SNV",
+                                "SNV",
+                                "SNV",
+                                "SNV",
+                                "SNV",
+                                "insertion",
+                                "deletion",
+                            ],
+                        "Illumina_variant_class":
+                            [
+                                "VCF_filtered",
+                                "Blacklist",
+                                "Somatic",
+                                "Germline_DB",
+                                "VCF_filtered",
+                                "Somatic",
+                                "Germline_DB",
+                                "Germline_Proxi",
+                                "VCF_filtered",
+                                "VCF_filtered",
+                            ],
+                        "overlapping_genes":
+                            [
+                                ["SYN_GENE_A", "TP53"],
+                                ["GENE_4", "TP53"],
+                                ["SYN_GENE_X", "TP53"],
+                                ["SYN_GENE_A", "TP53"],
+                                ["SYN_GENE_B", "TP53"],
+                                ["SYN_GENE_B", "TP53"],
+                                ["SYN_GENE_C", "TP53"],
+                                ["SYN_GENE_D", "TP53"],
+                                ["SYN_GENE_E", "TP53"],
+                                ["SYN_GENE_F", "TP53"],
+                            ],
+                        "AD":
+                            [
+                                [189, 1],
+                                [177, 194],
+                                [244, 12],
+                                [419, 19],
+                                [0, 123],
+                                [0, 546],
+                                [0, 1243],
+                                [0, 186],
+                                [218, 26],
+                                [801, 6],
+                            ],
+                        "DP":
+                            [190, 371, 256, 438, 123, 546, 1243, 186, 244, 807],
+                        "AF":
+                            [
+                                0.0054,
+                                0.5064,
+                                0.042,
+                                0.0434,
+                                0.0150,
+                                0.7738,
+                                0.4788,
+                                1.0,
+                                0.0864,
+                                0.0079,
+                            ],
+                        "gene_predispositions":
+                            [
+                                ["TP53_HA-CSG_Age<30"],
+                                ["TP53_HA-CSG_Age<30"],
+                                ["TP53_HA-CSG_Age<30"],
+                                ["TP53_HA-CSG_Age<30"],
+                                ["TP53_HA-CSG_Age<30"],
+                                ["TP53_HA-CSG_Age<30"],
+                                ["TP53_HA-CSG_Age<30"],
+                                ["TP53_HA-CSG_Age<30"],
+                                ["TP53_HA-CSG_Age<30"],
+                                ["TP53_HA-CSG_Age<30"],
+                            ],
+                    }
+                ),
+            ),
+            pl.DataFrame(
+                {
+                    "sample_id":
+                    [
+                        "sample5",
+                        "sample5",
+                        "sample5",
+                        "sample5",
+                        "sample5",
+                        "sample5",
+                        "sample5",
+                        "sample5",
+                        "sample5",
+                        "sample5",
+                    ],
+                    "overlapping_genes":
+                    [
+                        "SYN_GENE_A, TP53",
+                        "GENE_4, TP53",
+                        "SYN_GENE_X, TP53",
+                        "SYN_GENE_A, TP53",
+                        "SYN_GENE_B, TP53",
+                        "SYN_GENE_B, TP53",
+                        "SYN_GENE_C, TP53",
+                        "SYN_GENE_D, TP53",
+                        "SYN_GENE_E, TP53",
+                        "SYN_GENE_F, TP53",
+                    ],
+                    "genomic_location":
+                    [
+                        "chr1:1000000",
+                        "chr1:1000000",
+                        "chr1:1200000",
+                        "chr1:2000000",
+                        "chr1:3000000",
+                        "chr1:5000000",
+                        "chr1:6000000",
+                        "chr1:7000000",
+                        "chr1:8000000",
+                        "chr1:9000000",
+                    ],
+                    "DNA_change":
+                    [
+                        "A>G",
+                        "A>C",
+                        "CTGAAAGAGC>GTGAAAGAGT",
+                        "A>G",
+                        "G>A",
+                        "G>A",
+                        "G>A",
+                        "C>T",
+                        "T>TC",
+                        "CG>C"
+                    ],
+                    "depth_tumor_DNA":
+                    [
+                        "190",
+                        "371",
+                        "256",
+                        "438",
+                        "123",
+                        "546",
+                        "1243",
+                        "186",
+                        "244",
+                        "807"
+                    ],
+                    "AF_tumor_DNA":
+                    [
+                        "0.0054",
+                        "0.5064",
+                        "0.042",
+                        "0.0434",
+                        "0.015",
+                        "0.7738",
+                        "0.4788",
+                        "1.0",
+                        "0.0864",
+                        "0.0079",
+                    ],
+                    "gene_predispositions":
+                    [
+                        "TP53_HA-CSG_Age<30",
+                        "TP53_HA-CSG_Age<30",
+                        "TP53_HA-CSG_Age<30",
+                        "TP53_HA-CSG_Age<30",
+                        "TP53_HA-CSG_Age<30",
+                        "TP53_HA-CSG_Age<30",
+                        "TP53_HA-CSG_Age<30",
+                        "TP53_HA-CSG_Age<30",
+                        "TP53_HA-CSG_Age<30",
+                        "TP53_HA-CSG_Age<30",
+                    ],
+                }
+            ),
+        ),
     ],
 )
 def test_format_predisposition_variants_before_printing(inputs, want):
@@ -902,8 +1046,9 @@ def test_format_predisposition_variants_before_printing(inputs, want):
     #   small_variant_calls,
     #   coding_region_size_in_megabases,
     #   tumor_purity,
+    #   cancer_susceptibility_genes_dict,
+    #   gene_name_column,
     #   pl.DataFrame(predisposition_variants),
-    #   predisposition_column_format_description,
     #   output_file
     # want:   filepath
     [
@@ -917,6 +1062,21 @@ def test_format_predisposition_variants_before_printing(inputs, want):
                 Path("small_variant_calls.vcf"),
                 1.283,
                 0.7,
+                {
+                    "TP53": {
+                        "Actionability": "HA-CSG",
+                        "Age": "Age<30",
+                    },
+                    "BRCA1": {
+                        "Actionability": "MA-CSG",
+                        "Age": "Allages",
+                    },
+                    "BAP1": {
+                        "Actionability": "SA-CSG",
+                        "Age": "Allages",
+                    }
+                },
+                "Gene",
                 # a variant overlapping with two predisposition genes and one gene which is not in the cancer susceptibility genes
                 # the same as merged_table dataframe plus a column for the predisposition gene info
                 # localapp pl.Dataframe input
@@ -956,12 +1116,6 @@ def test_format_predisposition_variants_before_printing(inputs, want):
                             ],
                     }
                 ),
-                "# [SAMPLE_ID] Column format of gene_predispositions:\n" +
-                "# [SAMPLE_ID]    a list of character strings of the form:\n" +
-                "# [SAMPLE_ID]    [Gene]_[Actionability]_[Age]\n" +
-                "# [SAMPLE_ID]    where:\n" +
-                "# [SAMPLE_ID]        Actionability: [ HA-CSG | MA-CSG | SA-CSG ]\n" +
-                "# [SAMPLE_ID]        Age: [ Age<30 | Allages ]\n",
                 Path("output.tsv")
             ),
             Path(path.join(test_data_dir, "print_output_file_expected_output.tsv")),
@@ -972,8 +1126,8 @@ def test_print_output_file(tmp_path, inputs, want):
     # create temporary directory
     directory = tmp_path / "test_reportPredispositions_main" / "test_print_output"
     directory.mkdir(parents=True, exist_ok=True)
-    out_path = directory / inputs[10]
-    print_output_file(*inputs[:10], out_path)
+    out_path = directory / inputs[11]
+    print_output_file(*inputs[:11], out_path)
     assert out_path.read_text() == want.read_text()
     # remove the temporary file
     out_path.unlink()
@@ -1025,73 +1179,3 @@ def test_generate_report(tmp_path, inputs, want):
     out_path.unlink()
     # remove the temp directory
     directory.rmdir()
-
-
-@pytest.mark.parametrize(
-    "inputs, want",
-    [
-        (
-            (
-                "sample_id",
-                "tsoppy version 0.0.1",
-                "dragen_2.6.2.4",
-                Path("cancer_susceptibility_genes.tsv"),
-                "doi_url",
-                Path("small_variant_calls.vcf"),
-                1.283,
-                0.70,
-                {
-                    "TP53": {
-                        "Actionability": "HA-CSG",
-                        "Age": "Age<30",
-                    },
-                    "BRCA1": {
-                        "Actionability": "MA-CSG",
-                        "Age": "Allages",
-                    },
-                    "BAP1": {
-                        "Actionability": "SA-CSG",
-                        "Age": "Allages",
-                    }
-                },
-                "Gene",
-                pl.DataFrame(
-                    {
-                        "sample_id":
-                        [
-                            "sample_id"
-                        ],
-                        "overlapping_genes":
-                        [
-                            "TP53, BRCA1, XXX"
-                        ],
-                        "genomic_location":
-                        [
-                            "chr1:1000000"
-                        ],
-                        "DNA_change":
-                        [
-                            "A>G"
-                        ],
-                        "depth_tumor_DNA":
-                        [
-                            "190"
-                        ],
-                        "AF_tumor_DNA":
-                        [
-                            "0.0054"
-                        ],
-                        "gene_predispositions":
-                        [
-                            "TP53_HA-CSG_Age<30, BRCA1_MA-CSG_Allages"
-                        ],
-                    }
-                ),
-            ),
-            Path(path.join(test_data_dir,
-                 "jinja_expected_output.tsv")),
-        ),
-    ]
-)
-def test_mako(inputs, want):
-    assert mako(*inputs) == want.read_text()
