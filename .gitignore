@@ -1,29 +1,23 @@
-*.egg-info
-.mypy_cache
-.ruff_cache
-__pycache__
-build
-dist
-venv
+# Python build/cache
+*.egg-info/
+*.pyc
+*.pyo
+.mypy_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+build/
+dist/
+venv/
+
+# IDE
 .project
 .pydevproject
-*.py[cod]
-.pytest_cache
-.coverage
-htmlcov
+.vscode/
+
+# macOS
 .DS_Store
-.~lock.*
+
+# Temporary files
 *.swp
-
-.project
-.pydevproject
-.idea/
-
-
-tests/test_data/add_variant_summary/
-
-/*_variant_summary.tsv
-/variant_summary*.tsv
-/learn_output.tsv
-/IPD1111_CombinedVariantOutput.tsv
-/config_testing.yaml
+*.tmp
