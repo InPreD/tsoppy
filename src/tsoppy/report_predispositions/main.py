@@ -451,10 +451,14 @@ def print_output_file(
 def generate_report(
     output_file: Path,
     tsoppy_version: str,
-    sample_id: str,
+    sample_id_tumor_DNA: str,
+    sample_id_normal_DNA: str | None,
+    sample_id_tumor_RNA: str | None,
     config_yaml: Path,
     inpred_nomenclature: Path,
-    root_path: Path,
+    root_path_tumor_DNA: Path,
+    root_path_normal_DNA: Path | None,
+    root_path_tumor_RNA: Path | None,
     tumor_purity: float,
     cancer_susceptibility_genes: Path,
     csg_column_list: list[str],
@@ -485,26 +489,31 @@ def generate_report(
         "Retrieve \"Coding Region Size in Megabases\" from the CombinedVariant Output file.")
     coding_region_size_in_megabases = 1.11
 
+    # TODO: retrieve paths to the small variant calls for normal DNA and tumor RNA
     logger.debug("Find small variant calls file path.")
     small_variant_calls = get_small_variant_calls_file_path(
-        sample_id, config_yaml, inpred_nomenclature, root_path)
+        sample_id_tumor_DNA, config_yaml, inpred_nomenclature, root_path_tumor_DNA)
 
     logger.debug("Retrieve workflow id string.")
     workflow_id = get_workflow_id_string(
-        config_yaml, inpred_nomenclature, root_path)
+        config_yaml, inpred_nomenclature, root_path_tumor_DNA)
 
     logger.debug(
-        f"Find predisposition_variants in SmallVariantGenomeVcf object of a given sample {sample_id}."
+        f"Find predisposition_variants in SmallVariantGenomeVcf object of a given sample {sample_id_tumor_DNA}."
     )
     predisposition_variants = lookup_predisposition_variants(
-        cancer_susceptibility_genes_dict, sample_id, config_yaml, inpred_nomenclature, root_path
+        cancer_susceptibility_genes_dict, sample_id_tumor_DNA, config_yaml, inpred_nomenclature, root_path_tumor_DNA
     )
+
+    # TODO: lookup predisposition variants in normal DNA
+    # TODO: add normal DNA and tumor RNA info into the predisposition_variants
+    # TODO: merge all the information into one dataframe
 
     logger.debug(
         f"Print the predispositions into the {output_file} output file."
     )
     print_output_file(
-        sample_id,
+        sample_id_tumor_DNA,
         tsoppy_version,
         workflow_id,
         source,

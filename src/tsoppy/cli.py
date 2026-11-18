@@ -61,8 +61,18 @@ def report_predispositions(
             help="Root path to the folder containing TSO500 analysis of the sequencing run which contains the input tumor DNA sample."
         ),
     ],
-    root_path_normal_DNA: Annotated[] = None,
-    root_path_tumor_RNA: Annotated[] = None,
+    root_path_normal_DNA: Annotated[
+        Path | None,
+        typer.Option(
+            help="Root path to the folder containing TSO500 analysis of the sequencing run which contains the input normal DNA sample."
+        ),
+    ] = None,
+    root_path_tumor_RNA: Annotated[
+        Path | None,
+        typer.Option(
+            help="Root path to the folder containing TSO500 analysis of the sequencing run which contains the input tumor RNA sample."
+        ),
+    ] = None,
     tumor_purity: Annotated[
         float,
         typer.Option(
