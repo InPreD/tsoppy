@@ -1085,34 +1085,42 @@ def test_format_predisposition_variants_before_printing(inputs, want):
                         "variant_ID":
                             [
                                 "chr1:1000000:A>G",
+                                "chr1:2000000:A>G",
                             ],
                         "variant_type":
                             [
+                                "SNV",
                                 "SNV",
                             ],
                         "Illumina_variant_class":
                             [
                                 "VCF_filtered",
+                                "Germline_DB",
                             ],
                         "overlapping_genes":
                             [
                                 ["TP53", "BRCA1", "XXX"],
+                                ["TP53", "YYY"],
                             ],
                         "AD":
                             [
                                 [189, 1, 0],
+                                [419, 19, 0],
                             ],
                         "DP":
                             [
                                 190,
+                                438,
                             ],
                         "AF":
                             [
                                 [0.0054, 0.0],
+                                [0.0434, 0.0]
                             ],
                         "gene_predispositions":
                             [
                                 ["TP53_HA-CSG_Age<30", "BRCA1_MA-CSG_Allages"],
+                                ["TP53_HA-CSG_Age<30"],
                             ],
                     }
                 ),
