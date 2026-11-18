@@ -231,7 +231,6 @@ class WorkflowOutput:
         """Return all samples present in samplsheet."""
         return self.samples["Sample_ID"].to_list()
 
-
     @property
     def pair_id_list(self) -> list[str]:
         """Return all Pair_ID present in samplesheet, use Sample_ID if Pair_ID not present."""
@@ -246,7 +245,6 @@ class WorkflowOutput:
             "Pair_ID column is missing from samplesheet, using Sample_ID instead."
         )
         return self.sample_list
-
 
     def sample_meta(self, sample_id: str) -> dict[str, str] | None:
         """Parse meta information from sample id and return as dict"""

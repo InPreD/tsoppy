@@ -576,6 +576,7 @@ def test_metricsoutputtsv_create(inputs, exception, want):
         assert str(got.path) == want[1]
         assert "Header" in got.sections
 
+
 @mark.parametrize(
     "inputs, exception, want",
     [
@@ -609,7 +610,6 @@ def test_metricsoutputtsv_create(inputs, exception, want):
         ),
     ],
 )
-
 def test_combinedvariantoutputtsv_create(inputs, exception, want):
     with exception:
         workflow_output = WorkflowOutput(*inputs[:3])
