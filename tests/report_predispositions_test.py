@@ -1155,9 +1155,13 @@ def test_print_output_file(tmp_path, inputs, want):
                 "output.tsv",
                 "tsoppy version 0.0.1",
                 "sample5",
+                None,
+                None,
                 "config.yaml",
                 path.join(test_data_dir, "nomenclature.yaml"),
                 path.join(test_data_dir, "dragen/standard"),
+                None,
+                None,
                 0.7,
                 path.join(
                     test_data_dir, "cancer_susceptibility_genes.csv"),
