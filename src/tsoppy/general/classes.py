@@ -23,6 +23,7 @@ class WorkflowConfig(msgspec.Struct):
         small_variant_genome_vcf: Paths to small variant genome vcf (dict[str, str])
         tmb_trace_tsv: Paths to tmb trace tsv (dict[str, str])
         variants_annotated_json: Paths to variants annotated json (dict[str, str])
+        combined_variant_output_tsv: Paths to combined variant output tsv (dict[str, str])
     """
 
     metrics_output_tsv: dict[str, str]
@@ -30,6 +31,7 @@ class WorkflowConfig(msgspec.Struct):
     small_variant_genome_vcf: dict[str, str]
     tmb_trace_tsv: dict[str, str]
     variants_annotated_json: dict[str, str]
+    combined_variant_output_tsv: dict[str, str]
 
     def __eq__(self, other):
         """Assess if two instances of this class are equal."""
@@ -41,6 +43,7 @@ class WorkflowConfig(msgspec.Struct):
             "small_variant_genome_vcf",
             "tmb_trace_tsv",
             "variants_annotated_json",
+            "combined_variant_output_tsv",
         ]
         return all(vars(self).get(k) == vars(other).get(k) for k in attr_to_compare)
 
@@ -227,6 +230,21 @@ class WorkflowOutput:
     def sample_list(self) -> list[str]:
         """Return all samples present in samplsheet."""
         return self.samples["Sample_ID"].to_list()
+
+    @property
+    def pair_id_list(self) -> list[str]:
+        """Return all Pair_ID present in samplesheet, use Sample_ID if Pair_ID not present."""
+        if "Pair_ID" in self.samples.columns:
+            return (
+                self.samples["Pair_ID"]
+                .unique(maintain_order=True)
+                .drop_nulls()
+                .to_list()
+            )
+        logger.warning(
+            "Pair_ID column is missing from samplesheet, using Sample_ID instead."
+        )
+        return self.sample_list
 
     def sample_meta(self, sample_id: str) -> dict[str, str] | None:
         """Parse meta information from sample id and return as dict"""
@@ -566,6 +584,53 @@ class SmallVariantGenomeVcf(WorkflowOutput):
                         self.header_dict[key] = dict()
                     subkey = item.pop("ID")
                     self.header_dict[key][subkey] = item
+
+
+class CombinedVariantOutputTsv(WorkflowOutput):
+    """Input class for a combined variant output TSV file produced by a workflow.
+
+    Attributes:
+        path: Path to the combined variant output TSV (Path)
+        pair_id: Pair identifier used in the path (str)
+        headers: Header lines at the top of the combined variant output TSV (list[str])
+        sections: Parsed sections of the combined variant output TSV file (dict[str, polars.DataFrame])
+    """
+
+    # Section names that are key-value pairs:
+    KEY_VALUE_SECTIONS = ["TMB", "MSI", "GIS", "Analysis Details"]
+
+    def __init__(self, config_yaml, inpred_nomenclature, root_path, pair_id: str):
+        super().__init__(config_yaml, inpred_nomenclature, root_path)
+        self.pair_id = pair_id
+        self._parse()
+
+    @classmethod
+    def create(cls, workflow_output: WorkflowOutput, pair_id: str):
+        """Create CombinedVariantOutputTsv from an existing WorkflowOutput."""
+        if pair_id not in workflow_output.pair_id_list:
+            logger.error(f"Pair {pair_id} does not exist")
+            raise ValueError
+        obj = cls.__new__(cls)
+        obj.__dict__.update(workflow_output.__dict__)
+        obj.pair_id = pair_id
+        obj._parse()
+        return obj
+
+    def _parse(self):
+        """Parse the combined variant output TSV for this pair."""
+        fmt = self.config.combined_variant_output_tsv[self.workflow_id]
+        self.path = Path(
+            os.path.join(self.root, fmt.format(self.pair_id, self.pair_id))
+        )
+        if not self.path.is_file():
+            logger.error(
+                f"Combined variant output TSV missing for {self.pair_id}: "
+                f"File {self.path} does not exist."
+            )
+            raise FileNotFoundError
+        self.headers, self.sections = Parse_section_tsv(
+            str(self.path), self.KEY_VALUE_SECTIONS
+        )
 
 
 class TmbTraceTsv(WorkflowOutput):

@@ -35,3 +35,6 @@ enabled = true
 template = "{tag}"
 dev_template = "{tag}"
 dirty_template = "{tag}"
+
+[tool.setuptools.package-data]
+"tsoppy.add_variant_summary" = ["header_template.txt"]

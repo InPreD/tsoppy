@@ -9,6 +9,7 @@ from typing import Annotated
 
 import typer
 
+from tsoppy.add_variant_summary.main import Summarise_variant_output
 from tsoppy.metric_plots.main import MetricPlots
 from tsoppy.metric_plots.plotting import Generate_qc_plots
 
@@ -303,3 +304,32 @@ def metric_plots(
             workflow=plot_workflow.value,
             output_pdf=output_pdf,
         )
+
+
+@app.command()
+def add_variant_summary(
+    config_yaml: Annotated[
+        Path, typer.Option("--config-yaml", "-c", help="Path to the config file.")
+    ],
+    inpred_nomenclature: Annotated[
+        Path,
+        typer.Option(
+            "--inpred-nomenclature", "-i", help="Path to the inpred nomenclature file."
+        ),
+    ],
+    results_directory: Annotated[
+        Path,
+        typer.Option(
+            "--results-directory",
+            "-r",
+            help="path to the directory containing *_CombinedVariantOutput.tsv files.",
+        ),
+    ],
+    output_file: Annotated[
+        Path, typer.Option("--output-file", "-o", help="Path to the output file.")
+    ],
+):
+    """Parse *_CombinedVariantOutput.tsv files into a variant summary table."""
+    Summarise_variant_output(
+        config_yaml, inpred_nomenclature, results_directory, output_file
+    )

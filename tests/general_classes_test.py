@@ -7,6 +7,7 @@ from polars.testing import assert_frame_equal
 from pytest import mark, raises
 
 from tsoppy.general.classes import (
+    CombinedVariantOutputTsv,
     MetricsOutputTsv,
     SmallVariantGenomeVcf,
     TmbTraceTsv,
@@ -55,6 +56,35 @@ def test_workflowoutput_init(inputs, exception, want):
         got = WorkflowOutput(*inputs)
         assert got.workflow_id == want[0]
         assert got.sample_exists(want[1])
+
+
+@mark.parametrize(
+    "samples, want",
+    [
+        # Pair_ID differs from Sample_ID (the _P convention)
+        (
+            DataFrame({"Sample_ID": ["sample1"], "Pair_ID": ["sample1_P"]}),
+            ["sample1_P"],
+        ),
+        # DNA and RNA rows of the same pair collapse to a single id
+        (
+            DataFrame({"Sample_ID": ["sample1", "sample2"], "Pair_ID": ["p1", "p1"]}),
+            ["p1"],
+        ),
+        # Pair_ID column absent -> falls back to Sample_ID
+        (DataFrame({"Sample_ID": ["sample1", "sample2"]}), ["sample1", "sample2"]),
+    ],
+)
+def test_workflowoutput_pair_id_list(samples, want):
+    # Root only needs to be valid to construct WorkflowOutput; samples are replaced
+    # below so this test does not depend on fixture contents.
+    got = WorkflowOutput(
+        "config.yaml",
+        path.join(test_data_dir, "nomenclature.yaml"),
+        path.join(test_data_dir, "dragen/standard"),
+    )
+    got.samples = samples
+    assert got.pair_id_list == want
 
 
 @mark.parametrize(
@@ -545,3 +575,60 @@ def test_metricsoutputtsv_create(inputs, exception, want):
         assert got.workflow_id == want[0]
         assert str(got.path) == want[1]
         assert "Header" in got.sections
+
+
+@mark.parametrize(
+    "inputs, exception, want",
+    [
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/standard"),
+                "sample1",
+            ),
+            nullcontext(),
+            ("dragen_2.6.2.4", "dragen"),
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "localapp/standard"),
+            ),
+            nullcontext(),
+            ("localapp_ruo-2.2.0.12", "localapp"),
+        ),
+        (
+            (
+                "config.yaml",
+                path.join(test_data_dir, "nomenclature.yaml"),
+                path.join(test_data_dir, "dragen/non-existent"),
+            ),
+            raises(FileNotFoundError),
+            None,
+        ),
+    ],
+)
+def test_combinedvariantoutputtsv_create(inputs, exception, want):
+    with exception:
+        workflow_output = WorkflowOutput(*inputs[:3])
+        got = CombinedVariantOutputTsv.create(workflow_output, "sample1")
+        assert got.workflow_id == want[0]
+        assert got.workflow_type == want[1]
+        assert got.pair_id == "sample1"
+        assert "TMB" in got.sections
+
+
+def test_combinedvariantoutputtsv_missing_file(caplog):
+    workflow_output = WorkflowOutput(
+        "config.yaml",
+        path.join(test_data_dir, "nomenclature.yaml"),
+        path.join(test_data_dir, "dragen/standard"),
+    )
+    workflow_output.samples = DataFrame(
+        {"Sample_ID": ["sample1"], "Pair_ID": ["missing_P"]}
+    )
+    with raises(FileNotFoundError):
+        CombinedVariantOutputTsv.create(workflow_output, "missing_P")
+    assert any("missing_P" in record.message for record in caplog.records)

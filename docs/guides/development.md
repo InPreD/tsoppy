@@ -25,6 +25,9 @@ Open the [`Command Palette`](https://code.visualstudio.com/api/ux-guidelines/com
 > [!WARNING]
 > If you are using MacOS, you have to define `UID`, `FULLNAME` and `MAIL` and set it to `id -u`, `git config --get user.name` and `git config --get user.email`, respectively, in your shell startup script (e.g. `.profile`, `.bashrc`, `.zshrc`)
 
+> [!WARNING]
+> If you are using MacOS, you have to define `UID`, `FULLNAME` and `MAIL` and set it to `id -u`, `git config --get user.name` and `git config --get user.email`, respectively, in your shell startup script (e.g. `.profile`, `.bashrc`, `.zshrc`)
+
 ## Recommended workflow
 
 1. Create an [issue](https://github.com/InPreD/tsoppy/issues/new), using the `Feature Specification` issue template, which is assigned to yourself, labeled as `enhancement` and of type `feature`. Include an adequate description, feature spec and link to any relevant old TSOPPI code or other documents.
