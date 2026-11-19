@@ -588,7 +588,7 @@ def test_metricsoutputtsv_create(inputs, exception, want):
                 "sample1",
             ),
             nullcontext(),
-            "dragen",
+            ("dragen_2.6.2.4", "dragen"),
         ),
         (
             (
@@ -597,7 +597,7 @@ def test_metricsoutputtsv_create(inputs, exception, want):
                 path.join(test_data_dir, "localapp/standard"),
             ),
             nullcontext(),
-            "localapp",
+            ("localapp_ruo-2.2.0.12", "localapp"),
         ),
         (
             (
@@ -614,7 +614,8 @@ def test_combinedvariantoutputtsv_create(inputs, exception, want):
     with exception:
         workflow_output = WorkflowOutput(*inputs[:3])
         got = CombinedVariantOutputTsv.create(workflow_output, "sample1")
-        assert got.workflow_type == want
+        assert got.workflow_id == want[0]
+        assert got.workflow_type == want[1]
         assert got.pair_id == "sample1"
         assert "TMB" in got.sections
 
