@@ -1,0 +1,4 @@
+# source: doi_url
+Gene	Actionability	Age
+TP53	HA-CSG	Age<30
+BRCA1	MA-CSG	Allages
