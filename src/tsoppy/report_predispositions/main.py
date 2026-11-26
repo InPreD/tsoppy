@@ -163,19 +163,22 @@ def load_data_from_cancer_susceptibility_genes_file(
 
 
 def get_small_variant_calls_file_path(
-    sample_id: str,
+    sample_id: str | None,
     config_yaml: str | Path,
     inpred_nomenclature: str | Path,
-    root_path: str | Path
+    root_path: str | Path | None
 ) -> Path:
     """
     Return Path to the small variant calls file path.
     """
 
-    small_variants = SmallVariantGenomeVcf(
-        config_yaml, inpred_nomenclature, root_path, sample_id)
+    if sample_id is None or root_path is None:
+        return None
+    else:
+        small_variants = SmallVariantGenomeVcf(
+            config_yaml, inpred_nomenclature, root_path, sample_id)
 
-    return small_variants.path
+        return small_variants.path
 
 
 def get_workflow_id_string(
@@ -193,12 +196,27 @@ def get_workflow_id_string(
     return workflow_output.workflow_id
 
 
+def empty_predispositions_df():
+    return pl.DataFrame(
+        {
+            "variant_ID": [],
+            "variant_type": [],
+            "Illumina_variant_class": [],
+            "overlapping_genes": [],
+            "AD": [],
+            "DP": [],
+            "AF": [],
+            "gene_predispositions": [],
+        }
+    )
+
+
 def lookup_predisposition_variants(
     cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
-    sample_id: str,
+    sample_id: str | None,
     config_yaml: Path,
     inpred_nomenclature: Path,
-    root_path: Path
+    root_path: Path | None
 ) -> pl.DataFrame:
     """
     Look up predispositions, store all the info from SmallVariantGenomeVcf merged_table and the gene predispositions in the output pl.DataFrame.
@@ -206,6 +224,9 @@ def lookup_predisposition_variants(
 
     logger.debug(
         "Look up overlaps between the small variant calls and the cancer susceptibility genes.")
+
+    if sample_id is None or root_path is None:
+        return empty_predispositions_df()
 
     logger.debug("Read in merged_table of small variants.")
     workflow_output = WorkflowOutput(
@@ -227,18 +248,7 @@ def lookup_predisposition_variants(
     if predispositions_basic_df.is_empty():
         logger.debug(
             "There are no small variants overlapping a predisposition gene.")
-        return pl.DataFrame(
-            {
-                "variant_ID": [],
-                "variant_type": [],
-                "Illumina_variant_class": [],
-                "overlapping_genes": [],
-                "AD": [],
-                "DP": [],
-                "AF": [],
-                "gene_predispositions": [],
-            }
-        )
+        return empty_predispositions_df()
 
     logger.debug(
         "Fill predisposition gene info for every small variant overlapping the gene.")
@@ -340,6 +350,7 @@ def format_predisposition_variants_before_printing(
     # round to 4 decimal places
     predisposition_variants = predisposition_variants.with_columns(
         pl.concat_list("AF").list.get(0)
+        .cast(pl.Float64)
         .alias("AF_tumor_DNA")
     )
 
@@ -382,7 +393,9 @@ def print_output_file(
     workflow_id: str,
     source: str,
     cancer_susceptibility_genes: Path,
-    small_variant_calls: Path,
+    small_variant_calls_tumor_DNA: Path,
+    small_variant_calls_normal_DNA: Path | None,
+    sample_id_tumor_RNA: str | None,
     coding_region_size_in_megabases: float,
     tumor_purity: float,
     cancer_susceptibility_genes_dict: dict[str, dict[str, str]],
@@ -434,7 +447,9 @@ def print_output_file(
         workflow_id=workflow_id,
         cancer_susceptibility_genes=cancer_susceptibility_genes,
         source=source,
-        small_variant_calls=small_variant_calls,
+        small_variant_calls_tumor_DNA=small_variant_calls_tumor_DNA,
+        small_variant_calls_normal_DNA=small_variant_calls_normal_DNA,
+        sample_id_tumor_RNA=sample_id_tumor_RNA,
         coding_region_size_in_megabases=coding_region_size_in_megabases,
         tumor_purity=tumor_purity,
         column_list=column_list,
@@ -445,18 +460,20 @@ def print_output_file(
     with open(output_file, mode="w", encoding="utf-8") as output:
         output.write(rendered_content)
 
+    # TODO: if predisposition_variants_str is empty, write out an info about that into the output something like no variants found.
+
     return
 
 
 def generate_report(
     output_file: Path,
     tsoppy_version: str,
-    sample_id_tumor_DNA: str,
+    sample_id_tumor_DNA: str | None,
     sample_id_normal_DNA: str | None,
     sample_id_tumor_RNA: str | None,
     config_yaml: Path,
     inpred_nomenclature: Path,
-    root_path_tumor_DNA: Path,
+    root_path_tumor_DNA: Path | None,
     root_path_normal_DNA: Path | None,
     root_path_tumor_RNA: Path | None,
     tumor_purity: float,
@@ -489,36 +506,53 @@ def generate_report(
         "Retrieve \"Coding Region Size in Megabases\" from the CombinedVariant Output file.")
     coding_region_size_in_megabases = 1.11
 
-    # TODO: retrieve paths to the small variant calls for normal DNA and tumor RNA
-    logger.debug("Find small variant calls file path.")
-    small_variant_calls = get_small_variant_calls_file_path(
+    # TODO: retrieve info about used tumor RNA input(s)
+    logger.debug("Find small variant calls file paths.")
+    small_variant_calls_tumor_DNA = get_small_variant_calls_file_path(
         sample_id_tumor_DNA, config_yaml, inpred_nomenclature, root_path_tumor_DNA)
+    small_variant_calls_normal_DNA = get_small_variant_calls_file_path(
+        sample_id_normal_DNA, config_yaml, inpred_nomenclature, root_path_normal_DNA)
 
     logger.debug("Retrieve workflow id string.")
     workflow_id = get_workflow_id_string(
         config_yaml, inpred_nomenclature, root_path_tumor_DNA)
 
     logger.debug(
-        f"Find predisposition_variants in SmallVariantGenomeVcf object of a given sample {sample_id_tumor_DNA}."
+        f"Find predisposition_variants in SmallVariantGenomeVcf object of given tumor DNA and normal DNA samples ({sample_id_tumor_DNA}, {sample_id_normal_DNA})."
     )
-    predisposition_variants = lookup_predisposition_variants(
+    predisposition_variants_tumor_DNA = lookup_predisposition_variants(
         cancer_susceptibility_genes_dict, sample_id_tumor_DNA, config_yaml, inpred_nomenclature, root_path_tumor_DNA
     )
+    predisposition_variants_normal_DNA = lookup_predisposition_variants(
+        cancer_susceptibility_genes_dict, sample_id_normal_DNA, config_yaml, inpred_nomenclature, root_path_normal_DNA
+    )
 
-    # TODO: lookup predisposition variants in normal DNA
-    # TODO: add normal DNA and tumor RNA info into the predisposition_variants
-    # TODO: merge all the information into one dataframe
+    logger.debug(
+        f"Merge together predisposition variant dataframes."
+    )
+    predisposition_variants =  # TODO: merge all the information into one dataframe
+    # TODO: add tumor RNA info into the predisposition_variants
 
     logger.debug(
         f"Print the predispositions into the {output_file} output file."
     )
+    # todo check if sample_id_tumor_DNA or sample_id_normal_DNA should be the first parameter
+
+    sample_id = ""
+    if sample_id_normal_DNA is not None:
+        sample_id = sample_id_normal_DNA
+    elif sample_id_tumor_DNA is not None:
+        sample_id = sample_id_tumor_DNA
+
     print_output_file(
-        sample_id_tumor_DNA,
+        sample_id,
         tsoppy_version,
         workflow_id,
         source,
         cancer_susceptibility_genes,
-        small_variant_calls,
+        small_variant_calls_tumor_DNA,
+        small_variant_calls_normal_DNA,
+        sample_id_tumor_RNA,
         coding_region_size_in_megabases,
         tumor_purity,
         cancer_susceptibility_genes_dict,
