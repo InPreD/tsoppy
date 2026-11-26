@@ -53,6 +53,7 @@ read csv/tsv tables | [polars](https://docs.pola.rs/)
 read json/toml/yaml | [msgspec](https://jcristharif.com/msgspec/index.html)
 testing | [pytest](https://docs.pytest.org/en/stable/)
 vcf | [CyVCF2](https://brentp.github.io/cyvcf2/)
+file template engine | [mako](https://www.makotemplates.org/)
 
 The use of different packages for individual cases should be discussed, e.g. in an issue. If you want to argue for adoption of a package globally you can open an issue, create a pull request and submit an [ADR](../decisions/adr-000-template.md) with your reasoning and the predicted consequences. Include relevant reviewers in the PR.
 
