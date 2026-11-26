@@ -8,6 +8,8 @@ TSO500 v2 post processing cli
 
 1. [json package](./docs/decisions/adr-001-json-package.md)
 1. [vcf package](./docs/decisions/adr-002-vcf-package.md)
+1. [common input options](./docs/decisions/adr-003-common-input-options.md)
+1. [templating engine](./docs/decisions/adr-004-templating-engine.md)
 
 ### Guides
 
