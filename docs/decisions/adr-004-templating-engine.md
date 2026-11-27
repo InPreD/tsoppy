@@ -61,7 +61,7 @@ Thus `mako` seems to be a better option going forward and we will start using th
 ### Positive
 
 - separation of the text templates to a dedicated place 
-- ease to modify and read the text 
+- easier to edit and read the text 
 
 ### Negative
 

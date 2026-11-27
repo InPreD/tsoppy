@@ -52,7 +52,7 @@ The input options are defined once and will be applied to all subcommands that t
 
 ### Option 2
 
-Define typer option globally and reuse the definition:
+Define a Typer option globally and reuse the definition:
 
 ```python
 import typer
@@ -89,7 +89,7 @@ The input options are defined as global typer options but the correct option nam
 
 ## Decision
 
-We decided to go with option 1 due as it makes the code DRYer and the tool is mostly used within a pipeline - running it manually is not the main mode of operation, hence ease of use can be neglected for this.
+We decided to go with option 1 as it makes the code DRYer and the tool is mostly used within a pipeline - running it manually is not the main mode of operation, hence ease of use can be neglected for this.
 
 ## Consequences
 

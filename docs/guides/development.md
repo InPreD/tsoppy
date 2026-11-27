@@ -12,7 +12,7 @@ In order for you to use the devcontainer in this repository, you need to have [*
 
 ### Clone repository
 
-Open VS Code, open a new terminal, navigate to to directory you want to clone the repository into and run `git clone https://github.com/InPreD/tsoppy.git`. Now open the folder you just cloned to enter the local copy of the repository.
+Open VS Code, open a new terminal, navigate to the directory you want to clone the repository into and run `git clone https://github.com/InPreD/tsoppy.git`. Now open the folder you just cloned to enter the local copy of the repository.
 
 ### Start devcontainer
 
@@ -25,9 +25,6 @@ Open the [`Command Palette`](https://code.visualstudio.com/api/ux-guidelines/com
 > [!WARNING]
 > If you are using MacOS, you have to define `UID`, `FULLNAME` and `MAIL` and set it to `id -u`, `git config --get user.name` and `git config --get user.email`, respectively, in your shell startup script (e.g. `.profile`, `.bashrc`, `.zshrc`)
 
-> [!WARNING]
-> If you are using MacOS, you have to define `UID`, `FULLNAME` and `MAIL` and set it to `id -u`, `git config --get user.name` and `git config --get user.email`, respectively, in your shell startup script (e.g. `.profile`, `.bashrc`, `.zshrc`)
-
 ## Recommended workflow
 
 1. Create an [issue](https://github.com/InPreD/tsoppy/issues/new), using the `Feature Specification` issue template, which is assigned to yourself, labeled as `enhancement` and of type `feature`. Include an adequate description, feature spec and link to any relevant old TSOPPI code or other documents.
@@ -36,12 +33,12 @@ Open the [`Command Palette`](https://code.visualstudio.com/api/ux-guidelines/com
 1. Commit your changes often and as logically structured parts. Use [commit message conventions](https://inpred.github.io/24-03_bioinfo_ws/#19). If the changes become extensive, rather split your work into logical parts and commit it to several branches to make the reviewing process easier.
 1. Before pushing, ensure that `ruff format --check` is happy with formatting.
 1. When you are done with the work or want to get feedback, open a [pull request](https://github.com/InPreD/tsoppy/pulls). Your branches should be `base: develop` and `compare: <your feature branch>`. Assign yourself as assignee and include reviewers that can give you feedback on code quality and functionality.
-1. Keep an eye on the github actions passing to make sure your unit tests work and your code is linted.
+1. Check that the GitHub Actions tests and lint checks pass.
 1. Address all comments from the reviewers and mark them as resolved when you are done. In case of discussion, agree on a solution before implementing the change and resolving the thread. Only when all comments and suggestions have been addressed and resolved, and your changes were approved you may merge your branch into the base branch.
 
 ## Recommended packages
 
-The following packages are recommended to be used for the indicated purposes. We are open to discuss any of the following decisions depending on cost and benefit of the switch. If new purposes arise we will expand the list. Prior to suggesting new packages, please do some research on what people recommend and if the suggested package is actually maintained and fairly adopted by the community.
+The following packages are recommended to be used for the indicated purposes. We are open to discussing any of the following decisions depending on cost and benefit of the switch. If new purposes arise we will expand the list. Prior to suggesting new packages, please do some research on what people recommend and if the suggested package is actually maintained and fairly adopted by the community.
 
 purpose | package
 ---|---
@@ -62,7 +59,7 @@ The use of different packages for individual cases should be discussed, e.g. in 
 ```txt
 .
 ├── .devcontainer/ -> contains instructions to build and start a development container (https://containers.dev/)
-│   ├── .devontainer.json
+│   ├── devontainer.json
 │   └── Dockerfile
 ├── .github -> github action scripts to perform CI related tasks such as testing, linting and building
 ├── .gitignore -> list of files to be excluded from git
@@ -70,7 +67,7 @@ The use of different packages for individual cases should be discussed, e.g. in 
 │   ├── guides/
 │   │   └── development.md -> this guide on how to contribute to tsoppy
 │   ├── decisions/
-│   │   └── <adr document name>.md -> architectual decision record
+│   │   └── <adr document name>.md -> architectural decision record
 │   └── references/
 │       ├── functions_and_classes.md -> description of how important functions and classes can be used
 │       └── publications.md -> references to publications of used bioinfo packages, data sources, etc.
@@ -105,7 +102,7 @@ The use of different packages for individual cases should be discussed, e.g. in 
 1. Any imports of python packages should follow and be sorted with `isort`. Also, add packages that are not installed yet to the `pyproject.toml`, section `[project]`, key `dependencies`.
 1. Create a logger below the import section like so: `logger = logging.getLogger(__name__)`.
 1. Functions should be named with snake_case. Starting with a capital letter indicates that the function is designed to be used outside of the module, e.g. `Public_function_name(...)`, while prefixing with `_` is for internal helper functions, e.g. `_internal_function(...)`. All input variables and output should be [typed](https://docs.python.org/3/library/typing.html). Include a short description (docstring) under the function definition line. Also provide docstrings/comments to describe individual sections of the function and for parts that are generally more complex.
-1. Classes should be named with [PascalCase](https://stringcase.org/cases/pascal/). The class should contain a description and a list over all attributes. It also needs a constructor method `__init__` and potentially a [`__eq__` method](#alternatives-for-assert-value1--value2) for testing. The same guidelines listed for functions should be applied to methods.
+1. Classes should be named with [PascalCase](https://stringcase.org/cases/pascal/). The class should contain a description and a list of all attributes. It also needs a constructor method `__init__` and potentially a [`__eq__` method](#alternatives-for-assert-value1--value2) for testing. The same guidelines listed for functions should be applied to methods.
 1. Import your subpackage to `src/tsoppy/cli.py` like so: `from tsoppy.<subpackage>.<module> import <class or function>`. Subsequently, connect your subpackage to a command like so:
 
     ```python
@@ -185,7 +182,7 @@ To avoid repetitive code, structure your tests in a way that you can have one te
         if self.<attribute1> != other.<attribute1>:
             return False
         ...
-        return self.<attributeN> == other.<attributeN>:
+        return self.<attributeN> == other.<attributeN>
     ```
 
 ## Documentation
@@ -196,7 +193,7 @@ Provide documentation for the subcommand that you have developed by adding the s
 
 ## Running `tsoppy` cli
 
-`tsoppy` needs to be reinstalled everytime you make changes to the code base which you want to test:
+`tsoppy` needs to be reinstalled every time you make changes to the code base which you want to test:
 
 ```bash
 $ pip install .
