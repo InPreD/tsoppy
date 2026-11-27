@@ -172,7 +172,7 @@ To avoid repetitive code, structure your tests in a way that you can have one te
 
 ### Alternatives for `assert value1 == value2`
 
-- `dataframe1.equals(dataframe2)`: If you are comparing two polars dataframes.
+- `polars.testing.assert_frame_equal(dataframe1, dataframe2)`: If you are comparing two polars dataframes.
 - `__eq__(self, other)`: For classes, we can define a method to enable the `==` comparison:
 
     ```python
