@@ -48,7 +48,7 @@ or dive into the [documentation](https://www.makotemplates.org/)
 
 ## Decision
 
-From the two tested possibilities, `mako` was much better in enforcing proper formatting and rendering of various data types (int, float, complex data frames, etc.). I see this as a positive trait. `jinja` did not complain much, rendered something and usually it looked ok, but debugging or changing default behavior seem to be taking more time in the end.
+From the two tested possibilities, `mako` was more effective at enforcing proper formatting and rendering of various data types (int, float, complex data frames, etc.). I see this as a positive trait. `jinja` did not complain much, rendered something and usually it looked ok, but debugging or changing default behavior took more time in our tests.
 Thus `mako` seems to be a better option going forward and we will start using that package.
 
 ## Consequences
