@@ -1,9 +1,19 @@
 # Stage 1: Builder
 FROM python:3.14-slim-trixie AS builder
 
+# Install git
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        git=1:2.47.3-0+deb13u1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Change to app dir and add mark as safe for git
 WORKDIR /usr/src/app
+RUN git config --global --add safe.directory /usr/src/app
 
 # Copy pyproject.toml and source code
+COPY .git/ ./.git/
 COPY pyproject.toml ./
 COPY src/ ./src/
 
