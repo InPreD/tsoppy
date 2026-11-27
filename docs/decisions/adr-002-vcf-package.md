@@ -260,7 +260,7 @@ vcfpy: 15.800526580016594
 ```
 
 When using `vcfpy`, one has to handle internal structures of the package classes to get out 
-what is needed - not a good level of abstraction, making things unnecesarily complicated.
+what is needed - not a good level of abstraction, making things unnecessarily complicated.
 
 `CyVCF2` is fastest and seem to provide reading, writing as well as functionality to modify the header and the records.
 This seems to be all the functionality we may need.
