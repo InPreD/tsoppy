@@ -25,7 +25,7 @@ The function parses a sectioned tsv file and returns potential headers and a dic
     key2 value2
     ```
 
-1. `key_value_sections: list[str]`: List of strings representing sections that are known to be key value pairs. May be a list of length 0 if none of the section should be treated as key value pairs.
+1. `key_value_sections: list[str]`: List of strings representing sections that are known to be key value pairs. Pass an empty list if no sections contain key-value pairs.
 
     ```python
     ['section2']
