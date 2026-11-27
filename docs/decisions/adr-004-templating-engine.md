@@ -3,7 +3,7 @@
 ## Context and Problem Statement
 
 The aim here is to separate text generating functionality from the rest of the code so that:
-1) all the text outputs are kept in a well defined and easy to find place,
+1) all the text outputs are kept in one clearly defined location,
 2) it is easy to edit the text when needed,
 3) data structures generated with python code and containing output information can be easily rendered.
 
