@@ -109,7 +109,7 @@ def _parse_section_sep_val(
 
 
 def _get_section_idx(df: polars.DataFrame) -> list[sectionIdx]:
-    """Get the the name, start index and length of each section in the DataFrame."""
+    """Get the name, start index and length of each section in the DataFrame."""
     section = sectionIdx("", 0)
     section_idx = []
     for row in df.with_row_index().iter_rows():
