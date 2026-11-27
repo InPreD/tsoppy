@@ -1,0 +1,312 @@
+"""Create the variant summary table using the combined variant output files (cvo) for each sample."""
+
+import logging
+from importlib.resources import files
+from pathlib import Path
+from string import Template
+
+import polars
+
+from tsoppy.general.classes import CombinedVariantOutputTsv, WorkflowOutput
+
+logger = logging.getLogger(__name__)
+
+
+# Set up variable names for data we want to extract
+TMB_TOTAL = "Total TMB"
+TMB_ELIGIBLE = "Number of Passing Eligible Variants"
+MSI_PERCENT = "Percent Unstable MSI Sites"
+MSI_UNSTABLE = "Total MSI Sites Unstable"
+MSI_USABLE = "Usable MSI Sites"
+GIS_SCORE = "Genomic Instability Score"
+TUMOR_FRACTION = "Tumor Fraction"
+PLOIDY = "Ploidy"
+
+# Combined variant output layout per workflow id.
+CVO_WORKFLOW_ID = {
+    "dragen_2.6.2.4": "dragen",
+    "localapp_ruo-2.2.0.12": "localapp",
+}
+
+
+# Output table columns, in order.
+HEADER = [
+    "Sample_id",
+    "TMB",
+    "MSI",
+    # dragen: Copy Number Variants; localapp: Gene Amplifications
+    "Gene_amplifications_CNV",
+    "LOH",
+    "Splice_variants",
+    "Fusions",
+    "GIS",
+    "Tumor_fraction",
+    "Ploidy",
+    "Large_rearrangements",
+]
+
+
+def Summarise_variant_output(
+    config_yaml: str | Path,
+    inpred_nomenclature: str | Path,
+    results_directory: str | Path,
+    output_file: str | Path,
+) -> None:
+    """Summarise the combined variant output files in a directory tree into one table."""
+    workflow_output = WorkflowOutput(
+        config_yaml, inpred_nomenclature, results_directory
+    )
+
+    # One combined variant output file per pair; report the ones that are missing
+    # and skip them, but fail if no file could be parsed at all.
+    cvo_files = []
+    for pair_id in workflow_output.pair_id_list:
+        try:
+            cvo_files.append(CombinedVariantOutputTsv.create(workflow_output, pair_id))
+        except FileNotFoundError:
+            continue  # already logged by CombinedVariantOutputTsv._parse
+
+    if not cvo_files:
+        logger.error(
+            f"No combined variant output TSV files found for any pair: "
+            f"{workflow_output.pair_id_list}."
+        )
+        raise FileNotFoundError
+
+    with open(output_file, "w") as out_file:
+        _write_header(out_file, cvo_files[0].headers)
+        for cvo in cvo_files:
+            for row in _parse_sample(cvo.sections, cvo.workflow_id):
+                out_file.write("\t".join(row[column] for column in HEADER) + "\n")
+
+
+def _detect_data_type(sections: dict[str, polars.DataFrame]) -> tuple[bool, bool]:
+    """Check the [Analysis Details] section DNA and RNA sample IDs to determine the file type."""
+    details = sections.get("Analysis Details")
+    has_dna = _value(details, "DNA Sample ID") != "NA"
+    has_rna = _value(details, "RNA Sample ID") != "NA"
+    return has_dna, has_rna
+
+
+def _format_dna_row(
+    sections: dict[str, polars.DataFrame], workflow_id: str
+) -> dict[str, str]:
+    sample_id = _value(sections.get("Analysis Details"), "DNA Sample ID")
+
+    layout = CVO_WORKFLOW_ID.get(workflow_id)
+    if layout is None:
+        logger.error(f"No combined variant output layout defined for {workflow_id}")
+        raise ValueError
+
+    if layout == "dragen":
+        gene_amp = _format_cnv(sections)
+        loh = _format_loh(sections)
+        gis = _value(sections.get("GIS"), GIS_SCORE)
+        tumor_fraction = _value(sections.get("GIS"), TUMOR_FRACTION)
+        ploidy = _value(sections.get("GIS"), PLOIDY)
+        large_rearr = _format_large_rearr(sections)
+    elif layout == "localapp":
+        gene_amp = _format_gene_amp(sections)
+        loh = "NA"
+        gis = "NA"
+        tumor_fraction = "NA"
+        ploidy = "NA"
+        large_rearr = "NA"
+
+    return {
+        "Sample_id": sample_id,
+        "TMB": _format_tmb(sections),
+        "MSI": _format_msi(sections),
+        "Gene_amplifications_CNV": gene_amp,
+        "LOH": loh,
+        "Splice_variants": "NA",
+        "Fusions": "NA",
+        "GIS": gis,
+        "Tumor_fraction": tumor_fraction,
+        "Ploidy": ploidy,
+        "Large_rearrangements": large_rearr,
+    }
+
+
+def _format_rna_row(sections: dict[str, polars.DataFrame]) -> dict[str, str]:
+    sample_id = _value(sections.get("Analysis Details"), "RNA Sample ID")
+
+    return {
+        "Sample_id": sample_id,
+        "TMB": "NA",
+        "MSI": "NA",
+        "Gene_amplifications_CNV": "NA",
+        "LOH": "NA",
+        "Splice_variants": _format_splice_vars(sections),
+        "Fusions": _format_fusions(sections),
+        "GIS": "NA",
+        "Tumor_fraction": "NA",
+        "Ploidy": "NA",
+        "Large_rearrangements": "NA",
+    }
+
+
+def _write_header(out_file, headers: list[str]) -> None:
+    """Write the source banners, the field-format description and the table header."""
+    template = Template(
+        files("tsoppy.add_variant_summary").joinpath("header_template.txt").read_text()
+    )
+    out_file.write("".join(f"# {header}\n" for header in headers))
+    out_file.write(template.substitute(columns="\t".join(HEADER)))
+
+
+def _parse_sample(
+    sections: dict[str, polars.DataFrame], workflow_id: str
+) -> list[dict[str, str]]:
+    has_dna, has_rna = _detect_data_type(sections)
+    rows = []
+    if has_dna:
+        rows.append(_format_dna_row(sections, workflow_id))
+    if has_rna:
+        rows.append(_format_rna_row(sections))
+    return rows
+
+
+def _format_tmb(sections: dict[str, polars.DataFrame]) -> str:
+    """Format TMB as "Total TMB (eligible_variants)"."""
+    total_tmb = _value(sections.get("TMB"), TMB_TOTAL)
+    if total_tmb == "NA":
+        return "NA"
+    return f"{total_tmb} ({_value(sections.get('TMB'), TMB_ELIGIBLE)})"
+
+
+def _format_msi(sections: dict[str, polars.DataFrame]) -> str:
+    """Format MSI as "percent (unstable/usable)"."""
+    percent = _value(sections.get("MSI"), MSI_PERCENT)
+    if percent == "NA":
+        return "NA"
+    return (
+        f"{percent} ({_value(sections.get('MSI'), MSI_UNSTABLE)}/"
+        f"{_value(sections.get('MSI'), MSI_USABLE)})"
+    )
+
+
+def _format_cnv(sections: dict[str, polars.DataFrame]) -> str:
+    """Format dragen copy number variants from the [Copy Number Variants] section."""
+    cna = sections.get("Copy Number Variants")
+    if cna is None or cna.is_empty():
+        return "NA"
+    output = []
+    for row in cna.iter_rows(named=True):
+        if row["Gene"] in (None, "NA", "-") or "BETA FEATURE" in str(row["Gene"]):
+            continue
+        output.append(
+            f"{row['Gene']} ({row['Fold Change']}, "
+            f"{row['Copy Number Variant']}, {row['Absolute Copy Number']})"
+        )
+    return "|".join(output) if output else "NA"
+
+
+def _format_loh(sections: dict[str, polars.DataFrame]) -> str:
+    """Format loss of heterozygosity from the [Loss of Heterozygosity] section."""
+    loh = sections.get("Loss of Heterozygosity")
+    if loh is None or loh.is_empty():
+        return "NA"
+    output = []
+    for row in loh.iter_rows(named=True):
+        if row["Gene"] in (None, "NA", "-"):
+            continue
+        output.append(
+            f"{row['Gene']} ({row['Absolute Copy Number']}, {row['Minor Copy Number']})"
+        )
+    return "|".join(output) if output else "NA"
+
+
+def _format_splice_vars(sections: dict[str, polars.DataFrame]) -> str:
+    """Format splice variants from the [Splice Variants] section."""
+    splice = sections.get("Splice Variants")
+    if splice is None or splice.is_empty():
+        return "NA"
+    output = []
+    for row in splice.iter_rows(named=True):
+        if row["Gene"] in (None, "NA", "-"):
+            continue
+        output.append(
+            f"{row['Gene']}[{row['Affected Exon']}] "
+            f"({row['Breakpoint 1']}-{row['Breakpoint 2']}) "
+            f"{row['Splice Supporting Reads']}/{row['Reference Reads Transcript']}"
+        )
+    return "|".join(output) if output else "NA"
+
+
+def _format_fusions(sections: dict[str, polars.DataFrame]) -> str:
+    """Format fusions from the [Fusions] section."""
+    fusions = sections.get("Fusions")
+    if fusions is None or fusions.is_empty():
+        return "NA"
+    output = []
+    for row in fusions.iter_rows(named=True):
+        if row["Gene Pair"] in (None, "NA", "-"):
+            continue
+        output.append(
+            f"{row['Gene Pair']} ({row['Breakpoint 1']}-{row['Breakpoint 2']}) "
+            f"{row['Fusion Supporting Reads']}/{row['Gene 1 Reference Reads']}/"
+            f"{row['Gene 2 Reference Reads']}"
+        )
+    return "|".join(output) if output else "NA"
+
+
+def _is_missing(value) -> bool:
+    """True when a CVO cell carries no value ("NA", "-" or empty)."""
+    return value is None or str(value).strip() in ("", "NA", "-")
+
+
+def _or_na(value) -> str:
+    """Return `value` as text, or "NA" when the cell carries no value."""
+    return "NA" if _is_missing(value) else str(value)
+
+
+def _format_large_rearr(sections: dict[str, polars.DataFrame]) -> str:
+    """Format large rearrangements from the [Large Rearrangements] section."""
+    lr = sections.get("Large Rearrangements")
+    if lr is None or lr.is_empty():
+        return "NA"
+    output = []
+    for row in lr.iter_rows(named=True):
+        if _is_missing(row["Gene"]):
+            continue
+
+        coords = [row.get("Chromosome"), row.get("Start"), row.get("Stop")]
+        span = (
+            "NA"
+            if any(_is_missing(value) for value in coords)
+            else f"{coords[0]}:{coords[1]}-{coords[2]}"
+        )
+        details = [
+            span,
+            _or_na(row.get("Affected Exon(s)")),
+            _or_na(row.get("Fold Change")),
+            _or_na(row.get("CNV Type")),
+        ]
+        # A row that only names the gene reports no rearrangement.
+        if all(detail == "NA" for detail in details):
+            continue
+
+        output.append(f"{row['Gene']} ({', '.join(details)})")
+    return "|".join(output) if output else "NA"
+
+
+def _format_gene_amp(sections: dict[str, polars.DataFrame]) -> str:
+    """Format localapp gene amplifications (all are of type <DUP> with unspecified absolute copy number value)."""
+    gamp = sections.get("Gene Amplifications")
+    if gamp is None or gamp.is_empty():
+        return "NA"
+    output = []
+    for row in gamp.iter_rows(named=True):
+        if row["Gene"] in (None, "NA", "-"):
+            continue
+        output.append(f"{row['Gene']} ({row['Fold Change']}, <DUP>, NA)")
+    return "|".join(output) if output else "NA"
+
+
+def _value(df: polars.DataFrame | None, column: str, default: str = "NA") -> str:
+    """Return the first value of a column, or `default` if missing/empty."""
+    if df is None or df.is_empty() or column not in df.columns:
+        return default
+    value = df[column][0]
+    return default if value is None else str(value)

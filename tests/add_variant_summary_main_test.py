@@ -1,0 +1,435 @@
+"""Unit tests for the add_variant_summary main module."""
+
+import polars
+from pytest import mark, raises
+
+from tsoppy.add_variant_summary.main import (
+    HEADER,
+    _detect_data_type,
+    _format_cnv,
+    _format_dna_row,
+    _format_fusions,
+    _format_gene_amp,
+    _format_large_rearr,
+    _format_loh,
+    _format_msi,
+    _format_rna_row,
+    _format_splice_vars,
+    _format_tmb,
+    _parse_sample,
+    _write_header,
+)
+
+
+# --- Helpers to build transposed key-value and tabular DataFrames ----------
+
+
+def _analysis_details(dna="IPD1111-D", rna="NA"):
+    return polars.DataFrame({"DNA Sample ID": [dna], "RNA Sample ID": [rna]})
+
+
+def _tmb(total="7.8", eligible="10"):
+    return polars.DataFrame(
+        {"Total TMB": [total], "Number of Passing Eligible Variants": [eligible]}
+    )
+
+
+def _msi(percent="4.13", unstable="5", usable="121"):
+    return polars.DataFrame(
+        {
+            "Percent Unstable MSI Sites": [percent],
+            "Total MSI Sites Unstable": [unstable],
+            "Usable MSI Sites": [usable],
+        }
+    )
+
+
+def _gis(score="32", tumor_fraction="0.650", ploidy="3.92"):
+    return polars.DataFrame(
+        {
+            "Genomic Instability Score": [score],
+            "Tumor Fraction": [tumor_fraction],
+            "Ploidy": [ploidy],
+        }
+    )
+
+
+def _cnv():
+    return polars.DataFrame(
+        {
+            "Gene": ["EGFR", "MET"],
+            "Fold Change": ["1.5", "2.0"],
+            "Copy Number Variant": ["DUP", "DEL"],
+            "Absolute Copy Number": ["5", "2"],
+        }
+    )
+
+
+def _loh():
+    return polars.DataFrame(
+        {"Gene": ["BRCA1"], "Absolute Copy Number": ["1"], "Minor Copy Number": ["0"]}
+    )
+
+
+def _gene_amp():
+    return polars.DataFrame({"Gene": ["MDM4"], "Fold Change": ["1.741"]})
+
+
+def _splice():
+    return polars.DataFrame(
+        {
+            "Gene": ["EGFR"],
+            "Affected Exon": ["2-3/28"],
+            "Breakpoint 1": ["chr7:55087058"],
+            "Breakpoint 2": ["chr7:55214298"],
+            "Splice Supporting Reads": ["15"],
+            "Reference Reads Transcript": ["13089"],
+        }
+    )
+
+
+def _fusions():
+    return polars.DataFrame(
+        {
+            "Gene Pair": ["USP13-PIK3CA"],
+            "Breakpoint 1": ["chr3:179463005"],
+            "Breakpoint 2": ["chr3:178947060"],
+            "Fusion Supporting Reads": ["18"],
+            "Gene 1 Reference Reads": ["0"],
+            "Gene 2 Reference Reads": ["429"],
+        }
+    )
+
+
+def _large_rearr():
+    return polars.DataFrame(
+        {
+            "Gene": ["BRCA1", "BRCA2"],
+            "Chromosome": ["chr17", "chr13"],
+            "Start": ["43044295", "32315474"],
+            "Stop": ["43125483", "32399672"],
+            "Affected Exon(s)": ["7-23", "10"],
+            "Fold Change": ["0.35", "0.40"],
+            "CNV Type": ["DEL", "DEL"],
+        }
+    )
+
+
+def _large_rearr_partial():
+    """DRAGEN may leave fold change and CNV type empty."""
+    return polars.DataFrame(
+        {
+            "Gene": ["BRCA1"],
+            "Chromosome": ["chr17"],
+            "Start": ["43044295"],
+            "Stop": ["43125483"],
+            "Affected Exon(s)": ["7-23"],
+            "Fold Change": ["-"],
+            "CNV Type": ["-"],
+        }
+    )
+
+
+def _large_rearr_stub():
+    """Rows naming only the gene report no rearrangement."""
+    blank = ["-", "-"]
+    return polars.DataFrame(
+        {
+            "Gene": ["BRCA1", "BRCA2"],
+            "Chromosome": ["NA", "NA"],
+            "Start": blank,
+            "Stop": blank,
+            "Affected Exon(s)": blank,
+            "Fold Change": blank,
+            "CNV Type": blank,
+        }
+    )
+
+
+def _dragen_sections(dna="IPD1111-D", rna="NA"):
+    return {
+        "Analysis Details": _analysis_details(dna, rna),
+        "TMB": _tmb(),
+        "MSI": _msi(),
+        "GIS": _gis(),
+        "Copy Number Variants": _cnv(),
+        "Loss of Heterozygosity": _loh(),
+        "Splice Variants": _splice(),
+        "Fusions": _fusions(),
+        "Large Rearrangements": _large_rearr(),
+    }
+
+
+def _localapp_sections(dna="IPD1111-D", rna="NA"):
+    return {
+        "Analysis Details": _analysis_details(dna, rna),
+        "TMB": _tmb(),
+        "MSI": _msi(),
+        "Gene Amplifications": _gene_amp(),
+        "Splice Variants": _splice(),
+        "Fusions": _fusions(),
+    }
+
+
+# --- Key-value formatters ----------------------------------------------------
+
+
+@mark.parametrize(
+    "sections, want",
+    [
+        ({"TMB": _tmb()}, "7.8 (10)"),
+        ({"TMB": _tmb("NA", "10")}, "NA"),
+        ({}, "NA"),
+    ],
+)
+def test_format_tmb(sections, want):
+    assert _format_tmb(sections) == want
+
+
+@mark.parametrize(
+    "sections, want",
+    [
+        ({"MSI": _msi()}, "4.13 (5/121)"),
+        ({"MSI": _msi("NA", "5", "121")}, "NA"),
+        ({}, "NA"),
+    ],
+)
+def test_format_msi(sections, want):
+    assert _format_msi(sections) == want
+
+
+# --- Tabular formatters ------------------------------------------------------
+
+
+@mark.parametrize(
+    "sections, want",
+    [
+        ({"Copy Number Variants": _cnv()}, "EGFR (1.5, DUP, 5)|MET (2.0, DEL, 2)"),
+        ({"Copy Number Variants": polars.DataFrame()}, "NA"),
+        ({}, "NA"),
+    ],
+)
+def test_format_cnv(sections, want):
+    assert _format_cnv(sections) == want
+
+
+@mark.parametrize(
+    "sections, want",
+    [
+        ({"Loss of Heterozygosity": _loh()}, "BRCA1 (1, 0)"),
+        ({"Loss of Heterozygosity": polars.DataFrame()}, "NA"),
+        ({}, "NA"),
+    ],
+)
+def test_format_loh(sections, want):
+    assert _format_loh(sections) == want
+
+
+@mark.parametrize(
+    "sections, want",
+    [
+        ({"Gene Amplifications": _gene_amp()}, "MDM4 (1.741, <DUP>, NA)"),
+        ({"Gene Amplifications": polars.DataFrame()}, "NA"),
+        ({}, "NA"),
+    ],
+)
+def test_format_gene_amp(sections, want):
+    assert _format_gene_amp(sections) == want
+
+
+@mark.parametrize(
+    "sections, want",
+    [
+        (
+            {"Splice Variants": _splice()},
+            "EGFR[2-3/28] (chr7:55087058-chr7:55214298) 15/13089",
+        ),
+        ({"Splice Variants": polars.DataFrame()}, "NA"),
+        ({}, "NA"),
+    ],
+)
+def test_format_splice_vars(sections, want):
+    assert _format_splice_vars(sections) == want
+
+
+@mark.parametrize(
+    "sections, want",
+    [
+        (
+            {"Fusions": _fusions()},
+            "USP13-PIK3CA (chr3:179463005-chr3:178947060) 18/0/429",
+        ),
+        ({"Fusions": polars.DataFrame()}, "NA"),
+        ({}, "NA"),
+    ],
+)
+def test_format_fusions(sections, want):
+    assert _format_fusions(sections) == want
+
+
+@mark.parametrize(
+    "sections, want",
+    [
+        (
+            {"Large Rearrangements": _large_rearr()},
+            "BRCA1 (chr17:43044295-43125483, 7-23, 0.35, DEL)"
+            "|BRCA2 (chr13:32315474-32399672, 10, 0.40, DEL)",
+        ),
+        (
+            {"Large Rearrangements": _large_rearr_partial()},
+            "BRCA1 (chr17:43044295-43125483, 7-23, NA, NA)",
+        ),
+        ({"Large Rearrangements": _large_rearr_stub()}, "NA"),
+        ({"Large Rearrangements": polars.DataFrame()}, "NA"),
+        ({}, "NA"),
+    ],
+)
+def test_format_large_rearr(sections, want):
+    assert _format_large_rearr(sections) == want
+
+
+# --- Data type detection -----------------------------------------------------
+
+
+@mark.parametrize(
+    "sections, want",
+    [
+        (_dragen_sections("IPD1111-D", "NA"), (True, False)),
+        (_dragen_sections("NA", "IPD1111-R"), (False, True)),
+        (_dragen_sections("IPD1111-D", "IPD1111-R"), (True, True)),
+        (_dragen_sections("NA", "NA"), (False, False)),
+    ],
+)
+def test_detect_data_type(sections, want):
+    assert _detect_data_type(sections) == want
+
+
+# --- Row builders ------------------------------------------------------------
+
+
+def _expected_dragen_dna_row():
+    return {
+        "Sample_id": "IPD1111-D",
+        "TMB": "7.8 (10)",
+        "MSI": "4.13 (5/121)",
+        "Gene_amplifications_CNV": "EGFR (1.5, DUP, 5)|MET (2.0, DEL, 2)",
+        "LOH": "BRCA1 (1, 0)",
+        "Splice_variants": "NA",
+        "Fusions": "NA",
+        "GIS": "32",
+        "Tumor_fraction": "0.650",
+        "Ploidy": "3.92",
+        "Large_rearrangements": (
+            "BRCA1 (chr17:43044295-43125483, 7-23, 0.35, DEL)"
+            "|BRCA2 (chr13:32315474-32399672, 10, 0.40, DEL)"
+        ),
+    }
+
+
+def _expected_localapp_dna_row():
+    return {
+        "Sample_id": "IPD1111-D",
+        "TMB": "7.8 (10)",
+        "MSI": "4.13 (5/121)",
+        "Gene_amplifications_CNV": "MDM4 (1.741, <DUP>, NA)",
+        "LOH": "NA",
+        "Splice_variants": "NA",
+        "Fusions": "NA",
+        "GIS": "NA",
+        "Tumor_fraction": "NA",
+        "Ploidy": "NA",
+        "Large_rearrangements": "NA",
+    }
+
+
+def _expected_rna_row():
+    return {
+        "Sample_id": "IPD1111-R",
+        "TMB": "NA",
+        "MSI": "NA",
+        "Gene_amplifications_CNV": "NA",
+        "LOH": "NA",
+        "Splice_variants": "EGFR[2-3/28] (chr7:55087058-chr7:55214298) 15/13089",
+        "Fusions": "USP13-PIK3CA (chr3:179463005-chr3:178947060) 18/0/429",
+        "GIS": "NA",
+        "Tumor_fraction": "NA",
+        "Ploidy": "NA",
+        "Large_rearrangements": "NA",
+    }
+
+
+@mark.parametrize(
+    "sections, workflow_id, want",
+    [
+        (_dragen_sections(), "dragen_2.6.2.4", _expected_dragen_dna_row()),
+        (_localapp_sections(), "localapp_ruo-2.2.0.12", _expected_localapp_dna_row()),
+    ],
+)
+def test_format_dna_row(sections, workflow_id, want):
+    assert _format_dna_row(sections, workflow_id) == want
+
+
+def test_format_dna_row_unknown_workflow_id():
+    with raises(ValueError):
+        _format_dna_row(_dragen_sections(), "dragen_9.9.9.9")
+
+
+@mark.parametrize(
+    "sections, workflow_id",
+    [
+        (_dragen_sections(), "dragen_2.6.2.4"),
+        (_localapp_sections(), "localapp_ruo-2.2.0.12"),
+    ],
+)
+def test_dna_row_keys_match_header(sections, workflow_id):
+    assert set(_format_dna_row(sections, workflow_id)) == set(HEADER)
+
+
+@mark.parametrize(
+    "sections, want",
+    [(_dragen_sections("NA", "IPD1111-R"), _expected_rna_row())],
+)
+def test_format_rna_row(sections, want):
+    assert _format_rna_row(sections) == want
+
+
+def test_rna_row_keys_match_header():
+    assert set(_format_rna_row(_dragen_sections("NA", "IPD1111-R"))) == set(HEADER)
+
+
+# --- Integration: one parsed file -> rows -----------------------------------
+
+
+@mark.parametrize(
+    "sections, workflow_id, want",
+    [
+        (
+            _dragen_sections("IPD1111-D", "NA"),
+            "dragen_2.6.2.4",
+            [_expected_dragen_dna_row()],
+        ),
+        (
+            _dragen_sections("IPD1111-D", "IPD1111-R"),
+            "dragen_2.6.2.4",
+            [_expected_dragen_dna_row(), _expected_rna_row()],
+        ),
+        (
+            _localapp_sections("IPD1111-D", "NA"),
+            "localapp_ruo-2.2.0.12",
+            [_expected_localapp_dna_row()],
+        ),
+    ],
+)
+def test_parse_sample(sections, workflow_id, want):
+    assert _parse_sample(sections, workflow_id) == want
+
+
+def test_write_header(tmp_path):
+    out_file = tmp_path / "header.tsv"
+    with open(out_file, "w") as file_handle:
+        _write_header(file_handle, ["Pipeline: DRAGEN", "Version: 2.6.2.4"])
+    text = out_file.read_text()
+    assert text.startswith("# Pipeline: DRAGEN\n# Version: 2.6.2.4\n")
+    assert "# Field formats:\n" in text
+    # catches a missing final newline
+    assert text.endswith("\t".join(HEADER) + "\n")

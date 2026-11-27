@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm", "setuptools-git-versioning"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dependencies = [
+    "cyvcf2>=0.32.1",
+    "matplotlib>=3.10.0",
+    "msgspec>=0.21.1",
+    "numpy>=2.2.0",
+    "plotnine>=0.14.0",
+    "polars>=1.39.3",
+    "pyarrow>=18.0.0",
+    "pyyaml>=6.0.3",
+    "typer>=0.24.1",
+    "mako>=1.4.3",
+]
+dynamic = ["version"]
+name = "tsoppy"
+requires-python = ">=3.14"
+
+[project.scripts]
+tsoppy = "tsoppy.cli:app"
+
+[project.optional-dependencies]
+dev = ["isort==8.0.1", "pre-commit==4.7.0", "pytest==9.0.2", "ruff==0.15.6"]
+lint = ["ruff==0.15.6"]
+test = ["pytest==9.0.2", "pytest-emoji==0.2.0", "pytest-md==0.2.0"]
+
+[tool.isort]
+profile = "black"
+
+[tool.setuptools-git-versioning]
+enabled = true
+template = "{tag}"
+dev_template = "{tag}"
+dirty_template = "{tag}"
+
+[tool.setuptools.package-data]
+"tsoppy.add_variant_summary" = ["header_template.txt"]

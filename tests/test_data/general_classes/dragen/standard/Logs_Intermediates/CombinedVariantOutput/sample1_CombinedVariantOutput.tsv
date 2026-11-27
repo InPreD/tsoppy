@@ -1,0 +1,39 @@
+DRAGEN TruSight Oncology 500 v2.6.2 Analysis Software - Combined Variant Output
+
+[Analysis Details]
+Pair ID	sample1
+DNA Sample ID	sample1-D
+RNA Sample ID	sample1-R
+Library Prep Kit	TSO500_v2
+Output Date	01.01.2000
+Output Time	01:00:00
+Module Version	01.01.2000
+Pipeline Version	2.6.2.4
+
+[TMB]
+Total TMB	1.0
+Coding Region Size in Megabases	1.28
+Number of Passing Eligible Variants	1
+
+[MSI]
+Usable MSI Sites	1
+Total MSI Sites Unstable	1
+Percent Unstable MSI Sites	1.0
+
+[GIS]
+Genomic Instability Score	1
+Tumor Fraction	1.0
+Ploidy	1.0
+
+[Copy Number Variants]
+Gene	Fold Change	Copy Number Variant	Absolute Copy Number
+EGFR	1.5	<DUP>	5
+
+[Splice Variants]
+Gene	Affected Exon	Breakpoint 1	Breakpoint 2	Splice Supporting Reads	Reference Reads Transcript
+
+[Fusions]
+Gene Pair	Breakpoint 1	Breakpoint 2	Fusion Supporting Reads	Gene 1 Reference Reads	Gene 2 Reference Reads
+
+[Large Rearrangements]
+Gene	Chromosome	Start	Stop	Affected Exon(s)	Fold Change	CNV Type

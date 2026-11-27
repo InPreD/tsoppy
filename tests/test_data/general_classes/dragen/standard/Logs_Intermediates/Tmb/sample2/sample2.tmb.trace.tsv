@@ -1,0 +1,6 @@
+Chromosome	Position	RefCall	AltCall	VAF	Depth	CytoBand	GeneName	VariantType	CosmicIDs	MaxCosmicCount	ClinVarIDs	ClinVarSignificance	AlleleCountsGnomadExome	AlleleCountsGnomadGenome	AlleleCounts1000Genomes	MaxDatabaseAlleleCounts	GermlineFilterDatabase	GermlineFilterProxi	Nonsynonymous	withinValidTmbRegion	IncludedInTMBNumerator	Status	ProteinChange	CDSChange	Exons	Consequence
+chr1	1200000	CTGAAAGAGC	GTGAAAGAGT	0.0420	256	1p00.01	SYN_GENE_X	RECOMPOSED	NA	0	NA	NA	0	0	0	0	False	False	True	True	True	Somatic	NA	NA	NA	stop_gained
+chr1	2000000	A	G	0.0434	438	1p00.01	SYN_GENE_A	SNV	NA	0	NA	NA	0	0	0	0	False	False	True	True	True	Germline_DB	NA	NA	NA	missense_variant
+chr1	5000000	G	A	0.7738	546	1p00.01	SYN_GENE_B	SNV	NA	0	NA	NA	0	0	0	0	False	False	True	True	True	Somatic	NA	NA	NA	missense_variant
+chr1	6000000	G	A	0.4788	1243	1p00.01	SYN_GENE_C	SNV	NA	0	NA	NA	0	0	0	0	False	False	True	True	True	Germline_DB	NA	NA	NA	missense_variant
+chr1	7000000	C	T	1.0000	186	1p00.01	SYN_GENE_D	SNV	NA	0	NA	NA	0	0	0	0	False	False	True	True	True	Germline_Proxi	NA	NA	NA	missense_variant
