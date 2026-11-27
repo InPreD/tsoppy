@@ -12,7 +12,7 @@ msgspec | https://pypi.org/project/msgspec/
 orjson | https://pypi.org/project/orjson/
 ujson | https://pypi.org/project/ujson/
 
-`json` is the standard package. We would like to know how the other packages perform in comparison when reading a big json file. After installing all packages we were using the following script to test performance:
+`json` is the standard package. We would like to know how the other packages perform in comparison when reading a big json file. After installing the packages, we used the following script to test performance:
 
 ```python
 import ijson

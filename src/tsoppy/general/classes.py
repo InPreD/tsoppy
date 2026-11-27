@@ -228,7 +228,7 @@ class WorkflowOutput:
 
     @property
     def sample_list(self) -> list[str]:
-        """Return all samples present in samplsheet."""
+        """Return all samples present in samplesheet."""
         return self.samples["Sample_ID"].to_list()
 
     @property
@@ -564,11 +564,11 @@ class SmallVariantGenomeVcf(WorkflowOutput):
                 self.header_dict.setdefault(key, []).append(value)
                 continue
 
-            # Check if value containes additional key value pairs in the 'value' field (i.e. '##key=<subkey1=subvalue1,subkey2=subvalue2,...>')
+            # Check if value contains additional key value pairs in the 'value' field (i.e. '##key=<subkey1=subvalue1,subkey2=subvalue2,...>')
             if not bool(re.search(self.header_subrex, value)):
                 self.header_dict[key] = value
             else:
-                # Parse each 'key=value' pairs into dict (e.g {'ID': 'DP', 'Number': '1', 'Type': 'Integer', 'Description': 'Approximate read depth'})
+                # Parse each 'key=value' pair into dict (e.g {'ID': 'DP', 'Number': '1', 'Type': 'Integer', 'Description': 'Approximate read depth'})
                 item = dict()
                 for match2 in re.finditer(self.header_subrex, value):
                     g = match2.groups()
