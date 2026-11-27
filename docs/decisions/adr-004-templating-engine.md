@@ -54,7 +54,7 @@ Thus `mako` seems to be a better option going forward and we will start using th
 ## Consequences
 
 - create template folder in each module where templates will be used
-- set the absolute path for the template folder inside the container (see the code example below)
+- set the absolute path for the template folder inside the container (see the code example above)
 - install mako package in the repo
 - use the package to work with the templates
 
